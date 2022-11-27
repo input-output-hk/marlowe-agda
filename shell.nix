@@ -8,5 +8,6 @@ mkShell {
     (emacs.pkgs.withPackages (epkgs: (with epkgs.melpaStablePackages; [
       epkgs.agda2-mode
     ])))
+    mononoki
   ];
 }

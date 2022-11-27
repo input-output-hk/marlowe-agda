@@ -23,6 +23,9 @@ record State : Set where
 data TimeInterval : Set where
   mkTimeInterval : Pair PosixTime PosixTime → TimeInterval
 
+unTimeInterval : TimeInterval → Pair PosixTime PosixTime
+unTimeInterval (mkTimeInterval i) = i
+
 
 record Environment : Set where
   field
