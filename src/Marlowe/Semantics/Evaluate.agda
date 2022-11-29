@@ -34,8 +34,8 @@ evaluate e s (SubValue x y) = evaluate e s x - evaluate e s y
 evaluate e s (MulValue x y) = evaluate e s x * evaluate e s y
 evaluate e s (DivValue x y) = divide (evaluate e s x) (evaluate e s y)
 evaluate _ s (ChoiceValue c) = c lookup (State.choices s) default 0ℤ
-evaluate e _ TimeIntervalStart = unPosixTime (Pair.fst (unTimeInterval (Environment.timeInterval e)))
-evaluate e _ TimeIntervalEnd = unPosixTime (Pair.snd (unTimeInterval (Environment.timeInterval e)))
+evaluate e _ TimeIntervalStart = unPosixTime (Pair.fst (Environment.timeInterval e))
+evaluate e _ TimeIntervalEnd = unPosixTime (Pair.snd (Environment.timeInterval e))
 evaluate _ s (UseValue v) = v lookup (State.boundValues s) default 0ℤ
 evaluate e s (Cond o x y) = if observe e s o then evaluate e s x else evaluate e s y
 
