@@ -5,16 +5,26 @@ module Marlowe.Language.Contract where
 
 open import Agda.Builtin.Int using (Int)
 open import Agda.Builtin.List using (List)
-open import Primitives using (ByteString; PosixTime)
+open import Data.Bool using (Bool; false; _∧_)
+open import Primitives
+open import Relation.Nullary.Decidable using (⌊_⌋)
 
 
 data Party : Set where
   Address : ByteString → Party
   Role : ByteString → Party
 
+_eqParty_ : Party → Party → Bool
+_eqParty_ (Address x) (Address y) = x eqByteString y
+_eqParty_ (Role x) (Role y) = x eqByteString y
+_eqParty_ _ _ = false
+
 
 data AccountId : Set where
   mkAccountId : Party → AccountId
+
+_eqAccountId_ : AccountId → AccountId → Bool
+_eqAccountId_ (mkAccountId x) (mkAccountId y) = x eqParty y
 
 
 data Timeout : Set where
@@ -24,17 +34,33 @@ data Timeout : Set where
 data ChoiceName : Set where
   mkChoiceName : ByteString → ChoiceName
 
+_eqChoiceName_ : ChoiceName → ChoiceName → Bool
+_eqChoiceName_ (mkChoiceName x) (mkChoiceName y) = x eqByteString y
+
 
 data ChoiceId : Set where
   mkChoiceId : ChoiceName → Party → ChoiceId
 
+_eqChoiceId_ : ChoiceId → ChoiceId → Bool
+_eqChoiceId_ (mkChoiceId xn xp) (mkChoiceId yn yp) = (xn eqChoiceName yn) ∧ (xp eqParty yp)
+
 
 data Token : Set where
   mkToken : ByteString → Token
-  
+
+_eqToken_ : Token → Token → Bool
+_eqToken_ (mkToken x) (mkToken y) = x eqByteString y
+
+
+_eqAccountIdToken_ : Pair AccountId Token → Pair AccountId Token → Bool
+_eqAccountIdToken_ x y = ((Pair.fst x) eqAccountId (Pair.fst y)) ∧ ((Pair.snd x) eqToken (Pair.snd y))
+    
 
 data ValueId : Set where
   mkValueId : ByteString → ValueId
+
+_eqValueId_ : ValueId → ValueId → Bool
+_eqValueId_ (mkValueId x) (mkValueId y) = x eqByteString y
 
 
 data Observation : Set
