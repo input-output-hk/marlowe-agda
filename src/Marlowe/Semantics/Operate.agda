@@ -1,5 +1,4 @@
 
-
 module Marlowe.Semantics.Operate where
 
 

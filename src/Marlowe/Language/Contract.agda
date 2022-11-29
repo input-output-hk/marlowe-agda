@@ -1,5 +1,4 @@
 
-
 module Marlowe.Language.Contract where
 
 
@@ -120,5 +119,3 @@ data Contract where
   When : List Case → Timeout → Contract → Contract
   Let : ValueId → Value → Contract → Contract
   Assert : Observation → Contract → Contract
-
-
