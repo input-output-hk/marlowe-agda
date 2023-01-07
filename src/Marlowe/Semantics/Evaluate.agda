@@ -25,23 +25,23 @@ evaluate : Environment → State → Value → Int
 
 observe : Environment → State → Observation → Bool
 
-evaluate _ s (AvailableMoney a t) = record {fst = a; snd = t} lookup (State.accounts s) default 0ℤ via _eqAccountIdToken_
+evaluate _ s (AvailableMoney a t) = (pair a t) lookup (State.accounts s) default 0ℤ
 evaluate _ _ (Constant x) = x
 evaluate e s (NegValue x) = - evaluate e s x
 evaluate e s (AddValue x y) = evaluate e s x + evaluate e s y
 evaluate e s (SubValue x y) = evaluate e s x - evaluate e s y
 evaluate e s (MulValue x y) = evaluate e s x * evaluate e s y
 evaluate e s (DivValue x y) = divide (evaluate e s x) (evaluate e s y)
-evaluate _ s (ChoiceValue c) = c lookup (State.choices s) default 0ℤ via _eqChoiceId_
-evaluate e _ TimeIntervalStart = unPosixTime (Pair.fst (Environment.timeInterval e))
-evaluate e _ TimeIntervalEnd = unPosixTime (Pair.snd (Environment.timeInterval e))
-evaluate _ s (UseValue v) = v lookup (State.boundValues s) default 0ℤ via _eqValueId_
+evaluate _ s (ChoiceValue c) = c lookup (State.choices s) default 0ℤ
+evaluate e _ TimeIntervalStart = PosixTime.getPosixTime (Pair.fst (Environment.timeInterval e))
+evaluate e _ TimeIntervalEnd = PosixTime.getPosixTime (Pair.snd (Environment.timeInterval e))
+evaluate _ s (UseValue v) = v lookup (State.boundValues s) default 0ℤ
 evaluate e s (Cond o x y) = if observe e s o then evaluate e s x else evaluate e s y
 
 observe e s (AndObs x y) = observe e s x ∧ observe e s y
 observe e s (OrObs x y) = observe e s x ∨ observe e s y
 observe e s (NotObs x) = not (observe e s x)
-observe _ s (ChoseSomething c) = c member (State.choices s) via _eqChoiceId_
+observe _ s (ChoseSomething c) = c member (State.choices s)
 observe e s (ValueGE y x) = ⌊ evaluate e s x ≤? evaluate e s y ⌋
 observe e s (ValueGT y x) = ⌊ evaluate e s x <? evaluate e s y ⌋
 observe e s (ValueLT x y) = ⌊ evaluate e s x <? evaluate e s y ⌋

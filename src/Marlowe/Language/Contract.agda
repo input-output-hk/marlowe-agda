@@ -49,10 +49,6 @@ data Token : Set where
 
 _eqToken_ : Token → Token → Bool
 _eqToken_ (mkToken x) (mkToken y) = x eqByteString y
-
-
-_eqAccountIdToken_ : Pair AccountId Token → Pair AccountId Token → Bool
-_eqAccountIdToken_ x y = ((Pair.fst x) eqAccountId (Pair.fst y)) ∧ ((Pair.snd x) eqToken (Pair.snd y))
     
 
 data ValueId : Set where
@@ -109,8 +105,14 @@ data Payee : Set where
 
 data Contract : Set
 
+
 data Case : Set where
   mkCase : Action → Contract → Case
+
+
+getAction : Case → Action
+getAction (mkCase action _) = action
+
 
 data Contract where
   Close : Contract
