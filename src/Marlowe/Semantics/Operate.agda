@@ -174,6 +174,7 @@ reduceContractStep env state (Assert obs cont) =
     Reduced warn ReduceNoPayment state cont
 
 
+{-# TERMINATING #-}
 reduceContractUntilQuiescent : Environment → State → Contract → ReduceResult
 reduceContractUntilQuiescent env state contract =
   reductionLoop false [] [] env state contract
