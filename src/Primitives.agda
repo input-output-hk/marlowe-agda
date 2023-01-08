@@ -46,7 +46,11 @@ record Map (K V : Set) : Set where
     eqKey : K → K → Bool
     
 
-nullMap :  {K V : Set} → Map K V → Bool
+emptyMap : {K V : Set} → (K → K → Bool) → Map K V
+emptyMap eq = [] via eq
+
+
+nullMap : {K V : Set} → Map K V → Bool
 nullMap {K} {V} m =
   nullMap' (Map.pairs m)
     where
