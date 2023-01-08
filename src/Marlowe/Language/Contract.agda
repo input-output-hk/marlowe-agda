@@ -45,10 +45,10 @@ _eqChoiceId_ (mkChoiceId xn xp) (mkChoiceId yn yp) = (xn eqChoiceName yn) ∧ (x
 
 
 data Token : Set where
-  mkToken : ByteString → Token
+  mkToken : ByteString → ByteString → Token
 
 _eqToken_ : Token → Token → Bool
-_eqToken_ (mkToken x) (mkToken y) = x eqByteString y
+_eqToken_ (mkToken xs xn) (mkToken ys yn) = xs eqByteString ys ∧ xn eqByteString yn
     
 
 data ValueId : Set where
