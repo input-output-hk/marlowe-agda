@@ -23,9 +23,8 @@ agda --compile src/main.agda
 Then run it:
 
 ```bash
-./main | json2yaml
+./src/main | json2yaml
 ```
-
 ```YAML
 contract:
   timeout: 10
@@ -134,14 +133,18 @@ inputs:
       currency_symbol: ''
       token_name: ''
     that_deposits: 1000
-  tx_interval: '{"from":0,"to":5}'
+  tx_interval:
+    from: 0
+    to: 5
 - tx_inputs:
   - for_choice_id:
       choice_name: Everything is alright
       choice_owner:
         role_token: Buyer
     input_that_chooses_num: 0
-  tx_interval: '{"from":0,"to":5}'
+  tx_interval:
+    from: 0
+    to: 5
 minTime: 0
 output:
   contract: close

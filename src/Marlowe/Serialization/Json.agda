@@ -389,7 +389,7 @@ instance
   toJson {{TransactionInputJson}} (mkTransactionInput (pair x y) inputs) =
     object
       [
-        "tx_interval" kv
+        pair "tx_interval"
           (
             object
               [
