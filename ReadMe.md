@@ -1,9 +1,6 @@
-***This repository is an experimental work in progress.***
-
-
 # An Agda Implementation of Marlowe Semantics
 
-This repository implements [Marlowe Semantics](https://github.com/input-output-hk/marlowe/) in Agda.
+This repository implements [Marlowe Semantics](https://github.com/input-output-hk/marlowe/) in Agda. It is currently ***an experimental work in progress***.
 
 
 ## Development
