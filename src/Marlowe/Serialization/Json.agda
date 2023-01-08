@@ -9,6 +9,9 @@ open import Data.Integer.Show using (show)
 open import Data.String
 open import Data.String.Base using (intersperse)
 open import Marlowe.Language.Contract
+open import Marlowe.Language.Input
+open import Marlowe.Language.State
+open import Marlowe.Language.Transaction
 open import Primitives
 open import Data.List.Base using (List; map; []; _∷_)
 
@@ -54,8 +57,18 @@ instance
 
 
 instance
+  PairJson : ∀ {K V : Set} → {{_ : Json K}} → {{_ : Json V}} → Json (Pair K V)
+  toJson {{PairJson}} (pair k v) = "[" ++ toJson k ++ "," ++ toJson v ++ "]"
+
+
+instance
   ListJson : ∀ {a : Set} → {{_ : Json a}} → Json (List a)
   toJson {{ListJson}} xs = "[" ++ intersperse "," (map toJson xs) ++ "]"
+
+
+instance
+  MapJson : ∀ {K V : Set} → {{_ : Json K}} → {{_ : Json V}} → Json (Map K V)
+  toJson {{MapJson}} m = toJson (Map.pairs m)
 
 
 instance
@@ -225,4 +238,181 @@ instance
       [
         "assert" kv observation
       , "then" kv contract
+      ]
+
+
+instance
+  StateJson : Json State
+  toJson {{StateJson}} (mkState accounts choices boundValues minTime) =
+    object
+      [
+        "accounts" kv accounts
+      , "choices" kv choices
+      , "boundValues" kv boundValues
+      , "minTime" kv minTime
+      ]
+
+instance
+  EnvironmentJson : Json Environment
+  toJson {{EnvironmentJson}} (mkEnvironment (pair x y)) =
+    object
+      [
+        "from" kv x
+      , "to" kv y
+      ]
+
+
+instance
+  ChosenNumJson : Json ChosenNum
+  toJson {{ChosenNumJson}} (mkChosenNum i) = toJson i
+
+
+instance
+  InputContentJson : Json InputContent
+  toJson {{InputContentJson}} (IDeposit account party token amount) =
+    object
+      [
+        "input_from_party" kv party
+      , "that_deposits" kv amount
+      , "of_token" kv token
+      , "into_account" kv account
+      ]
+  toJson {{InputContentJson}} (IChoice choice number) =
+    object
+      [
+        "input_that_chooses_num" kv number
+      , "for_choice_id" kv choice
+      ]
+  toJson {{InputContentJson}} INotify =
+    toJson "input_notify"
+
+
+instance
+  InputJson : Json Input
+  toJson {{InputJson}} (NormalInput input) = toJson input
+
+
+instance
+  IntervalErrorJson : Json IntervalError
+  toJson {{IntervalErrorJson}} (InvalidInterval (pair x y)) =
+    object
+      [
+        "invalidInterval" kv
+          (
+            object
+              [
+                "from" kv x
+              , "to" kv y
+              ]
+          )
+      ]
+  toJson {{IntervalErrorJson}} (IntervalInPastError t (pair x y)) =
+    object
+      [
+        "intervalInPastError" kv
+          (
+            object
+              [
+                "minTime" kv t
+              , "from" kv x
+              , "to" kv y
+              ]
+          )
+      ]
+
+
+instance
+  PaymentJson : Json Payment
+  toJson {{PaymentJson}} (mkPayment account payee token amount) =
+    object
+      [
+        "payment_from" kv account
+      , "to" kv payee
+      , "token" kv token
+      , "amount" kv amount
+      ]
+
+
+instance
+  TransactionWarningJson : Json TransactionWarning
+  toJson {{TransactionWarningJson}} (TransactionNonPositiveDeposit party account token amount) =
+    object
+      [
+        "party" kv party
+      , "asked_to_deposit" kv amount
+      , "of_token" kv token
+      , "in_account" kv account
+      ]
+  toJson {{TransactionWarningJson}} (TransactionNonPositivePay account payee token amount) =
+    object
+      [
+        "account" kv account
+      , "asked_to_pay" kv amount
+      , "of_token" kv token
+      , "to_payee" kv payee
+      ]
+  toJson {{TransactionWarningJson}} (TransactionPartialPay account payee token paid expected) =
+    object
+      [
+        "account" kv account
+      , "asked_to_pay" kv expected
+      , "of_token" kv token
+      , "to_payee" kv payee
+      , "but_only_paid" kv paid
+      ]
+  toJson {{TransactionWarningJson}} (TransactionShadowing value old new) =
+    object
+      [
+        "value_id" kv value
+      , "had_value" kv old
+      , "is_now_assigned" kv new
+      ]
+  toJson {{TransactionWarningJson}} TransactionAssertionFailed = toJson "assertion_failed"
+
+
+instance
+  TransactionErrorJson : Json TransactionError
+  toJson {{TransactionErrorJson}} TEAmbiguousTimeIntervalError = toJson "TEAmbiguousTimeIntervalError"
+  toJson {{TransactionErrorJson}} TEApplyNoMatchError = toJson "TEApplyNoMatchError"
+  toJson {{TransactionErrorJson}} (TEIntervalError context) =
+    object
+      [
+        "error" kv "TEIntervalError"
+      , "context" kv context
+      ]
+  toJson {{TransactionErrorJson}} TEUselessTransaction = toJson "TEUselessTransaction"
+  toJson {{TransactionErrorJson}} TEHashMismatch = toJson "TEHashMismatch"
+
+
+instance
+  TransactionInputJson : Json TransactionInput
+  toJson {{TransactionInputJson}} (mkTransactionInput (pair x y) inputs) =
+    object
+      [
+        "tx_interval" kv
+          (
+            object
+              [
+                "from" kv x
+              , "to" kv y
+              ]
+          )
+      , "tx_inputs" kv inputs
+      ]
+
+
+instance
+  TransactionOutputJson : Json TransactionOutput
+  toJson {{TransactionOutputJson}} (mkTransactionOutput warnings payments state contract) =
+    object
+      [
+        "warnings" kv warnings
+      , "payments" kv payments
+      , "state" kv state
+      , "contract" kv contract
+      ]
+  toJson {{TransactionOutputJson}} (mkError error) =
+    object
+      [
+        "transaction_error" kv error
       ]
