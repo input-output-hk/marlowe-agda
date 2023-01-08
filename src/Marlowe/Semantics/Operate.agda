@@ -314,3 +314,17 @@ computeTransaction (mkTransactionInput txInterval txInput) state contract
           if not reduced ∧ (notClose contract ∨ nullMap (State.accounts state))
             then mkError TEUselessTransaction
             else mkTransactionOutput warnings payments newState cont
+
+
+playTraceAux : TransactionOutput → List TransactionInput → TransactionOutput
+playTraceAux res [] = res
+playTraceAux (mkTransactionOutput warnings payments state contract) (h ∷ t)
+  with computeTransaction h state contract
+... | mkTransactionOutput warnings' payments' state' contract' =
+       playTraceAux (mkTransactionOutput (warnings ++ warnings') (payments ++ payments') state' contract') t
+... | mkError error = mkError error
+playTraceAux (mkError error) _ = mkError error
+
+
+playTrace : PosixTime → Contract → List TransactionInput → TransactionOutput
+playTrace minTime c = playTraceAux (mkTransactionOutput [] [] (emptyState minTime) c)

@@ -4,8 +4,8 @@ module Marlowe.Language.State where
 
 open import Agda.Builtin.Int using (Int)
 open import Data.Bool using (Bool; _∧_)
-open import Marlowe.Language.Contract using (AccountId; ChoiceId; Token; ValueId; _eqAccountId_; _eqToken_)
-open import Primitives using (Map; Pair; PosixTime; pair)
+open import Marlowe.Language.Contract using (AccountId; ChoiceId; Token; ValueId; _eqAccountId_; _eqChoiceId_; _eqToken_; _eqValueId_)
+open import Primitives using (Map; emptyMap; Pair; PosixTime; pair)
 
 
 Accounts : Set
@@ -23,6 +23,14 @@ record State : Set where
     choices : Map ChoiceId Int
     boundValues : Map ValueId Int
     minTime : PosixTime
+
+
+emptyState : PosixTime → State
+emptyState =
+  mkState
+    (emptyMap _eqAccountIdToken_)
+    (emptyMap _eqChoiceId_)
+    (emptyMap _eqValueId_)
 
 
 TimeInterval : Set
