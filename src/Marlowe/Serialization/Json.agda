@@ -297,7 +297,7 @@ instance
   toJson {{IntervalErrorJson}} (InvalidInterval (pair x y)) =
     object
       [
-        "invalidInterval" kv
+        pair "invalidInterval"
           (
             object
               [
@@ -309,7 +309,7 @@ instance
   toJson {{IntervalErrorJson}} (IntervalInPastError t (pair x y)) =
     object
       [
-        "intervalInPastError" kv
+        pair "intervalInPastError"
           (
             object
               [
