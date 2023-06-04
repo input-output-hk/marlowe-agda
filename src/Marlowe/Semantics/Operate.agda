@@ -4,9 +4,10 @@ module Marlowe.Semantics.Operate where
 
 open import Agda.Builtin.Int using (Int)
 open import Data.Bool using (Bool; if_then_else_; not; _∧_; _∨_; true; false)
-open import Data.Integer using (_<?_; _≤?_; _≟_ ; _⊔_; _⊓_; _-_; 0ℤ)
-open import Data.List using (List; []; _∷_; _++_; foldr; reverse)
+open import Data.Integer using (_<?_; _≤?_; _≟_ ; _⊔_; _⊓_; _-_; 0ℤ ; _≤_ ; _>_ ; _≥_)
+open import Data.List using (List; []; _∷_; _++_; foldr; reverse; [_])
 open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Product using (Σ; _,_; ∃; Σ-syntax; ∃-syntax)
 open import Function.Base using (case_of_)
 open import Marlowe.Language.Contract
 open import Marlowe.Language.Input
@@ -15,6 +16,10 @@ open import Marlowe.Language.Transaction
 open import Marlowe.Semantics.Evaluate
 open import Primitives
 open import Relation.Nullary.Decidable using (⌊_⌋)
+
+import Relation.Binary.PropositionalEquality as Eq
+open Eq using (_≡_; refl; cong; sym)
+open Eq.≡-Reasoning using (begin_; _≡⟨⟩_; step-≡; _∎)
 
 
 fixInterval : TimeInterval → State → IntervalResult
@@ -47,7 +52,7 @@ refundOne accounts =
         if ⌊ balance ≤? 0ℤ ⌋
           then refundOne' rest
           else just (pair (triple party token balance) (record accounts {pairs = rest}))
-          
+
 
 moneyInAccount : AccountId → Token → Accounts → Int
 moneyInAccount account token accounts = record {fst = account; snd = token} lookup accounts default 0ℤ
@@ -103,7 +108,7 @@ giveMoney account payee token amount accounts =
       newAccounts payee' with payee'
       ... | mkParty _ = accounts
       ... | mkAccount account' = addMoneyToAccount account' token amount accounts
-    
+
 
 reduceContractStep : Environment → State → Contract → ReduceStepResult
 reduceContractStep env state Close
@@ -136,7 +141,7 @@ reduceContractStep env state (Pay accId payee tok val cont) =
                       else ReduceNoWarning
           (pair payment finalAccs) = giveMoney accId payee tok paidAmount newAccs
           newState = record state {accounts = finalAccs}
-        in 
+        in
           Reduced warning payment newState cont
       )
 reduceContractStep env state (If obs cont1 cont2) =
@@ -307,14 +312,338 @@ computeTransaction (mkTransactionInput txInterval txInput) state contract
   with fixInterval txInterval state
 ... | mkIntervalError error = mkError (TEIntervalError error)
 ... | IntervalTrimmed env fixState with applyAllInputs env fixState contract txInput
-...   | ApplyAllNoMatchError = mkError TEApplyNoMatchError
-...   | ApplyAllAmbiguousTimeIntervalError = mkError TEAmbiguousTimeIntervalError
-...   | ApplyAllHashMismatch = mkError TEHashMismatch
-...   | ApplyAllSuccess reduced warnings payments newState cont =
-          if not reduced ∧ (notClose contract ∨ nullMap (State.accounts state))
-            then mkError TEUselessTransaction
-            else mkTransactionOutput warnings payments newState cont
+... | ApplyAllNoMatchError = mkError TEApplyNoMatchError
+... | ApplyAllAmbiguousTimeIntervalError = mkError TEAmbiguousTimeIntervalError
+... | ApplyAllHashMismatch = mkError TEHashMismatch
+... | ApplyAllSuccess reduced warnings payments newState cont =
+        if not reduced ∧ (notClose contract ∨ nullMap (State.accounts state))
+          then mkError TEUselessTransaction
+          else mkTransactionOutput warnings payments newState cont
 
+
+record Configuration : Set where
+  field contract : Contract
+        state : State
+        environment : Environment
+        warnings : List ReduceWarning
+        payments : List Payment
+
+data _⇀_ : Configuration → Configuration → Set where
+
+  CloseRefund :
+    ∀ { state : State }
+      { environment : Environment }
+      { warnings : List ReduceWarning }
+      { payments : List Payment }
+      { party : Party }
+      { token : Token }
+      { amount : Int }
+      { accounts : Accounts }
+    → just (pair (triple party token amount) accounts) ≡ refundOne (State.accounts state)
+    -------------------------------------------------------------------------------------
+    → record {
+        contract = Close ;
+        state = state ;
+        environment = environment ;
+        warnings = warnings ;
+        payments = payments
+      }
+      ⇀
+      record {
+        contract = Close ;
+        state = record state {accounts = accounts} ;
+        environment = environment ;
+        warnings = warnings ++ [ ReduceNoWarning ] ;
+        payments = payments ++ [ mkPayment (mkAccountId party) (mkParty party) token amount ]
+      }
+
+  PayNonPositive :
+    ∀ { state : State }
+      { environment : Environment }
+      { value : Value }
+      { accountId : AccountId }
+      { payee : Payee }
+      { token : Token }
+      { continuation : Contract }
+      { warnings : List ReduceWarning }
+      { payments : List Payment }
+    → evaluate environment state value ≤ 0ℤ
+    ---------------------------------------
+    → record {
+        contract = Pay accountId payee token value continuation ;
+        state = state ;
+        environment = environment ;
+        warnings = warnings ;
+        payments = payments
+      }
+      ⇀
+      record {
+        contract = continuation ;
+        state = state ;
+        environment = environment ;
+        warnings = warnings ++ [ ReduceNonPositivePay accountId payee token (evaluate environment state value) ] ;
+        payments = payments
+      }
+
+  PayInternalTransfer :
+    ∀ { state : State }
+      { environment : Environment }
+      { value : Value }
+      { accId srcAccId dstAccId : AccountId }
+      { payee : Payee }
+      { token : Token }
+      { continuation : Contract }
+      { warnings : List ReduceWarning }
+      { payments : List Payment }
+      { amount : Int }
+      { accsWithoutSrc : Accounts }
+    → evaluate environment state value > 0ℤ
+    ---------------------------------------
+    → let moneyToPay = evaluate environment state value
+          availableSrcMoney = moneyInAccount srcAccId token (State.accounts state)
+          paidMoney = availableSrcMoney ⊓ moneyToPay
+          payee = mkAccount dstAccId
+          accWithoutSrc = updateMoneyInAccount srcAccId token (availableSrcMoney - paidMoney) (State.accounts state)
+          finalAccs = addMoneyToAccount dstAccId token paidMoney accsWithoutSrc
+      in
+      record {
+        contract = Pay srcAccId payee token value continuation ;
+        state = state ;
+        environment = environment ;
+        warnings = warnings ;
+        payments = payments
+      }
+      ⇀
+      record {
+        contract = continuation ;
+        state = record state {accounts = finalAccs} ;
+        environment = environment ;
+        warnings = warnings ++ [ if ⌊ paidMoney <? moneyToPay ⌋ then ReducePartialPay srcAccId payee token paidMoney moneyToPay else ReduceNoWarning ];
+        payments = payments
+      }
+
+  PayExternal :
+    ∀ { state : State }
+      { environment : Environment }
+      { value : Value }
+      { accId srcAccId dstAccId : AccountId }
+      { payee : Payee }
+      { token : Token }
+      { continuation : Contract }
+      { warnings : List ReduceWarning }
+      { payments : List Payment }
+      { amount : Int }
+      { external : Party }
+      { accsWithoutSrc : Accounts }
+    → evaluate environment state value > 0ℤ
+    ---------------------------------------
+    → let moneyToPay = evaluate environment state value
+          availableSrcMoney = moneyInAccount srcAccId token (State.accounts state)
+          paidMoney = availableSrcMoney ⊓ moneyToPay
+          payee = mkParty external
+          accWithoutSrc = updateMoneyInAccount srcAccId token (availableSrcMoney - paidMoney) (State.accounts state)
+      in
+      record {
+        contract = Pay srcAccId payee token value continuation ;
+        state = state ;
+        environment = environment ;
+        warnings = warnings ;
+        payments = payments
+      }
+      ⇀
+      record {
+        contract = continuation ;
+        state = record state {accounts = accWithoutSrc} ;
+        environment = environment ;
+        warnings = warnings ++ [ if ⌊ paidMoney <? moneyToPay ⌋ then ReducePartialPay srcAccId payee token paidMoney moneyToPay else ReduceNoWarning ] ;
+        payments = payments ++ [ mkPayment srcAccId payee token paidMoney ]
+      }
+
+  IfTrue :
+    ∀ { state : State }
+      { environment : Environment }
+      { observation : Observation }
+      { continuation1 continuation2 : Contract }
+      { warnings : List ReduceWarning }
+      { payments : List Payment }
+    → observe environment state observation ≡ true
+    ----------------------------------------------
+    → record {
+        contract = If observation continuation1 continuation2 ;
+        state = state ;
+        environment = environment ;
+        warnings = warnings ;
+        payments = payments
+      }
+      ⇀
+      record {
+        contract = continuation1 ;
+        state = state ;
+        environment = environment ;
+        warnings = warnings ++ [ ReduceNoWarning ] ;
+        payments = payments
+      }
+
+  IfFalse :
+    ∀ { state : State }
+      { environment : Environment }
+      { observation : Observation }
+      { continuation1 continuation2 : Contract }
+      { warnings : List ReduceWarning }
+      { payments : List Payment }
+    → observe environment state observation ≡ false
+    -----------------------------------------------
+    → record {
+        contract = If observation continuation1 continuation2 ;
+        state = state ;
+        environment = environment ;
+        warnings = warnings ;
+        payments = payments
+      }
+      ⇀
+      record {
+        contract = continuation2 ;
+        state = state ;
+        environment = environment ;
+        warnings = warnings ++ [ ReduceNoWarning ] ;
+        payments = payments
+      }
+
+  WhenTimeout :
+    ∀ { state : State }
+      { environment : Environment }
+      { observation : Observation }
+      { continuation : Contract }
+      { warnings : List ReduceWarning }
+      { payments : List Payment }
+      { timeout : Int }
+      { cases : List Case }
+    → let pair startTime _ = Environment.timeInterval environment in (Primitives.PosixTime.getPosixTime startTime ≥ timeout)
+    → let pair _ endTime = Environment.timeInterval environment in (Primitives.PosixTime.getPosixTime endTime ≥ timeout)
+    ------------------------------------------------------------------------------------------------------------------------
+    → record {
+        contract = When cases (mkTimeout (mkPosixTime timeout)) continuation ;
+        state = state;
+        environment = environment ;
+        warnings = warnings ;
+        payments = payments
+      }
+      ⇀
+      record {
+        contract = continuation ;
+        state = state ;
+        environment = environment ;
+        warnings = warnings ++ [ ReduceNoWarning ] ;
+        payments = payments
+      }
+
+  LetShadow :
+    ∀ { state : State }
+      { environment : Environment }
+      { observation : Observation }
+      { continuation : Contract }
+      { valueId : ValueId }
+      { value : Value }
+      { warnings : List ReduceWarning }
+      { payments : List Payment }
+    -----------------------------------
+    → let oldVal = valueId lookup (State.boundValues state) default 0ℤ
+          newVal = evaluate environment state value
+      in
+      record {
+        contract = Let valueId value continuation ;
+        state = state ;
+        environment = environment ;
+        warnings = warnings ;
+        payments = payments
+      }
+      ⇀
+      record {
+        contract = continuation ;
+        state = state ;
+        environment = environment ;
+        warnings = warnings ++ [ ReduceShadowing valueId oldVal newVal ] ;
+        payments = payments
+      }
+
+  LetNoShadow :
+    ∀ { state : State }
+      { environment : Environment }
+      { observation : Observation }
+      { continuation : Contract }
+      { valueId : ValueId }
+      { value : Value }
+      { oldVal newVal : Int }
+      { warnings : List ReduceWarning }
+      { payments : List Payment }
+--    → (valueId lookup (State.boundValues state) default (Constant 0)) ≡ just oldVal
+--    → evaluate environment state value ≡ newVal
+    ------------------------------------------------------------------------------
+    → record {
+             contract = Let valueId value continuation ;
+             state = state ;
+             environment = environment ;
+             warnings = warnings ;
+             payments = payments
+             }
+      ⇀
+      record {
+        contract = continuation ;
+        state = state ;
+        environment = environment ;
+        warnings = warnings ++ [ ReduceShadowing valueId oldVal newVal ] ;
+        payments = payments
+      }
+
+  AssertTrue :
+    ∀ { state : State }
+      { environment : Environment }
+      { observation : Observation }
+      { continuation : Contract }
+      { warnings : List ReduceWarning }
+      { payments : List Payment }
+    → observe environment state observation ≡ true
+    ----------------------------------------------
+    → record {
+        contract = Assert observation continuation ;
+        state = state ;
+        environment = environment ;
+        warnings = warnings ;
+        payments = payments
+      }
+      ⇀
+      record {
+        contract = continuation ;
+        state = state ;
+        environment = environment ;
+        warnings = warnings ++ [ ReduceNoWarning ] ;
+        payments = payments
+      }
+
+  AssertFalse :
+    ∀ { state : State }
+      { environment : Environment }
+      { observation : Observation }
+      { continuation : Contract }
+      { warnings : List ReduceWarning }
+      { payments : List Payment }
+    → observe environment state observation ≡ false
+    -----------------------------------------------
+    → record {
+        contract = Assert observation continuation ;
+        state = state ;
+        environment = environment ;
+        warnings = warnings;
+        payments = payments
+      }
+      ⇀
+      record {
+        contract = continuation ;
+        state = state ;
+        environment = environment ;
+        warnings = warnings ++ [ ReduceAssertionFailed ] ;
+        payments = payments
+      }
 
 playTraceAux : TransactionOutput → List TransactionInput → TransactionOutput
 playTraceAux res [] = res
