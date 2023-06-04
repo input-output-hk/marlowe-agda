@@ -321,6 +321,20 @@ computeTransaction (mkTransactionInput txInterval txInput) state contract
           else mkTransactionOutput warnings payments newState cont
 
 
+playTraceAux : TransactionOutput → List TransactionInput → TransactionOutput
+playTraceAux res [] = res
+playTraceAux (mkTransactionOutput warnings payments state contract) (h ∷ t)
+  with computeTransaction h state contract
+... | mkTransactionOutput warnings' payments' state' contract' =
+       playTraceAux (mkTransactionOutput (warnings ++ warnings') (payments ++ payments') state' contract') t
+... | mkError error = mkError error
+playTraceAux (mkError error) _ = mkError error
+
+
+playTrace : PosixTime → Contract → List TransactionInput → TransactionOutput
+playTrace minTime c = playTraceAux (mkTransactionOutput [] [] (emptyState minTime) c)
+
+
 record Configuration : Set where
   field contract : Contract
         state : State
@@ -544,13 +558,13 @@ data _⇀_ : Configuration → Configuration → Set where
       { continuation : Contract }
       { valueId : ValueId }
       { value : Value }
+      { oldVal newVal : Int }
       { warnings : List ReduceWarning }
       { payments : List Payment }
-    -----------------------------------
-    → let oldVal = valueId lookup (State.boundValues state) default 0ℤ
-          newVal = evaluate environment state value
-      in
-      record {
+    → valueId lookup (State.boundValues state) ≡ just oldVal
+    → evaluate environment state value ≡ newVal
+    --------------------------------------------------------
+    → record {
         contract = Let valueId value continuation ;
         state = state ;
         environment = environment ;
@@ -573,25 +587,25 @@ data _⇀_ : Configuration → Configuration → Set where
       { continuation : Contract }
       { valueId : ValueId }
       { value : Value }
-      { oldVal newVal : Int }
+      { newVal : Int }
       { warnings : List ReduceWarning }
       { payments : List Payment }
---    → (valueId lookup (State.boundValues state) default (Constant 0)) ≡ just oldVal
---    → evaluate environment state value ≡ newVal
-    ------------------------------------------------------------------------------
+    → valueId lookup (State.boundValues state) ≡ nothing
+    → evaluate environment state value ≡ newVal
+    ----------------------------------------------------
     → record {
-             contract = Let valueId value continuation ;
-             state = state ;
-             environment = environment ;
-             warnings = warnings ;
-             payments = payments
-             }
+        contract = Let valueId value continuation ;
+        state = state ;
+        environment = environment ;
+        warnings = warnings ;
+        payments = payments
+      }
       ⇀
       record {
         contract = continuation ;
-        state = state ;
+        state = record state {boundValues = valueId insert newVal into (State.boundValues state) } ;
         environment = environment ;
-        warnings = warnings ++ [ ReduceShadowing valueId oldVal newVal ] ;
+        warnings = warnings ++ [ ReduceNoWarning ] ;
         payments = payments
       }
 
@@ -644,16 +658,3 @@ data _⇀_ : Configuration → Configuration → Set where
         warnings = warnings ++ [ ReduceAssertionFailed ] ;
         payments = payments
       }
-
-playTraceAux : TransactionOutput → List TransactionInput → TransactionOutput
-playTraceAux res [] = res
-playTraceAux (mkTransactionOutput warnings payments state contract) (h ∷ t)
-  with computeTransaction h state contract
-... | mkTransactionOutput warnings' payments' state' contract' =
-       playTraceAux (mkTransactionOutput (warnings ++ warnings') (payments ++ payments') state' contract') t
-... | mkError error = mkError error
-playTraceAux (mkError error) _ = mkError error
-
-
-playTrace : PosixTime → Contract → List TransactionInput → TransactionOutput
-playTrace minTime c = playTraceAux (mkTransactionOutput [] [] (emptyState minTime) c)

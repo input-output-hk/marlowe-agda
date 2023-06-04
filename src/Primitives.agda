@@ -6,8 +6,8 @@ open import Agda.Builtin.Int using (Int)
 open import Agda.Builtin.List using (List; []; _∷_)
 open import Data.Bool using (Bool; false; true; if_then_else_; _∨_)
 open import Data.String as String using (String)
+open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Nullary.Decidable using (⌊_⌋)
-
 
 record ByteString : Set where
   constructor mkByteString
@@ -66,6 +66,15 @@ _member_ {K} {V} k m =
       member' : List (Pair K V) → Bool
       member' [] = false
       member' (pair k' _ ∷ xs) = k eq k' ∨ member' xs
+
+_lookup_ : {K V : Set} → K → Map K V → Maybe V
+_lookup_ {K} {V} k m =
+  lookup' (Map.pairs m)
+    where
+      _eq_ = Map.eqKey m
+      lookup' : List (Pair K V) → Maybe V
+      lookup' [] = nothing
+      lookup' (pair k' v' ∷ xs) = if k eq k' then just v' else lookup' xs
 
 _lookup_default_ : {K V : Set} → K → Map K V → V → V
 _lookup_default_ {K} {V} k m v =
