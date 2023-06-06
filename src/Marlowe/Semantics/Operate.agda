@@ -4,10 +4,11 @@ module Marlowe.Semantics.Operate where
 
 open import Agda.Builtin.Int using (Int)
 open import Data.Bool using (Bool; if_then_else_; not; _∧_; _∨_; true; false)
-open import Data.Integer using (_<?_; _≤?_; _≟_ ; _⊔_; _⊓_; _-_; 0ℤ ; _≤_ ; _>_ ; _≥_)
+open import Data.Integer using (_<?_; _≤?_; _≟_ ; _⊔_; _⊓_; _-_; 0ℤ ; _≤_ ; _>_ ; _≥_ ; _<_)
 open import Data.List using (List; []; _∷_; _++_; foldr; reverse; [_])
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (Σ; _,_; ∃; Σ-syntax; ∃-syntax)
+open import Data.Product using (_×_; proj₁; proj₂)
 open import Function.Base using (case_of_)
 open import Marlowe.Language.Contract
 open import Marlowe.Language.Input
@@ -345,316 +346,304 @@ record Configuration : Set where
 data _⇀_ : Configuration → Configuration → Set where
 
   CloseRefund :
-    ∀ { state : State }
-      { environment : Environment }
-      { warnings : List ReduceWarning }
-      { payments : List Payment }
-      { party : Party }
-      { token : Token }
-      { amount : Int }
-      { accounts : Accounts }
-    → just (pair (triple party token amount) accounts) ≡ refundOne (State.accounts state)
-    -------------------------------------------------------------------------------------
+    ∀ { σ : State }
+      { ϵ : Environment }
+      { ω : List ReduceWarning }
+      { μ : List Payment }
+      { ρ : Party }
+      { τ : Token }
+      { ι : Int }
+      { α : Accounts } -- TODO: use an association list for accounts to allow pattern matching (α ∷ rest)
+                       --       and get rid of refundOne
+    → just (pair (triple ρ τ ι) α) ≡ refundOne (State.accounts σ)
+    -------------------------------------------------------------
     → record {
         contract = Close ;
-        state = state ;
-        environment = environment ;
-        warnings = warnings ;
-        payments = payments
+        state = σ ;
+        environment = ϵ ;
+        warnings = ω ;
+        payments = μ
       }
       ⇀
       record {
         contract = Close ;
-        state = record state {accounts = accounts} ;
-        environment = environment ;
-        warnings = warnings ++ [ ReduceNoWarning ] ;
-        payments = payments ++ [ mkPayment (mkAccountId party) (mkParty party) token amount ]
+        state = record σ { accounts = α } ;
+        environment = ϵ ;
+        warnings = ω ++ [ ReduceNoWarning ] ;
+        payments = μ ++ [ mkPayment (mkAccountId ρ) (mkParty ρ) τ ι ]
       }
 
   PayNonPositive :
-    ∀ { state : State }
-      { environment : Environment }
-      { value : Value }
-      { accountId : AccountId }
-      { payee : Payee }
-      { token : Token }
-      { continuation : Contract }
-      { warnings : List ReduceWarning }
-      { payments : List Payment }
-    → evaluate environment state value ≤ 0ℤ
-    ---------------------------------------
+    ∀ { σ : State }
+      { ϵ : Environment }
+      { ν : Value }
+      { αₓ : AccountId }
+      { δ : Payee }
+      { τ : Token }
+      { γ : Contract }
+      { ω : List ReduceWarning }
+      { μ : List Payment }
+    → evaluate ϵ σ ν ≤ 0ℤ
+    ---------------------
     → record {
-        contract = Pay accountId payee token value continuation ;
-        state = state ;
-        environment = environment ;
-        warnings = warnings ;
-        payments = payments
+        contract = Pay αₓ δ τ ν γ ;
+        state = σ ;
+        environment = ϵ ;
+        warnings = ω ;
+        payments = μ
       }
       ⇀
       record {
-        contract = continuation ;
-        state = state ;
-        environment = environment ;
-        warnings = warnings ++ [ ReduceNonPositivePay accountId payee token (evaluate environment state value) ] ;
-        payments = payments
+        contract = γ ;
+        state = σ ;
+        environment = ϵ ;
+        warnings = ω ++ [ ReduceNonPositivePay αₓ δ τ (evaluate ϵ σ ν) ] ;
+        payments = μ
       }
 
   PayInternalTransfer :
-    ∀ { state : State }
-      { environment : Environment }
-      { value : Value }
-      { accId srcAccId dstAccId : AccountId }
-      { payee : Payee }
-      { token : Token }
-      { continuation : Contract }
-      { warnings : List ReduceWarning }
-      { payments : List Payment }
-      { amount : Int }
-      { accsWithoutSrc : Accounts }
-    → evaluate environment state value > 0ℤ
-    ---------------------------------------
-    → let moneyToPay = evaluate environment state value
-          availableSrcMoney = moneyInAccount srcAccId token (State.accounts state)
-          paidMoney = availableSrcMoney ⊓ moneyToPay
-          payee = mkAccount dstAccId
-          accWithoutSrc = updateMoneyInAccount srcAccId token (availableSrcMoney - paidMoney) (State.accounts state)
-          finalAccs = addMoneyToAccount dstAccId token paidMoney accsWithoutSrc
+    ∀ { σ : State }
+      { ϵ : Environment }
+      { ν : Value }
+      { αₛ αₜ : AccountId }
+      { τ : Token }
+      { γ : Contract }
+      { ω : List ReduceWarning }
+      { μ : List Payment }
+      { α : Accounts }
+    → evaluate ϵ σ ν > 0ℤ
+    ---------------------
+    → let value = evaluate ϵ σ ν
+          available = moneyInAccount αₛ τ (State.accounts σ)
+          paid = available ⊓ value
       in
       record {
-        contract = Pay srcAccId payee token value continuation ;
-        state = state ;
-        environment = environment ;
-        warnings = warnings ;
-        payments = payments
+        contract = Pay αₛ (mkAccount αₜ) τ ν γ ;
+        state = σ ;
+        environment = ϵ ;
+        warnings = ω ;
+        payments = μ
       }
       ⇀
       record {
-        contract = continuation ;
-        state = record state {accounts = finalAccs} ;
-        environment = environment ;
-        warnings = warnings ++ [ if ⌊ paidMoney <? moneyToPay ⌋ then ReducePartialPay srcAccId payee token paidMoney moneyToPay else ReduceNoWarning ];
-        payments = payments
+        contract = γ ;
+        state = record σ {accounts = addMoneyToAccount αₜ τ paid α} ;
+        environment = ϵ ;
+        warnings = ω ++ [ if ⌊ paid <? value ⌋ then ReducePartialPay αₛ (mkAccount αₜ) τ paid value else ReduceNoWarning ];
+        payments = μ
       }
 
   PayExternal :
-    ∀ { state : State }
-      { environment : Environment }
-      { value : Value }
-      { accId srcAccId dstAccId : AccountId }
-      { payee : Payee }
-      { token : Token }
-      { continuation : Contract }
-      { warnings : List ReduceWarning }
-      { payments : List Payment }
-      { amount : Int }
-      { external : Party }
-      { accsWithoutSrc : Accounts }
-    → evaluate environment state value > 0ℤ
-    ---------------------------------------
-    → let moneyToPay = evaluate environment state value
-          availableSrcMoney = moneyInAccount srcAccId token (State.accounts state)
-          paidMoney = availableSrcMoney ⊓ moneyToPay
-          payee = mkParty external
-          accWithoutSrc = updateMoneyInAccount srcAccId token (availableSrcMoney - paidMoney) (State.accounts state)
+    ∀ { σ : State }
+      { ϵ : Environment }
+      { ν : Value }
+      { αₓ : AccountId }
+      { τ : Token }
+      { γ : Contract }
+      { ω : List ReduceWarning }
+      { μ : List Payment }
+      { ξ : Party }
+    → evaluate ϵ σ ν > 0ℤ
+    ---------------------
+    → let value = evaluate ϵ σ ν
+          available = moneyInAccount αₓ τ (State.accounts σ)
+          paid = available ⊓ value
       in
       record {
-        contract = Pay srcAccId payee token value continuation ;
-        state = state ;
-        environment = environment ;
-        warnings = warnings ;
-        payments = payments
+        contract = Pay αₓ (mkParty ξ) τ ν γ ;
+        state = σ ;
+        environment = ϵ ;
+        warnings = ω ;
+        payments = μ
       }
       ⇀
       record {
-        contract = continuation ;
-        state = record state {accounts = accWithoutSrc} ;
-        environment = environment ;
-        warnings = warnings ++ [ if ⌊ paidMoney <? moneyToPay ⌋ then ReducePartialPay srcAccId payee token paidMoney moneyToPay else ReduceNoWarning ] ;
-        payments = payments ++ [ mkPayment srcAccId payee token paidMoney ]
+        contract = γ ;
+        state = record σ {accounts = updateMoneyInAccount αₓ τ (available - paid) (State.accounts σ)} ;
+        environment = ϵ ;
+        warnings = ω ++ [ if ⌊ paid <? value ⌋ then ReducePartialPay αₓ (mkParty ξ) τ paid value else ReduceNoWarning ] ;
+        payments = μ ++ [ mkPayment αₓ (mkParty ξ) τ paid ]
       }
 
   IfTrue :
-    ∀ { state : State }
-      { environment : Environment }
-      { observation : Observation }
-      { continuation1 continuation2 : Contract }
-      { warnings : List ReduceWarning }
-      { payments : List Payment }
-    → observe environment state observation ≡ true
-    ----------------------------------------------
+    ∀ { σ : State }
+      { ϵ : Environment }
+      { ο : Observation }
+      { γ₁ γ₂ : Contract }
+      { ω : List ReduceWarning }
+      { μ : List Payment }
+    → observe ϵ σ ο ≡ true
+    ----------------------
     → record {
-        contract = If observation continuation1 continuation2 ;
-        state = state ;
-        environment = environment ;
-        warnings = warnings ;
-        payments = payments
+        contract = If ο γ₁ γ₂ ;
+        state = σ ;
+        environment = ϵ ;
+        warnings = ω ;
+        payments = μ
       }
       ⇀
       record {
-        contract = continuation1 ;
-        state = state ;
-        environment = environment ;
-        warnings = warnings ++ [ ReduceNoWarning ] ;
-        payments = payments
+        contract = γ₁ ;
+        state = σ ;
+        environment = ϵ ;
+        warnings = ω ++ [ ReduceNoWarning ] ;
+        payments = μ
       }
 
   IfFalse :
-    ∀ { state : State }
-      { environment : Environment }
-      { observation : Observation }
-      { continuation1 continuation2 : Contract }
-      { warnings : List ReduceWarning }
-      { payments : List Payment }
-    → observe environment state observation ≡ false
-    -----------------------------------------------
+    ∀ { σ : State }
+      { ϵ : Environment }
+      { ο : Observation }
+      { γ₁ γ₂ : Contract }
+      { ω : List ReduceWarning }
+      { μ : List Payment }
+    → observe ϵ σ ο ≡ false
+    -----------------------
     → record {
-        contract = If observation continuation1 continuation2 ;
-        state = state ;
-        environment = environment ;
-        warnings = warnings ;
-        payments = payments
+        contract = If ο γ₁ γ₂ ;
+        state = σ ;
+        environment = ϵ ;
+        warnings = ω ;
+        payments = μ
       }
       ⇀
       record {
-        contract = continuation2 ;
-        state = state ;
-        environment = environment ;
-        warnings = warnings ++ [ ReduceNoWarning ] ;
-        payments = payments
+        contract = γ₂ ;
+        state = σ ;
+        environment = ϵ ;
+        warnings = ω ++ [ ReduceNoWarning ] ;
+        payments = μ
       }
 
   WhenTimeout :
-    ∀ { state : State }
-      { environment : Environment }
-      { observation : Observation }
-      { continuation : Contract }
-      { warnings : List ReduceWarning }
-      { payments : List Payment }
-      { timeout : Int }
-      { cases : List Case }
-    → let pair startTime _ = Environment.timeInterval environment in (Primitives.PosixTime.getPosixTime startTime ≥ timeout)
-    → let pair _ endTime = Environment.timeInterval environment in (Primitives.PosixTime.getPosixTime endTime ≥ timeout)
-    ------------------------------------------------------------------------------------------------------------------------
+    ∀ { σ : State }
+      { ϵ : Environment }
+      { ο : Observation }
+      { γ : Contract }
+      { ω : List ReduceWarning }
+      { μ : List Payment }
+      { θ : Int }
+      { ψ : List Case }
+    → let (mkPosixTime startTime) = Pair.fst (Environment.timeInterval ϵ) in startTime ≥ θ
+    → let (mkPosixTime endTime) = Pair.snd (Environment.timeInterval ϵ) in endTime ≥ θ
+    --------------------------------------------------------------------------------------
     → record {
-        contract = When cases (mkTimeout (mkPosixTime timeout)) continuation ;
-        state = state;
-        environment = environment ;
-        warnings = warnings ;
-        payments = payments
+        contract = When ψ (mkTimeout (mkPosixTime θ)) γ ;
+        state = σ;
+        environment = ϵ ;
+        warnings = ω ;
+        payments = μ
       }
       ⇀
       record {
-        contract = continuation ;
-        state = state ;
-        environment = environment ;
-        warnings = warnings ++ [ ReduceNoWarning ] ;
-        payments = payments
+        contract = γ ;
+        state = σ ;
+        environment = ϵ ;
+        warnings = ω ++ [ ReduceNoWarning ] ;
+        payments = μ
       }
 
   LetShadow :
-    ∀ { state : State }
-      { environment : Environment }
-      { observation : Observation }
-      { continuation : Contract }
-      { valueId : ValueId }
-      { value : Value }
-      { oldVal newVal : Int }
-      { warnings : List ReduceWarning }
-      { payments : List Payment }
-    → valueId lookup (State.boundValues state) ≡ just oldVal
-    → evaluate environment state value ≡ newVal
-    --------------------------------------------------------
+    ∀ { σ : State }
+      { ϵ : Environment }
+      { ο : Observation }
+      { γ : Contract }
+      { νₓ : ValueId }
+      { ν : Value }
+      { ι : Int }
+      { ω : List ReduceWarning }
+      { μ : List Payment }
+    → νₓ lookup (State.boundValues σ) ≡ just ι
+    ------------------------------------------
     → record {
-        contract = Let valueId value continuation ;
-        state = state ;
-        environment = environment ;
-        warnings = warnings ;
-        payments = payments
+        contract = Let νₓ ν γ ;
+        state = σ ;
+        environment = ϵ ;
+        warnings = ω ;
+        payments = μ
       }
       ⇀
       record {
-        contract = continuation ;
-        state = state ;
-        environment = environment ;
-        warnings = warnings ++ [ ReduceShadowing valueId oldVal newVal ] ;
-        payments = payments
+        contract = γ ;
+        state = σ ;
+        environment = ϵ ;
+        warnings = ω ++ [ ReduceShadowing νₓ ι (evaluate ϵ σ ν) ] ;
+        payments = μ
       }
 
   LetNoShadow :
-    ∀ { state : State }
-      { environment : Environment }
-      { observation : Observation }
-      { continuation : Contract }
-      { valueId : ValueId }
-      { value : Value }
-      { newVal : Int }
-      { warnings : List ReduceWarning }
-      { payments : List Payment }
-    → valueId lookup (State.boundValues state) ≡ nothing
-    → evaluate environment state value ≡ newVal
-    ----------------------------------------------------
+    ∀ { σ : State }
+      { ϵ : Environment }
+      { ο : Observation }
+      { γ : Contract }
+      { νₓ : ValueId }
+      { ν : Value }
+      { ω : List ReduceWarning }
+      { μ : List Payment }
+    → νₓ lookup (State.boundValues σ) ≡ nothing
+    -------------------------------------------    
     → record {
-        contract = Let valueId value continuation ;
-        state = state ;
-        environment = environment ;
-        warnings = warnings ;
-        payments = payments
+        contract = Let νₓ ν γ ;
+        state = σ ;
+        environment = ϵ ;
+        warnings = ω ;
+        payments = μ
       }
       ⇀
       record {
-        contract = continuation ;
-        state = record state {boundValues = valueId insert newVal into (State.boundValues state) } ;
-        environment = environment ;
-        warnings = warnings ++ [ ReduceNoWarning ] ;
-        payments = payments
+        contract = γ ;
+        state = record σ {boundValues = νₓ insert (evaluate ϵ σ ν) into (State.boundValues σ) } ;
+        environment = ϵ ;
+        warnings = ω ++ [ ReduceNoWarning ] ;
+        payments = μ
       }
 
   AssertTrue :
-    ∀ { state : State }
-      { environment : Environment }
-      { observation : Observation }
-      { continuation : Contract }
-      { warnings : List ReduceWarning }
-      { payments : List Payment }
-    → observe environment state observation ≡ true
-    ----------------------------------------------
+    ∀ { σ : State }
+      { ϵ : Environment }
+      { ο : Observation }
+      { γ : Contract }
+      { ω : List ReduceWarning }
+      { μ : List Payment }
+    → observe ϵ σ ο ≡ true
+    ----------------------
     → record {
-        contract = Assert observation continuation ;
-        state = state ;
-        environment = environment ;
-        warnings = warnings ;
-        payments = payments
+        contract = Assert ο γ ;
+        state = σ ;
+        environment = ϵ ;
+        warnings = ω ;
+        payments = μ
       }
       ⇀
       record {
-        contract = continuation ;
-        state = state ;
-        environment = environment ;
-        warnings = warnings ++ [ ReduceNoWarning ] ;
-        payments = payments
+        contract = γ ;
+        state = σ ;
+        environment = ϵ ;
+        warnings = ω ++ [ ReduceNoWarning ] ;
+        payments = μ
       }
 
   AssertFalse :
-    ∀ { state : State }
-      { environment : Environment }
-      { observation : Observation }
-      { continuation : Contract }
-      { warnings : List ReduceWarning }
-      { payments : List Payment }
-    → observe environment state observation ≡ false
-    -----------------------------------------------
+    ∀ { σ : State }
+      { ϵ : Environment }
+      { ο : Observation }
+      { γ : Contract }
+      { ω : List ReduceWarning }
+      { μ : List Payment }
+    → observe ϵ σ ο ≡ false
+    -----------------------
     → record {
-        contract = Assert observation continuation ;
-        state = state ;
-        environment = environment ;
-        warnings = warnings;
-        payments = payments
+        contract = Assert ο γ ;
+        state = σ ;
+        environment = ϵ ;
+        warnings = ω;
+        payments = μ
       }
       ⇀
       record {
-        contract = continuation ;
-        state = state ;
-        environment = environment ;
-        warnings = warnings ++ [ ReduceAssertionFailed ] ;
-        payments = payments
+        contract = γ ;
+        state = σ ;
+        environment = ϵ ;
+        warnings = ω ++ [ ReduceAssertionFailed ] ;
+        payments = μ
       }
