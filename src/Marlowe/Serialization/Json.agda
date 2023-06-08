@@ -2,10 +2,10 @@
 
 module Marlowe.Serialization.Json where
 
-
 open import Agda.Builtin.String using (primShowString)
 open import Agda.Builtin.Int using (Int)
 open import Data.Integer.Show using (show)
+open import Data.Product using (_×_) renaming (_,_ to ⟨_,_⟩)
 open import Data.String
 open import Data.String.Base using (intersperse)
 open import Marlowe.Language.Contract
@@ -27,16 +27,16 @@ record Json a : Set where
 open Json {{...}} public
 
 
-_kv_ : ∀ {a : Set} → {{_ : Json a}} → String → a → Pair String JSON
-_kv_ k v = pair k (toJson v)
+_kv_ : ∀ {a : Set} → {{_ : Json a}} → String → a → String × JSON
+_kv_ k v = ⟨ k , toJson v ⟩
 
 
-object : List (Pair String JSON) → JSON
+object : List (String × JSON) → JSON
 object pairs =
   "{" ++ intersperse "," (map render pairs) ++ "}"
     where
-      render : Pair String JSON → String
-      render (pair k v) = primShowString k ++ ":" ++ v
+      render : String × JSON → String
+      render ⟨ k , v ⟩ = primShowString k ++ ":" ++ v
 
 
 pattern [_] z = z ∷ []
@@ -57,8 +57,8 @@ instance
 
 
 instance
-  PairJson : ∀ {K V : Set} → {{_ : Json K}} → {{_ : Json V}} → Json (Pair K V)
-  toJson {{PairJson}} (pair k v) = "[" ++ toJson k ++ "," ++ toJson v ++ "]"
+  PairJson : ∀ {K V : Set} → {{_ : Json K}} → {{_ : Json V}} → Json (K × V)
+  toJson {{PairJson}} ⟨ k , v ⟩ = "[" ++ toJson k ++ "," ++ toJson v ++ "]"
 
 
 instance
@@ -254,7 +254,7 @@ instance
 
 instance
   EnvironmentJson : Json Environment
-  toJson {{EnvironmentJson}} (mkEnvironment (pair x y)) =
+  toJson {{EnvironmentJson}} (mkEnvironment ⟨ x , y ⟩ ) =
     object
       [
         "from" kv x
@@ -294,10 +294,10 @@ instance
 
 instance
   IntervalErrorJson : Json IntervalError
-  toJson {{IntervalErrorJson}} (InvalidInterval (pair x y)) =
+  toJson {{IntervalErrorJson}} (InvalidInterval ⟨ x , y ⟩ ) =
     object
       [
-        pair "invalidInterval"
+        ⟨ "invalidInterval" ,
           (
             object
               [
@@ -305,11 +305,12 @@ instance
               , "to" kv y
               ]
           )
+        ⟩
       ]
-  toJson {{IntervalErrorJson}} (IntervalInPastError t (pair x y)) =
+  toJson {{IntervalErrorJson}} (IntervalInPastError t ⟨ x , y ⟩ ) =
     object
       [
-        pair "intervalInPastError"
+        ⟨ "intervalInPastError" ,
           (
             object
               [
@@ -318,6 +319,7 @@ instance
               , "to" kv y
               ]
           )
+        ⟩
       ]
 
 
@@ -386,10 +388,10 @@ instance
 
 instance
   TransactionInputJson : Json TransactionInput
-  toJson {{TransactionInputJson}} (mkTransactionInput (pair x y) inputs) =
+  toJson {{TransactionInputJson}} (mkTransactionInput ⟨ x , y ⟩ inputs) =
     object
       [
-        pair "tx_interval"
+        ⟨ "tx_interval" ,
           (
             object
               [
@@ -397,6 +399,7 @@ instance
               , "to" kv y
               ]
           )
+        ⟩
       , "tx_inputs" kv inputs
       ]
 

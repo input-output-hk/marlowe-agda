@@ -7,6 +7,7 @@ open import Agda.Builtin.Int using (Int)
 open import Agda.Builtin.String using (String)
 open import Data.Integer using (0ℤ; 1ℤ; +_)
 open import Data.List using (List; []; _∷_)
+open import Data.Product using (_×_) renaming (_,_ to ⟨_,_⟩ )
 open import Marlowe.Language.Contract
 open import Marlowe.Language.Input
 open import Marlowe.Language.Transaction
@@ -69,7 +70,7 @@ escrow seller buyer mediator token price paymentDeadline complaintDeadline respo
     makeChoice name party value = Choice (mkChoiceId (mkChoiceName (mkByteString name)) party) [(mkBound value value)]
 
 
-escrowExample : Triple PosixTime Contract (List TransactionInput)
+escrowExample : PosixTime × Contract × (List TransactionInput)
 escrowExample =
   let
     seller = Role (mkByteString "Seller")
@@ -77,18 +78,16 @@ escrowExample =
     mediator = Role (mkByteString "Mediator")
     token = mkToken (mkByteString "") (mkByteString"")
     price = + 1000
-    interval = pair (mkPosixTime (+ 0)) (mkPosixTime (+ 5))
+    interval = ⟨ (mkPosixTime (+ 0)) , (mkPosixTime (+ 5)) ⟩
   in
-    triple
-      (mkPosixTime 0ℤ)
-      (
-        escrow seller buyer mediator token price
+    ⟨ (mkPosixTime 0ℤ)
+    , ⟨ escrow seller buyer mediator token price
           (mkTimeout (mkPosixTime (+ 10)))
           (mkTimeout (mkPosixTime (+ 20)))
           (mkTimeout (mkPosixTime (+ 30)))
           (mkTimeout (mkPosixTime (+ 40)))
-      )
-      [
+      , [
         mkTransactionInput interval [(NormalInput (IDeposit (mkAccountId seller) buyer token price))]
       , mkTransactionInput interval [(NormalInput (IChoice (mkChoiceId (mkChoiceName (mkByteString "Everything is alright")) buyer) (mkChosenNum 0ℤ)))]
       ]
+    ⟩ ⟩

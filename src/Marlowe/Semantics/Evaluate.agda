@@ -9,6 +9,7 @@ open import Data.Integer using (-_; _+_; _-_; _*_; _≟_; _<?_; _≤?_; ∣_∣;
 open import Data.Integer.DivMod using (_div_)
 open import Data.Integer.Properties using (+-identityʳ;*-identityʳ;+-assoc)
 open import Data.Nat as ℕ using ()
+open import Data.Product using (_,_; _×_; proj₁; proj₂)
 open import Data.Integer using (0ℤ; 1ℤ; +_)
 open import Marlowe.Language.Contract
 open import Marlowe.Language.State
@@ -29,7 +30,7 @@ evaluate : Environment → State → Value → Int
 
 observe : Environment → State → Observation → Bool
 
-evaluate _ s (AvailableMoney a t) = (pair a t) lookup (State.accounts s) default 0ℤ
+evaluate _ s (AvailableMoney a t) = (a , t) lookup (State.accounts s) default 0ℤ
 evaluate _ _ (Constant x) = x
 evaluate e s (NegValue x) = - evaluate e s x
 evaluate e s (AddValue x y) = evaluate e s x + evaluate e s y
@@ -37,8 +38,8 @@ evaluate e s (SubValue x y) = evaluate e s x - evaluate e s y
 evaluate e s (MulValue x y) = evaluate e s x * evaluate e s y
 evaluate e s (DivValue x y) = divide (evaluate e s x) (evaluate e s y)
 evaluate _ s (ChoiceValue c) = c lookup (State.choices s) default 0ℤ
-evaluate e _ TimeIntervalStart = PosixTime.getPosixTime (Pair.fst (Environment.timeInterval e))
-evaluate e _ TimeIntervalEnd = PosixTime.getPosixTime (Pair.snd (Environment.timeInterval e))
+evaluate e _ TimeIntervalStart = PosixTime.getPosixTime (proj₁ (Environment.timeInterval e))
+evaluate e _ TimeIntervalEnd = PosixTime.getPosixTime (proj₂ (Environment.timeInterval e))
 evaluate _ s (UseValue v) = v lookup (State.boundValues s) default 0ℤ
 evaluate e s (Cond o x y) = if observe e s o then evaluate e s x else evaluate e s y
 

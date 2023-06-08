@@ -26,7 +26,7 @@ open Eq.≡-Reasoning using (begin_; _≡⟨⟩_; step-≡; _∎)
 fixInterval : TimeInterval → State → IntervalResult
 fixInterval interval state =
   let
-    pair (mkPosixTime low) (mkPosixTime high) = interval
+    (mkPosixTime low) , (mkPosixTime high) = interval
   in
     if ⌊ high <? low ⌋
       then mkIntervalError (InvalidInterval interval)
@@ -43,16 +43,16 @@ fixInterval interval state =
             else IntervalTrimmed env newState
 
 
-refundOne : Accounts → Maybe (Pair (Triple Party Token Int) Accounts)
+refundOne : Accounts → Maybe (Party × Token × Int × Accounts)
 refundOne accounts =
   refundOne' (Map.pairs accounts)
     where
-      refundOne' : List (Pair (Pair AccountId Token) Int) → Maybe (Pair (Triple Party Token Int) Accounts)
+      refundOne' : List ((AccountId × Token) × Int) → Maybe (Party × Token × Int × Accounts)
       refundOne' [] = nothing
-      refundOne' ((pair (pair (mkAccountId party) token) balance) ∷ rest) =
+      refundOne' ((((mkAccountId party) , token) , balance) ∷ rest) =
         if ⌊ balance ≤? 0ℤ ⌋
           then refundOne' rest
-          else just (pair (triple party token balance) (record accounts {pairs = rest}))
+          else just (party , token , balance , (record accounts {pairs = rest}))
 
 
 moneyInAccount : AccountId → Token → Accounts → Int
@@ -62,7 +62,7 @@ moneyInAccount account token accounts = record {fst = account; snd = token} look
 updateMoneyInAccount : AccountId → Token → Int → Accounts → Accounts
 updateMoneyInAccount account token amount accounts =
   let
-    key = pair account token
+    key = account , token
   in
     if ⌊ amount ≤? 0ℤ ⌋
       then key delete accounts
@@ -101,7 +101,7 @@ data ReduceResult : Set where
   RRAmbiguousTimeIntervalError : ReduceResult
 
 
-giveMoney : AccountId → Payee → Token → Int → Accounts → Pair ReduceEffect Accounts
+giveMoney : AccountId → Payee → Token → Int → Accounts → ReduceEffect × Accounts
 giveMoney account payee token amount accounts =
   record {fst = ReduceWithPayment (mkPayment account payee token amount); snd = newAccounts payee}
     where
@@ -114,7 +114,7 @@ giveMoney account payee token amount accounts =
 reduceContractStep : Environment → State → Contract → ReduceStepResult
 reduceContractStep env state Close
   with refundOne (State.accounts state)
-... | just (pair (triple party token amount) newAccounts) =
+... | just (party , token , amount , newAccounts) =
        let
          newState = record state {accounts = newAccounts}
        in
@@ -140,7 +140,7 @@ reduceContractStep env state (Pay accId payee tok val cont) =
           warning = if ⌊ paidAmount <? amountToPay ⌋
                       then ReducePartialPay accId payee tok paidAmount amountToPay
                       else ReduceNoWarning
-          (pair payment finalAccs) = giveMoney accId payee tok paidAmount newAccs
+          (payment , finalAccs) = giveMoney accId payee tok paidAmount newAccs
           newState = record state {accounts = finalAccs}
         in
           Reduced warning payment newState cont
@@ -156,9 +156,9 @@ reduceContractStep env state (When _ (mkTimeout (mkPosixTime timeout)) cont) =
   let
     interval = Environment.timeInterval env
   in
-    if ⌊ PosixTime.getPosixTime (Pair.snd interval) <? timeout ⌋
+    if ⌊ PosixTime.getPosixTime (proj₁ interval) <? timeout ⌋
       then NotReduced
-      else if ⌊ timeout ≤? PosixTime.getPosixTime (Pair.fst interval) ⌋
+      else if ⌊ timeout ≤? PosixTime.getPosixTime (proj₁ interval) ⌋
              then Reduced ReduceNoWarning ReduceNoPayment state cont
              else AmbiguousTimeIntervalReductionError
 reduceContractStep env state (Let valId val cont) =
@@ -355,7 +355,7 @@ data _⇀_ : Configuration → Configuration → Set where
       { ι : Int }
       { α : Accounts } -- TODO: use an association list for accounts to allow pattern matching (α ∷ rest)
                        --       and get rid of refundOne
-    → just (pair (triple ρ τ ι) α) ≡ refundOne (State.accounts σ)
+    → just (ρ , τ , ι , α) ≡ refundOne (State.accounts σ)
     -------------------------------------------------------------
     → record {
         contract = Close ;
@@ -524,8 +524,8 @@ data _⇀_ : Configuration → Configuration → Set where
       { μ : List Payment }
       { θ : Int }
       { ψ : List Case }
-    → let (mkPosixTime startTime) = Pair.fst (Environment.timeInterval ϵ) in startTime ≥ θ
-    → let (mkPosixTime endTime) = Pair.snd (Environment.timeInterval ϵ) in endTime ≥ θ
+    → let (mkPosixTime startTime) = proj₁ (Environment.timeInterval ϵ) in startTime ≥ θ
+    → let (mkPosixTime endTime) = proj₂ (Environment.timeInterval ϵ) in endTime ≥ θ
     --------------------------------------------------------------------------------------
     → record {
         contract = When ψ (mkTimeout (mkPosixTime θ)) γ ;
