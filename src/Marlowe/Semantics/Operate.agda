@@ -5,10 +5,11 @@ module Marlowe.Semantics.Operate where
 open import Agda.Builtin.Int using (Int)
 open import Data.Bool using (Bool; if_then_else_; not; _∧_; _∨_; true; false)
 open import Data.Integer using (_<?_; _≤?_; _≟_ ; _⊔_; _⊓_; _-_; 0ℤ ; _≤_ ; _>_ ; _≥_ ; _<_)
-open import Data.List using (List; []; _∷_; _++_; foldr; reverse; [_])
-open import Data.Maybe using (Maybe; just; nothing)
+open import Data.List using (List; []; _∷_; _++_; foldr; reverse; [_]; null)
+open import Data.Maybe using (Maybe; just; nothing; fromMaybe)
 open import Data.Product using (Σ; _,_; ∃; Σ-syntax; ∃-syntax)
 open import Data.Product using (_×_; proj₁; proj₂)
+import Data.String as String
 open import Function.Base using (case_of_)
 open import Marlowe.Language.Contract
 open import Marlowe.Language.Input
@@ -20,8 +21,9 @@ open import Relation.Nullary.Decidable using (⌊_⌋)
 
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; cong; sym)
-open Eq.≡-Reasoning using (begin_; _≡⟨⟩_; step-≡; _∎)
 
+import Primitives as P
+open P.Decidable _eqAccountIdTokenDec_ using (_‼_)
 
 fixInterval : TimeInterval → State → IntervalResult
 fixInterval interval state =
@@ -43,21 +45,16 @@ fixInterval interval state =
             else IntervalTrimmed env newState
 
 
-refundOne : Accounts → Maybe (Party × Token × Int × Accounts)
-refundOne accounts =
-  refundOne' (Map.pairs accounts)
-    where
-      refundOne' : List ((AccountId × Token) × Int) → Maybe (Party × Token × Int × Accounts)
-      refundOne' [] = nothing
-      refundOne' ((((mkAccountId party) , token) , balance) ∷ rest) =
-        if ⌊ balance ≤? 0ℤ ⌋
-          then refundOne' rest
-          else just (party , token , balance , (record accounts {pairs = rest}))
+refundOne : AssocList (AccountId × Token) Int → Maybe (Party × Token × Int × Accounts)
+refundOne [] = nothing
+refundOne (((mkAccountId ρ , τ) , ι) ∷ α) =
+  if ⌊ ι ≤? 0ℤ ⌋
+    then refundOne α
+    else just (ρ , τ , ι , α)
 
 
 moneyInAccount : AccountId → Token → Accounts → Int
-moneyInAccount account token accounts = record {fst = account; snd = token} lookup accounts default 0ℤ
-
+moneyInAccount αₓ τ α = fromMaybe 0ℤ ((αₓ , τ) ‼ α)
 
 updateMoneyInAccount : AccountId → Token → Int → Accounts → Accounts
 updateMoneyInAccount account token amount accounts =
@@ -65,9 +62,8 @@ updateMoneyInAccount account token amount accounts =
     key = account , token
   in
     if ⌊ amount ≤? 0ℤ ⌋
-      then key delete accounts
-      else key insert amount into accounts
-
+      then key ↓ accounts
+      else ((key , amount) ↑ accounts)
 
 addMoneyToAccount : AccountId → Token → Int → Accounts → Accounts
 addMoneyToAccount account token amount accounts =
@@ -210,7 +206,7 @@ data ApplyAction : Set where
 
 applyAction : Environment → State → InputContent → Action → ApplyAction
 applyAction env state (IDeposit accId1 party1 tok1 amount) (Deposit accId2 party2 tok2 val) =
-  if accId1 eqAccountId accId2 ∧ party1 eqParty party2 ∧ tok1 eqToken tok2 ∧ ⌊ amount ≟ evaluate env state val ⌋
+  if accId1 eqAccountId accId2 ∧ party1 eqParty party2 ∧ (tok1 eqToken tok2) ∧ ⌊ (amount ≟ evaluate env state val) ⌋ -- TODO: Use ×-dec
     then AppliedAction
            (
              if ⌊ 0ℤ <? amount ⌋
@@ -317,7 +313,7 @@ computeTransaction (mkTransactionInput txInterval txInput) state contract
 ... | ApplyAllAmbiguousTimeIntervalError = mkError TEAmbiguousTimeIntervalError
 ... | ApplyAllHashMismatch = mkError TEHashMismatch
 ... | ApplyAllSuccess reduced warnings payments newState cont =
-        if not reduced ∧ (notClose contract ∨ nullMap (State.accounts state))
+        if not reduced ∧ (notClose contract ∨ null (State.accounts state))
           then mkError TEUselessTransaction
           else mkTransactionOutput warnings payments newState cont
 
@@ -331,10 +327,8 @@ playTraceAux (mkTransactionOutput warnings payments state contract) (h ∷ t)
 ... | mkError error = mkError error
 playTraceAux (mkError error) _ = mkError error
 
-
 playTrace : PosixTime → Contract → List TransactionInput → TransactionOutput
 playTrace minTime c = playTraceAux (mkTransactionOutput [] [] (emptyState minTime) c)
-
 
 record Configuration : Set where
   field contract : Contract
@@ -346,20 +340,26 @@ record Configuration : Set where
 data _⇀_ : Configuration → Configuration → Set where
 
   CloseRefund :
-    ∀ { σ : State }
-      { ϵ : Environment }
+    ∀ { ϵ : Environment }
       { ω : List ReduceWarning }
       { μ : List Payment }
-      { ρ : Party }
+      { c : Map ChoiceId Int }
+      { b : Map ValueId Int }
+      { m : PosixTime }
+      { αₓ : AccountId }
       { τ : Token }
       { ι : Int }
-      { α : Accounts } -- TODO: use an association list for accounts to allow pattern matching (α ∷ rest)
-                       --       and get rid of refundOne
-    → just (ρ , τ , ι , α) ≡ refundOne (State.accounts σ)
-    -------------------------------------------------------------
+      { α : Accounts }
+    → ι > 0ℤ
+    ---------------------------------
     → record {
         contract = Close ;
-        state = σ ;
+        state = record {
+          accounts = ( (αₓ , τ ) , ι ) ∷ α ; -- suc ι
+          choices = c ;
+          boundValues = b ;
+          minTime = m
+          } ;
         environment = ϵ ;
         warnings = ω ;
         payments = μ
@@ -367,10 +367,15 @@ data _⇀_ : Configuration → Configuration → Set where
       ⇀
       record {
         contract = Close ;
-        state = record σ { accounts = α } ;
+        state = record {
+          accounts = α ;
+          choices = c ;
+          boundValues = b ;
+          minTime = m
+          } ;
         environment = ϵ ;
         warnings = ω ++ [ ReduceNoWarning ] ;
-        payments = μ ++ [ mkPayment (mkAccountId ρ) (mkParty ρ) τ ι ]
+        payments = μ ++ [ mkPayment αₓ (mkAccount αₓ) τ ι ]
       }
 
   PayNonPositive :
@@ -647,3 +652,28 @@ data _⇀_ : Configuration → Configuration → Set where
         warnings = ω ++ [ ReduceAssertionFailed ] ;
         payments = μ
       }
+
+
+-- reflexive and transitive closure
+
+infix  2 _⇀⋆_
+infix  1 begin_
+infixr 2 _⇀⟨_⟩_
+infix  3 _∎
+
+data _⇀⋆_ : Configuration → Configuration → Set where
+  _∎ : ∀ M
+      ---------
+    → M ⇀⋆ M
+
+  _⇀⟨_⟩_ : ∀ L {M N}
+    → L ⇀ M
+    → M ⇀⋆ N
+      ---------
+    → L ⇀⋆ N
+
+begin_ : ∀ {M N}
+  → M ⇀⋆ N
+    ------
+  → M ⇀⋆ N
+begin M⇀⋆N = M⇀⋆N

@@ -8,6 +8,11 @@ open import Data.Bool using (Bool; false; true; if_then_else_; _∨_)
 open import Data.String as String using (String)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Maybe using (Maybe; just; nothing)
+open import Data.List.Relation.Unary.Any using (Any; any?; lookup)
+open import Function
+open import Relation.Binary
+open import Relation.Binary.PropositionalEquality
+open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Nullary.Decidable using (⌊_⌋)
 
 record ByteString : Set where
@@ -15,14 +20,42 @@ record ByteString : Set where
   field
     getByteString : String
 
-_eqByteString_ : ByteString → ByteString → Bool
-_eqByteString_ (mkByteString x) (mkByteString y) =  ⌊ x String.≟ y ⌋
+_eqByteString_ : ∀ (a b : ByteString) → Dec (a ≡ b)
+_eqByteString_ (mkByteString x) (mkByteString y) with x String.≟ y
+... | yes p = yes (cong mkByteString p)
+... | no p = no (λ x →  p (cong ByteString.getByteString x))
 
 
 record PosixTime : Set where
   constructor mkPosixTime
   field
     getPosixTime : Int
+
+-- see also: https://stackoverflow.com/questions/58705398/is-there-an-associative-list-in-the-standard-library
+AssocList : Set → Set → Set
+AssocList A B = List (A × B)
+
+private
+  variable
+    A B : Set
+
+_∈_ : A → AssocList A B → Set
+a ∈ abs = Any ((a ≡_) ∘ proj₁) abs
+
+module Decidable {A : Set} (_≟_ : DecidableEquality A) where
+
+  _∈?_ : Decidable (_∈_ {A} {B})
+  a ∈? abs = any? ((a ≟_) ∘ proj₁) abs
+
+  _‼_ : (a : A) (abs : AssocList A B) → Maybe B
+  a ‼ abs with a ∈? abs
+  ... | yes p = just (proj₂ (lookup p))
+  ... | no ¬p = nothing
+
+postulate
+  _↑_ : (p : A × B) (abs : AssocList A B) → AssocList A B
+  _↓_ : (a : A) (abs : AssocList A B) → AssocList A B
+
 
 record Map (K V : Set) : Set where
   constructor _via_

@@ -8,17 +8,22 @@ open import Data.Bool using (_∧_; _∨_; if_then_else_; not)
 open import Data.Integer using (-_; _+_; _-_; _*_; _≟_; _<?_; _≤?_; ∣_∣; 0ℤ; NonZero)
 open import Data.Integer.DivMod using (_div_)
 open import Data.Integer.Properties using (+-identityʳ;*-identityʳ;+-assoc)
+open import Data.Maybe using (fromMaybe)
 open import Data.Nat as ℕ using ()
 open import Data.Product using (_,_; _×_; proj₁; proj₂)
 open import Data.Integer using (0ℤ; 1ℤ; +_)
 open import Marlowe.Language.Contract
 open import Marlowe.Language.State
 open import Primitives
+import Primitives as P
+open P.Decidable _eqAccountIdTokenDec_ using (_‼_)
 open import Relation.Nullary using (_because_)
 open import Relation.Nullary.Decidable using (⌊_⌋)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; cong; sym)
 open Eq.≡-Reasoning using (begin_; _≡⟨⟩_; step-≡; _∎)
+import Relation.Nullary using (Dec; yes; no)
+
 
 divide : Int → Int → Int
 divide num den with (∣ den ∣ ℕ.≟ 0) | (λ proof -> _div_ num den {proof})
@@ -30,7 +35,7 @@ evaluate : Environment → State → Value → Int
 
 observe : Environment → State → Observation → Bool
 
-evaluate _ s (AvailableMoney a t) = (a , t) lookup (State.accounts s) default 0ℤ
+evaluate _ s (AvailableMoney a t) = fromMaybe 0ℤ ((a , t) ‼ (State.accounts s))
 evaluate _ _ (Constant x) = x
 evaluate e s (NegValue x) = - evaluate e s x
 evaluate e s (AddValue x y) = evaluate e s x + evaluate e s y

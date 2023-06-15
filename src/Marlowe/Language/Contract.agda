@@ -14,8 +14,8 @@ data Party : Set where
   Role : ByteString → Party
 
 _eqParty_ : Party → Party → Bool
-_eqParty_ (Address x) (Address y) = x eqByteString y
-_eqParty_ (Role x) (Role y) = x eqByteString y
+_eqParty_ (Address x) (Address y) = ⌊ x eqByteString y ⌋
+_eqParty_ (Role x) (Role y) = ⌊ x eqByteString y ⌋
 _eqParty_ _ _ = false
 
 
@@ -34,7 +34,7 @@ data ChoiceName : Set where
   mkChoiceName : ByteString → ChoiceName
 
 _eqChoiceName_ : ChoiceName → ChoiceName → Bool
-_eqChoiceName_ (mkChoiceName x) (mkChoiceName y) = x eqByteString y
+_eqChoiceName_ (mkChoiceName x) (mkChoiceName y) = ⌊ x eqByteString y ⌋
 
 
 data ChoiceId : Set where
@@ -48,14 +48,14 @@ data Token : Set where
   mkToken : ByteString → ByteString → Token
 
 _eqToken_ : Token → Token → Bool
-_eqToken_ (mkToken xs xn) (mkToken ys yn) = xs eqByteString ys ∧ xn eqByteString yn
+_eqToken_ (mkToken xs xn) (mkToken ys yn) = ⌊ xs eqByteString ys ⌋ ∧ ⌊ xn eqByteString yn ⌋
     
 
 data ValueId : Set where
   mkValueId : ByteString → ValueId
 
 _eqValueId_ : ValueId → ValueId → Bool
-_eqValueId_ (mkValueId x) (mkValueId y) = x eqByteString y
+_eqValueId_ (mkValueId x) (mkValueId y) = ⌊ x eqByteString y ⌋
 
 
 data Observation : Set
