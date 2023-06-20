@@ -355,7 +355,7 @@ data _⇀_ : Configuration → Configuration → Set where
     → record {
         contract = Close ;
         state = record {
-          accounts = ( (αₓ , τ ) , ι ) ∷ α ; -- suc ι
+          accounts = ( (αₓ , τ ) , ι ) ∷ α ;
           choices = c ;
           boundValues = b ;
           minTime = m
@@ -415,7 +415,6 @@ data _⇀_ : Configuration → Configuration → Set where
       { γ : Contract }
       { ω : List ReduceWarning }
       { μ : List Payment }
-      { α : Accounts }
     → evaluate ϵ σ ν > 0ℤ
     ---------------------
     → let value = evaluate ϵ σ ν
@@ -432,7 +431,7 @@ data _⇀_ : Configuration → Configuration → Set where
       ⇀
       record {
         contract = γ ;
-        state = record σ {accounts = addMoneyToAccount αₜ τ paid α} ;
+        state = record σ { accounts = updateMoneyInAccount αₛ τ (available - paid) (addMoneyToAccount αₜ τ paid (State.accounts σ)) } ;
         environment = ϵ ;
         warnings = ω ++ [ if ⌊ paid <? value ⌋ then ReducePartialPay αₛ (mkAccount αₜ) τ paid value else ReduceNoWarning ];
         payments = μ
@@ -663,13 +662,13 @@ infix  3 _∎
 
 data _⇀⋆_ : Configuration → Configuration → Set where
   _∎ : ∀ M
-      ---------
+      ------
     → M ⇀⋆ M
 
   _⇀⟨_⟩_ : ∀ L {M N}
     → L ⇀ M
     → M ⇀⋆ N
-      ---------
+      ------
     → L ⇀⋆ N
 
 begin_ : ∀ {M N}
