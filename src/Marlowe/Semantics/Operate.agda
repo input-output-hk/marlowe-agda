@@ -18,6 +18,7 @@ open import Marlowe.Language.Transaction
 open import Marlowe.Semantics.Evaluate
 open import Primitives
 open import Relation.Nullary.Decidable using (⌊_⌋)
+open import Relation.Nullary using (Dec; yes; no)
 
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; cong; sym)
@@ -350,7 +351,6 @@ data _⇀_ : Configuration → Configuration → Set where
       { τ : Token }
       { ι : Int }
       { α : Accounts }
-    → ι > 0ℤ
     ---------------------------------
     → record {
         contract = Close ;
@@ -676,3 +676,63 @@ begin_ : ∀ {M N}
     ------
   → M ⇀⋆ N
 begin M⇀⋆N = M⇀⋆N
+
+
+reduceContractStep→smallStep :
+  ∀ { ϵ : Environment }
+    { σ σ′ : State }
+    { γ γ′ : Contract }
+    { ωₓ : ReduceWarning }
+    { ο : ReduceEffect }
+    { ω : List ReduceWarning }
+    { μ : List Payment }
+    { α : Accounts }
+  → reduceContractStep ϵ σ γ ≡ Reduced ωₓ ο σ′ γ′
+  → ∃[ c₁ ] (∃[ c₂ ]( c₁ ⇀⋆ c₂ ))
+reduceContractStep→smallStep {ϵ} {σ} {γ = Close} {ο = ReduceWithPayment (mkPayment αₓ ρ τ ι)} {ω} {μ} {α} =
+  λ x → (let c₁ = record { contract = Close
+                         ; state = record {
+                                 accounts = ( (αₓ , τ ) , ι ) ∷ α ;
+                                 choices = State.choices σ ;
+                                 boundValues = State.boundValues σ ;
+                                 minTime = State.minTime σ
+                                 }
+                         ; environment = ϵ
+                         ; warnings = ω
+                         ; payments = μ
+                         }
+             c₂ = record { contract = Close
+                         ; state = record {
+                                 accounts = α ;
+                                 choices = State.choices σ ;
+                                 boundValues = State.boundValues σ ;
+                                 minTime = State.minTime σ
+                                 }
+                         ; environment = ϵ
+                         ; warnings = ω ++ [ ReduceNoWarning ]
+                         ; payments = μ ++ [ mkPayment αₓ (mkAccount αₓ) τ ι ]
+                         }
+         in c₁ , c₂ , (begin c₁ ⇀⟨ CloseRefund ⟩ c₂ ∎) )
+
+reduceContractStep→smallStep {γ = Pay x x₁ x₂ x₃ γ} {ο = ReduceWithPayment pp} = {!!}
+reduceContractStep→smallStep {γ = If x γ γ₁} {ο = ReduceWithPayment _} = λ ()
+reduceContractStep→smallStep {γ = When x x₁ γ} {ο = ReduceWithPayment pp} = {!!}
+reduceContractStep→smallStep {γ = Let x x₁ γ} {ο = ReduceWithPayment _} = λ ()
+reduceContractStep→smallStep {γ = Assert x γ} {ο = ReduceWithPayment _} = λ ()
+
+reduceContractStep→smallStep {γ = Close} {ο = ReduceNoPayment} = {!!}
+reduceContractStep→smallStep {γ = Pay x x₁ x₂ x₃ γ} {ο = ReduceNoPayment} = {!!}
+reduceContractStep→smallStep {γ = If x γ γ₁} {ο = ReduceNoPayment} = {!!}
+reduceContractStep→smallStep {γ = When x x₁ γ} {ο = ReduceNoPayment} = {!!}
+reduceContractStep→smallStep {γ = Let x x₁ γ} {ο = ReduceNoPayment} = {!!}
+reduceContractStep→smallStep {γ = Assert x γ} {ο = ReduceNoPayment} = {!!}
+
+
+smallStep→reduceContractStep :
+  ∀ { c₁ c₂ : Configuration }
+  → (c₁ ⇀ c₂)
+  → ∃[ ω ] (∃[ eff ] (
+       reduceContractStep (Configuration.environment c₁) (Configuration.state c₁) (Configuration.contract c₁)
+     ≡ Reduced ω eff (Configuration.state c₂) (Configuration.contract c₂))
+     )
+smallStep→reduceContractStep = {!!}
