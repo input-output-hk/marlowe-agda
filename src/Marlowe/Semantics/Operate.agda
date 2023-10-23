@@ -676,3 +676,26 @@ begin_ : ∀ {M N}
     ------
   → M ⇀⋆ N
 begin M⇀⋆N = M⇀⋆N
+
+
+data Quiescent : Contract → Accounts → Set where
+
+  close :
+    ---------------
+    Quiescent Close []
+
+  waiting :
+    ∀ { case : Case }
+      { cases : List Case }
+      { τ : Timeout }
+      { γ : Contract }
+      { α : Accounts }
+    → Quiescent (When (case ∷ cases) τ γ) α
+
+-- Quiescent (Contract, Accounts) do not reduce
+{-
+Quiescent¬⇀ : ∀ {C₁ A₁ C₂ A₂}
+  → Quiescent C₁ A₁
+  ---------------
+  → ¬ (
+-}
