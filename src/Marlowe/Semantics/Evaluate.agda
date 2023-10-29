@@ -61,30 +61,30 @@ divide num den with (∣ den ∣ ℕ.≟ 0) | (λ proof -> _div_ num den {proof}
 𝒪⟦ FalseObs ⟧ _ _ = false
 
 
-zero : Value
-zero = Constant 0ℤ
+0ᵥ : Value
+0ᵥ = Constant 0ℤ
 
-one : Value
-one = Constant 1ℤ
+1ᵥ : Value
+1ᵥ = Constant 1ℤ
 
-AddValue-identityʳ : ∀ (e : Environment) → ∀ (s : State) → ∀ (n : Value) → ℰ⟦ AddValue n zero ⟧ e s ≡ ℰ⟦ n ⟧ e s
+AddValue-identityʳ : ∀ (e : Environment) → ∀ (s : State) → ∀ (n : Value) → ℰ⟦ AddValue n 0ᵥ ⟧ e s ≡ ℰ⟦ n ⟧ e s
 AddValue-identityʳ e s n =
   begin
-    ℰ⟦ AddValue n zero ⟧ e s
+    ℰ⟦ AddValue n 0ᵥ ⟧ e s
     ≡⟨⟩
-    ℰ⟦ n ⟧ e s + ℰ⟦ zero ⟧ e s
+    ℰ⟦ n ⟧ e s + ℰ⟦ 0ᵥ ⟧ e s
     ≡⟨⟩
     ℰ⟦ n ⟧ e s + 0ℤ
     ≡⟨ +-identityʳ (ℰ⟦ n ⟧ e s) ⟩
     ℰ⟦ n ⟧ e s
   ∎
 
-MulValue-identityʳ : ∀ (e : Environment) → ∀ (s : State) → ∀ (n : Value) → ℰ⟦ MulValue n one ⟧ e s ≡ ℰ⟦ n ⟧ e s
+MulValue-identityʳ : ∀ (e : Environment) → ∀ (s : State) → ∀ (n : Value) → ℰ⟦ MulValue n 1ᵥ ⟧ e s ≡ ℰ⟦ n ⟧ e s
 MulValue-identityʳ e s n =
   begin
-    ℰ⟦ MulValue n one ⟧ e s
+    ℰ⟦ MulValue n 1ᵥ ⟧ e s
     ≡⟨⟩
-    ℰ⟦ n ⟧ e s * ℰ⟦ one ⟧ e s
+    ℰ⟦ n ⟧ e s * ℰ⟦ 1ᵥ ⟧ e s
     ≡⟨⟩
     ℰ⟦ n ⟧ e s * 1ℤ
     ≡⟨ *-identityʳ (ℰ⟦ n ⟧ e s) ⟩
