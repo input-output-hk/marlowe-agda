@@ -31,34 +31,34 @@ divide num den with (∣ den ∣ ℕ.≟ 0) | (λ proof -> _div_ num den {proof}
 ... | false because _ | result = result _
 
 
-evaluate : Environment → State → Value → Int
+ℰ⟦_⟧ : Value → Environment → State → Int
 
-observe : Environment → State → Observation → Bool
+𝒪⟦_⟧ : Observation → Environment → State → Bool
 
-evaluate _ s (AvailableMoney a t) = fromMaybe 0ℤ ((a , t) ‼ (State.accounts s))
-evaluate _ _ (Constant x) = x
-evaluate e s (NegValue x) = - evaluate e s x
-evaluate e s (AddValue x y) = evaluate e s x + evaluate e s y
-evaluate e s (SubValue x y) = evaluate e s x - evaluate e s y
-evaluate e s (MulValue x y) = evaluate e s x * evaluate e s y
-evaluate e s (DivValue x y) = divide (evaluate e s x) (evaluate e s y)
-evaluate _ s (ChoiceValue c) = c lookup (State.choices s) default 0ℤ
-evaluate e _ TimeIntervalStart = PosixTime.getPosixTime (proj₁ (Environment.timeInterval e))
-evaluate e _ TimeIntervalEnd = PosixTime.getPosixTime (proj₂ (Environment.timeInterval e))
-evaluate _ s (UseValue v) = v lookup (State.boundValues s) default 0ℤ
-evaluate e s (Cond o x y) = if observe e s o then evaluate e s x else evaluate e s y
+ℰ⟦ AvailableMoney a t ⟧ _ s = fromMaybe 0ℤ ((a , t) ‼ (State.accounts s))
+ℰ⟦ Constant x ⟧ _ _ = x
+ℰ⟦ NegValue x ⟧ e s = - ℰ⟦ x ⟧ e s
+ℰ⟦ AddValue x y ⟧ e s = ℰ⟦ x ⟧ e s + ℰ⟦ y ⟧ e s
+ℰ⟦ SubValue x y ⟧ e s = ℰ⟦ x ⟧ e s - ℰ⟦ y ⟧ e s
+ℰ⟦ MulValue x y ⟧ e s = ℰ⟦ x ⟧ e s * ℰ⟦ y ⟧ e s
+ℰ⟦ DivValue x y ⟧ e s = divide (ℰ⟦ x ⟧ e s) (ℰ⟦ y ⟧ e s)
+ℰ⟦ ChoiceValue c ⟧ _ s = c lookup (State.choices s) default 0ℤ
+ℰ⟦ TimeIntervalStart ⟧ e _ = PosixTime.getPosixTime (proj₁ (Environment.timeInterval e))
+ℰ⟦ TimeIntervalEnd ⟧ e _ = PosixTime.getPosixTime (proj₂ (Environment.timeInterval e))
+ℰ⟦ UseValue v ⟧ _ s = v lookup (State.boundValues s) default 0ℤ
+ℰ⟦ Cond o x y ⟧ e s = if 𝒪⟦ o ⟧ e s then ℰ⟦ x ⟧ e s else ℰ⟦ y ⟧ e s
 
-observe e s (AndObs x y) = observe e s x ∧ observe e s y
-observe e s (OrObs x y) = observe e s x ∨ observe e s y
-observe e s (NotObs x) = not (observe e s x)
-observe _ s (ChoseSomething c) = c member (State.choices s)
-observe e s (ValueGE y x) = ⌊ evaluate e s x ≤? evaluate e s y ⌋
-observe e s (ValueGT y x) = ⌊ evaluate e s x <? evaluate e s y ⌋
-observe e s (ValueLT x y) = ⌊ evaluate e s x <? evaluate e s y ⌋
-observe e s (ValueLE x y) = ⌊ evaluate e s x ≤? evaluate e s y ⌋
-observe e s (ValueEQ x y) = ⌊ evaluate e s x ≟ evaluate e s y ⌋
-observe _ _ TrueObs = true
-observe _ _ FalseObs = false
+𝒪⟦ AndObs x y ⟧ e s = 𝒪⟦ x ⟧ e s ∧ 𝒪⟦ y ⟧ e s
+𝒪⟦ OrObs x y ⟧ e s = 𝒪⟦ x ⟧ e s ∨ 𝒪⟦ y ⟧ e s
+𝒪⟦ NotObs x ⟧ e s = not (𝒪⟦ x ⟧ e s)
+𝒪⟦ ChoseSomething c ⟧  _ s = c member (State.choices s)
+𝒪⟦ ValueGE y x ⟧ e s = ⌊ ℰ⟦ x ⟧ e s ≤? ℰ⟦ y ⟧ e s ⌋
+𝒪⟦ ValueGT y x ⟧ e s = ⌊ ℰ⟦ x ⟧ e s <? ℰ⟦ y ⟧ e s ⌋
+𝒪⟦ ValueLT x y ⟧ e s = ⌊ ℰ⟦ x ⟧ e s <? ℰ⟦ y ⟧ e s ⌋
+𝒪⟦ ValueLE x y ⟧ e s = ⌊ ℰ⟦ x ⟧ e s ≤? ℰ⟦ y ⟧ e s ⌋
+𝒪⟦ ValueEQ x y ⟧ e s = ⌊ ℰ⟦ x ⟧ e s ≟ ℰ⟦ y ⟧ e s ⌋
+𝒪⟦ TrueObs ⟧ _ _ = true
+𝒪⟦ FalseObs ⟧ _ _ = false
 
 
 zero : Value
@@ -67,42 +67,42 @@ zero = Constant 0ℤ
 one : Value
 one = Constant 1ℤ
 
-AddValue-identityʳ : ∀ (e : Environment) → ∀ (s : State) → ∀ (n : Value) → evaluate e s (AddValue n zero) ≡ evaluate e s n
+AddValue-identityʳ : ∀ (e : Environment) → ∀ (s : State) → ∀ (n : Value) → ℰ⟦ AddValue n zero ⟧ e s ≡ ℰ⟦ n ⟧ e s
 AddValue-identityʳ e s n =
   begin
-    evaluate e s (AddValue n zero)
+    ℰ⟦ AddValue n zero ⟧ e s
     ≡⟨⟩
-    evaluate e s n + evaluate e s zero
+    ℰ⟦ n ⟧ e s + ℰ⟦ zero ⟧ e s
     ≡⟨⟩
-    evaluate e s n + 0ℤ
-    ≡⟨ +-identityʳ (evaluate e s n) ⟩
-    evaluate e s n
+    ℰ⟦ n ⟧ e s + 0ℤ
+    ≡⟨ +-identityʳ (ℰ⟦ n ⟧ e s) ⟩
+    ℰ⟦ n ⟧ e s
   ∎
 
-MulValue-identityʳ : ∀ (e : Environment) → ∀ (s : State) → ∀ (n : Value) → evaluate e s (MulValue n one) ≡ evaluate e s n
+MulValue-identityʳ : ∀ (e : Environment) → ∀ (s : State) → ∀ (n : Value) → ℰ⟦ MulValue n one ⟧ e s ≡ ℰ⟦ n ⟧ e s
 MulValue-identityʳ e s n =
   begin
-    evaluate e s (MulValue n one)
+    ℰ⟦ MulValue n one ⟧ e s
     ≡⟨⟩
-    evaluate e s n * evaluate e s one
+    ℰ⟦ n ⟧ e s * ℰ⟦ one ⟧ e s
     ≡⟨⟩
-    evaluate e s n * 1ℤ
-    ≡⟨ *-identityʳ (evaluate e s n) ⟩
-    evaluate e s n
+    ℰ⟦ n ⟧ e s * 1ℤ
+    ≡⟨ *-identityʳ (ℰ⟦ n ⟧ e s) ⟩
+    ℰ⟦ n ⟧  e s
   ∎
 
-AddValue-assoc : ∀ (e : Environment) → ∀ (s : State) → ∀ (m n p : Value) → evaluate e s (AddValue (AddValue m n) p) ≡ evaluate e s (AddValue m (AddValue n p))
+AddValue-assoc : ∀ (e : Environment) → ∀ (s : State) → ∀ (m n p : Value) → ℰ⟦ AddValue (AddValue m n) p ⟧ e s ≡ ℰ⟦ AddValue m (AddValue n p) ⟧ e s 
 AddValue-assoc e s m n p =
   begin
-    evaluate e s (AddValue (AddValue m n) p)
+    ℰ⟦ AddValue (AddValue m n) p ⟧ e s
     ≡⟨⟩
-    evaluate e s (AddValue m n) + evaluate e s p
+    ℰ⟦ AddValue m n ⟧ e s + ℰ⟦ p ⟧ e s
     ≡⟨⟩
-    (evaluate e s m + evaluate e s n) + evaluate e s p
-    ≡⟨ +-assoc (evaluate e s m) (evaluate e s n) (evaluate e s p) ⟩
-    evaluate e s m + (evaluate e s n + evaluate e s p)
+    (ℰ⟦ m ⟧ e s + ℰ⟦ n ⟧ e s) + ℰ⟦ p ⟧ e s
+    ≡⟨ +-assoc (ℰ⟦ m ⟧ e s) (ℰ⟦ n ⟧ e s) (ℰ⟦ p ⟧ e s) ⟩
+    ℰ⟦ m ⟧ e s + (ℰ⟦ n ⟧ e s + ℰ⟦ p ⟧ e s)
     ≡⟨⟩
-    evaluate e s m + evaluate e s (AddValue n p)
+    ℰ⟦ m ⟧ e s + ℰ⟦ AddValue n p ⟧ e s
     ≡⟨⟩
-    evaluate e s (AddValue m (AddValue n p))
+    ℰ⟦ AddValue m (AddValue n p) ⟧ e s
   ∎

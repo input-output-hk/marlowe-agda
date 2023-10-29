@@ -18,7 +18,7 @@ open import Marlowe.Language.Transaction
 open import Marlowe.Semantics.Evaluate
 open import Primitives
 open import Relation.Nullary.Decidable using (⌊_⌋)
-open import Relation.Nullary using (Dec; yes; no)
+open import Relation.Nullary using (Dec; yes; no; ¬_)
 
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; cong; sym)
@@ -119,7 +119,7 @@ reduceContractStep env state Close
 ... | nothing = NotReduced
 reduceContractStep env state (Pay accId payee tok val cont) =
   let
-    amountToPay = evaluate env state val
+    amountToPay = ℰ⟦ val ⟧ env state
   in
     if ⌊ amountToPay ≤? 0ℤ ⌋
       then (
@@ -144,7 +144,7 @@ reduceContractStep env state (Pay accId payee tok val cont) =
       )
 reduceContractStep env state (If obs cont1 cont2) =
   let
-    cont = if observe env state obs
+    cont = if 𝒪⟦ obs ⟧ env state
              then cont1
              else cont2
   in
@@ -160,7 +160,7 @@ reduceContractStep env state (When _ (mkTimeout (mkPosixTime timeout)) cont) =
              else AmbiguousTimeIntervalReductionError
 reduceContractStep env state (Let valId val cont) =
   let
-    evaluatedValue = evaluate env state val
+    evaluatedValue = ℰ⟦ val ⟧ env state
     boundVals = State.boundValues state
     newState = record state {boundValues = valId insert evaluatedValue into boundVals}
     warn = if valId member boundVals
@@ -170,7 +170,7 @@ reduceContractStep env state (Let valId val cont) =
     Reduced warn ReduceNoPayment newState cont
 reduceContractStep env state (Assert obs cont) =
   let
-    warn = if observe env state obs
+    warn = if 𝒪⟦ obs ⟧ env state
              then ReduceNoWarning
              else ReduceAssertionFailed
   in
@@ -207,7 +207,7 @@ data ApplyAction : Set where
 
 applyAction : Environment → State → InputContent → Action → ApplyAction
 applyAction env state (IDeposit accId1 party1 tok1 amount) (Deposit accId2 party2 tok2 val) =
-  if accId1 eqAccountId accId2 ∧ party1 eqParty party2 ∧ (tok1 eqToken tok2) ∧ ⌊ (amount ≟ evaluate env state val) ⌋ -- TODO: Use ×-dec
+  if accId1 eqAccountId accId2 ∧ party1 eqParty party2 ∧ (tok1 eqToken tok2) ∧ ⌊ (amount ≟ ℰ⟦ val ⟧ env state) ⌋ -- TODO: Use ×-dec
     then AppliedAction
            (
              if ⌊ 0ℤ <? amount ⌋
@@ -225,7 +225,7 @@ applyAction _ state (IChoice choId1 choice) (Choice choId2 bounds) =
     then AppliedAction ApplyNoWarning (record state {choices = choId1 insert (unChosenNum choice) into (State.choices state)})
     else NotAppliedAction
 applyAction env state INotify (Notify obs) =
-  if observe env state obs
+  if 𝒪⟦ obs ⟧ env state
     then AppliedAction ApplyNoWarning state
     else NotAppliedAction
 applyAction _ _ _ _ = NotAppliedAction
@@ -388,7 +388,7 @@ data _⇀_ : Configuration → Configuration → Set where
       { γ : Contract }
       { ω : List ReduceWarning }
       { μ : List Payment }
-    → evaluate ϵ σ ν ≤ 0ℤ
+    → ℰ⟦ ν ⟧ ϵ σ ≤ 0ℤ
     ---------------------
     → record {
         contract = Pay αₓ δ τ ν γ ;
@@ -402,7 +402,7 @@ data _⇀_ : Configuration → Configuration → Set where
         contract = γ ;
         state = σ ;
         environment = ϵ ;
-        warnings = ω ++ [ ReduceNonPositivePay αₓ δ τ (evaluate ϵ σ ν) ] ;
+        warnings = ω ++ [ ReduceNonPositivePay αₓ δ τ (ℰ⟦ ν ⟧ ϵ σ) ] ;
         payments = μ
       }
 
@@ -415,9 +415,9 @@ data _⇀_ : Configuration → Configuration → Set where
       { γ : Contract }
       { ω : List ReduceWarning }
       { μ : List Payment }
-    → evaluate ϵ σ ν > 0ℤ
+    → ℰ⟦ ν ⟧ ϵ σ > 0ℤ
     ---------------------
-    → let value = evaluate ϵ σ ν
+    → let value = ℰ⟦ ν ⟧ ϵ σ
           available = moneyInAccount αₛ τ (State.accounts σ)
           paid = available ⊓ value
       in
@@ -447,9 +447,9 @@ data _⇀_ : Configuration → Configuration → Set where
       { ω : List ReduceWarning }
       { μ : List Payment }
       { ξ : Party }
-    → evaluate ϵ σ ν > 0ℤ
+    → ℰ⟦ ν ⟧ ϵ σ > 0ℤ
     ---------------------
-    → let value = evaluate ϵ σ ν
+    → let value = ℰ⟦ ν ⟧ ϵ σ
           available = moneyInAccount αₓ τ (State.accounts σ)
           paid = available ⊓ value
       in
@@ -476,7 +476,7 @@ data _⇀_ : Configuration → Configuration → Set where
       { γ₁ γ₂ : Contract }
       { ω : List ReduceWarning }
       { μ : List Payment }
-    → observe ϵ σ ο ≡ true
+    → 𝒪⟦ ο ⟧ ϵ σ ≡ true
     ----------------------
     → record {
         contract = If ο γ₁ γ₂ ;
@@ -501,7 +501,7 @@ data _⇀_ : Configuration → Configuration → Set where
       { γ₁ γ₂ : Contract }
       { ω : List ReduceWarning }
       { μ : List Payment }
-    → observe ϵ σ ο ≡ false
+    → 𝒪⟦ ο ⟧ ϵ σ ≡ false
     -----------------------
     → record {
         contract = If ο γ₁ γ₂ ;
@@ -571,7 +571,7 @@ data _⇀_ : Configuration → Configuration → Set where
         contract = γ ;
         state = σ ;
         environment = ϵ ;
-        warnings = ω ++ [ ReduceShadowing νₓ ι (evaluate ϵ σ ν) ] ;
+        warnings = ω ++ [ ReduceShadowing νₓ ι (ℰ⟦ ν ⟧ ϵ σ) ] ;
         payments = μ
       }
 
@@ -596,7 +596,7 @@ data _⇀_ : Configuration → Configuration → Set where
       ⇀
       record {
         contract = γ ;
-        state = record σ {boundValues = νₓ insert (evaluate ϵ σ ν) into (State.boundValues σ) } ;
+        state = record σ {boundValues = νₓ insert (ℰ⟦ ν ⟧ ϵ σ) into (State.boundValues σ) } ;
         environment = ϵ ;
         warnings = ω ++ [ ReduceNoWarning ] ;
         payments = μ
@@ -609,7 +609,7 @@ data _⇀_ : Configuration → Configuration → Set where
       { γ : Contract }
       { ω : List ReduceWarning }
       { μ : List Payment }
-    → observe ϵ σ ο ≡ true
+    → 𝒪⟦ ο ⟧ ϵ σ ≡ true
     ----------------------
     → record {
         contract = Assert ο γ ;
@@ -634,7 +634,7 @@ data _⇀_ : Configuration → Configuration → Set where
       { γ : Contract }
       { ω : List ReduceWarning }
       { μ : List Payment }
-    → observe ϵ σ ο ≡ false
+    → 𝒪⟦ ο ⟧ ϵ σ ≡ false
     -----------------------
     → record {
         contract = Assert ο γ ;
@@ -677,25 +677,54 @@ begin_ : ∀ {M N}
   → M ⇀⋆ N
 begin M⇀⋆N = M⇀⋆N
 
-
-data Quiescent : Contract → Accounts → Set where
+{-
+data Quiescent : Configuration → Set where
 
   close :
-    ---------------
-    Quiescent Close []
+    ∀ { ϵ : Environment }
+      { ω : List ReduceWarning }
+      { μ : List Payment }
+    ---------------------
+    → Quiescent record {
+          contract = Close ;
+          state =
+            record
+              { accounts = [] ;
+                choices = emptyMap _eqChoiceId_ ;
+                boundValues = emptyMap _eqValueId_ ;
+                minTime =  mkPosixTime 0ℤ } ;
+            environment = ϵ ;
+            warnings = ω;
+            payments = μ
+        }
 
   waiting :
-    ∀ { case : Case }
+    ∀ { ϵ : Environment }
+      { case : Case }
       { cases : List Case }
       { τ : Timeout }
       { γ : Contract }
-      { α : Accounts }
-    → Quiescent (When (case ∷ cases) τ γ) α
+      { ω : List ReduceWarning }
+      { μ : List Payment }
+    ---------------------
+    → Quiescent record {
+          contract = When (case ∷ cases) τ γ ;
+          state =
+            record
+              { accounts = [] ;
+                choices = emptyMap _eqChoiceId_ ;
+                boundValues = emptyMap _eqValueId_ ;
+                minTime =  mkPosixTime 0ℤ } ;
+            environment = ϵ ;
+            warnings = ω;
+            payments = μ
+        }
 
--- Quiescent (Contract, Accounts) do not reduce
-{-
-Quiescent¬⇀ : ∀ {C₁ A₁ C₂ A₂}
-  → Quiescent C₁ A₁
+-- Quiescent contracts do not reduce
+Quiescent¬⇀ : ∀ {C₁ C₂}
+  → Quiescent C₁
   ---------------
-  → ¬ (
+  → ¬ (C₁ ⇀⋆ C₂)
+Quiescent¬⇀ close x = {!!}
+Quiescent¬⇀ waiting = {!!}
 -}
