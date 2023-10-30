@@ -56,7 +56,7 @@ data _⇀_ : Configuration → Configuration → Set where
     → record {
         contract = Close ;
         state = record {
-          accounts = ( (a , t ) , i ) ∷ as ;
+          accounts = ((a , t) , i) ∷ as ;
           choices = cs ;
           boundValues = vs ;
           minTime = m
@@ -90,7 +90,7 @@ data _⇀_ : Configuration → Configuration → Set where
       { ws : List ReduceWarning }
       { ps : List Payment }
     → ℰ⟦ v ⟧ e s ≤ 0ℤ
-    ---------------------
+    -----------------------------
     → record {
         contract = Pay a y t v c ;
         state = s ;
@@ -117,7 +117,7 @@ data _⇀_ : Configuration → Configuration → Set where
       { ws : List ReduceWarning }
       { ps : List Payment }
     → ℰ⟦ v ⟧ e s > 0ℤ
-    ---------------------
+    -----------------------------
     → let value = ℰ⟦ v ⟧ e s
           available = moneyInAccount aₛ t (accounts s)
           paid = available ⊓ value
@@ -149,7 +149,7 @@ data _⇀_ : Configuration → Configuration → Set where
       { ps : List Payment }
       { p : Party }
     → ℰ⟦ v ⟧ e s > 0ℤ
-    ---------------------
+    -----------------------------
     → let value = ℰ⟦ v ⟧ e s
           available = moneyInAccount aₓ t (accounts s)
           paid = available ⊓ value
@@ -178,7 +178,7 @@ data _⇀_ : Configuration → Configuration → Set where
       { ws : List ReduceWarning }
       { ps : List Payment }
     → 𝒪⟦ ο ⟧ e s ≡ true
-    ----------------------
+    -----------------------------
     → record {
         contract = If ο c₁ c₂ ;
         state = s ;
@@ -203,7 +203,7 @@ data _⇀_ : Configuration → Configuration → Set where
       { ws : List ReduceWarning }
       { ps : List Payment }
     → 𝒪⟦ ο ⟧ e s ≡ false
-    -----------------------
+    -----------------------------
     → record {
         contract = If ο c₁ c₂ ;
         state = s ;
@@ -231,7 +231,7 @@ data _⇀_ : Configuration → Configuration → Set where
       { cs : List Case }
     → let (mkPosixTime startTime) = proj₁ (timeInterval e) in startTime ≥ t
     → let (mkPosixTime endTime) = proj₂ (timeInterval e) in endTime ≥ t
-    --------------------------------------------------------------------------------------
+    -----------------------------------------------------------------------
     → record {
         contract = When cs (mkTimeout (mkPosixTime t)) c ;
         state = s;
@@ -388,7 +388,7 @@ data Quiescent : Configuration → Set where
       { ws : List ReduceWarning }
       { m : PosixTime }
       { ps : List Payment }
-    ---------------------
+    ---------------------------------
     → Quiescent record {
           contract = Close ;
           state =
@@ -411,13 +411,14 @@ data Quiescent : Configuration → Set where
       { cs : AssocList ChoiceId Int }
       { vs : AssocList ValueId Int }
       { m : PosixTime }
-      { t : Timeout }
+      { t : Int }
       { c : Contract }
       { ws : List ReduceWarning }
       { ps : List Payment }
-    ---------------------
+    → let (mkPosixTime startTime) = proj₁ (timeInterval e) in startTime < t
+    -----------------------------------------------------------------------
     → Quiescent record {
-          contract = When (case ∷ cases) t c ;
+          contract = When (case ∷ cases) (mkTimeout (mkPosixTime t)) c ;
           state =
             record
               { accounts = as ;
@@ -435,6 +436,20 @@ Quiescent¬⇀ :
   ∀ { C₁ C₂ : Configuration }
   → Quiescent C₁
   ---------------------------
-  → ¬ (C₁ ⇀⋆ C₂)
-Quiescent¬⇀ close x = {!!}
-Quiescent¬⇀ waiting = {!!}
+  → ¬ (C₁ ⇀ C₂)
+Quiescent¬⇀ close ()
+Quiescent¬⇀ {record
+  { contract = When (case ∷ cases) (mkTimeout (mkPosixTime (Int.negsuc n))) c
+  ; state = record { accounts = as ; choices = cs₁ ; boundValues = vs ; minTime = m }
+  ; environment = mkEnvironment (mkPosixTime (Int.negsuc m₁) , snd)
+  ; warnings = ws
+  ; payments = ps
+  }} (waiting (_<_.-<- n<m)) (WhenTimeout { s } { e } { ο } { c } { ws } { ps } { t } { cs } x x₁) = {!!}
+Quiescent¬⇀ {c₁} (waiting _<_.-<+) y = {!!}
+Quiescent¬⇀ {record
+  { contract = When (case ∷ cases) (mkTimeout (mkPosixTime (Int.pos n))) c
+  ; state = record { accounts = as ; choices = cs₁ ; boundValues = vs ; minTime = m }
+  ; environment = mkEnvironment (mkPosixTime (Int.pos m₁) , snd)
+  ; warnings = ws
+  ; payments = ps
+  }} (waiting (_<_.+<+ m<n)) (WhenTimeout { s } { e } { ο } { c } { ws } { ps } { t } { cs } x x₁) = {!!}
