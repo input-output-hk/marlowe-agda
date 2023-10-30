@@ -15,7 +15,7 @@ open import Marlowe.Examples.Escrow
 open import Marlowe.Semantics.Operate
 open import Primitives
 
-open Json {{...}} public
+-- open Json {{...}} public
 
 
 pattern [_,_,_,_] w x y z = w ∷ x ∷ y ∷ z ∷ []
@@ -29,8 +29,9 @@ main =
   in
     run
       (
-        putStrLn
-          (
+        -- FIXME: re-introduce JSON serialization
+        putStrLn "done"
+          {-
             object
               [
                 "minTime" kv minTime
@@ -38,5 +39,5 @@ main =
               , "inputs" kv inputs
               , "output" kv output
               ]
-          )
+          -}
       )

@@ -7,16 +7,22 @@ open import Agda.Builtin.Int using (Int)
 open import Data.Bool using (_∧_; _∨_; if_then_else_; not)
 open import Data.Integer using (-_; _+_; _-_; _*_; _≟_; _<?_; _≤?_; ∣_∣; 0ℤ; NonZero)
 open import Data.Integer.DivMod using (_div_)
-open import Data.Integer.Properties using (+-identityʳ;*-identityʳ;+-assoc)
+open import Data.Integer.Properties using (+-identityʳ; *-identityʳ; +-assoc)
 open import Data.Maybe using (fromMaybe)
 open import Data.Nat as ℕ using ()
 open import Data.Product using (_,_; _×_; proj₁; proj₂)
 open import Data.Integer using (0ℤ; 1ℤ; +_)
 open import Marlowe.Language.Contract
 open import Marlowe.Language.State
+
+open Environment using (timeInterval)
+open State using (accounts; boundValues; choices)
 open import Primitives
-import Primitives as P
-open P.Decidable _eqAccountIdTokenDec_ using (_‼_)
+open Decidable _eqAccountIdTokenDec_  renaming (_‼_default_ to _‼ᵃ_default_) hiding (_∈?_)
+open Decidable _eqChoiceId_ renaming (_‼_default_ to _‼ᶜ_default_) using (_∈?_)
+open Decidable _eqValueId_ renaming (_‼_default_ to _‼ᵛ_default_) hiding (_∈?_)
+open PosixTime using (getPosixTime)
+
 open import Relation.Nullary using (_because_)
 open import Relation.Nullary.Decidable using (⌊_⌋)
 import Relation.Binary.PropositionalEquality as Eq
@@ -25,8 +31,8 @@ open Eq.≡-Reasoning using (begin_; _≡⟨⟩_; step-≡; _∎)
 import Relation.Nullary using (Dec; yes; no)
 
 
-divide : Int → Int → Int
-divide num den with (∣ den ∣ ℕ.≟ 0) | (λ proof -> _div_ num den {proof})
+_/_ : Int → Int → Int
+_/_ num den with (∣ den ∣ ℕ.≟ 0) | (λ proof -> _div_ num den {proof})
 ... | true  because _ | _      = 0ℤ
 ... | false because _ | result = result _
 
@@ -35,23 +41,23 @@ divide num den with (∣ den ∣ ℕ.≟ 0) | (λ proof -> _div_ num den {proof}
 
 𝒪⟦_⟧ : Observation → Environment → State → Bool
 
-ℰ⟦ AvailableMoney a t ⟧ _ s = fromMaybe 0ℤ ((a , t) ‼ (State.accounts s))
+ℰ⟦ AvailableMoney a t ⟧ _ s = (a , t) ‼ᵃ accounts s default 0ℤ
 ℰ⟦ Constant x ⟧ _ _ = x
 ℰ⟦ NegValue x ⟧ e s = - ℰ⟦ x ⟧ e s
 ℰ⟦ AddValue x y ⟧ e s = ℰ⟦ x ⟧ e s + ℰ⟦ y ⟧ e s
 ℰ⟦ SubValue x y ⟧ e s = ℰ⟦ x ⟧ e s - ℰ⟦ y ⟧ e s
 ℰ⟦ MulValue x y ⟧ e s = ℰ⟦ x ⟧ e s * ℰ⟦ y ⟧ e s
-ℰ⟦ DivValue x y ⟧ e s = divide (ℰ⟦ x ⟧ e s) (ℰ⟦ y ⟧ e s)
-ℰ⟦ ChoiceValue c ⟧ _ s = c lookup (State.choices s) default 0ℤ
-ℰ⟦ TimeIntervalStart ⟧ e _ = PosixTime.getPosixTime (proj₁ (Environment.timeInterval e))
-ℰ⟦ TimeIntervalEnd ⟧ e _ = PosixTime.getPosixTime (proj₂ (Environment.timeInterval e))
-ℰ⟦ UseValue v ⟧ _ s = v lookup (State.boundValues s) default 0ℤ
+ℰ⟦ DivValue x y ⟧ e s = ℰ⟦ x ⟧ e s / ℰ⟦ y ⟧ e s
+ℰ⟦ ChoiceValue c ⟧ _ s = c ‼ᶜ choices s default 0ℤ
+ℰ⟦ TimeIntervalStart ⟧ e _ = getPosixTime (proj₁ (timeInterval e))
+ℰ⟦ TimeIntervalEnd ⟧ e _ = getPosixTime (proj₂ (timeInterval e))
+ℰ⟦ UseValue v ⟧ _ s = v ‼ᵛ boundValues s default 0ℤ
 ℰ⟦ Cond o x y ⟧ e s = if 𝒪⟦ o ⟧ e s then ℰ⟦ x ⟧ e s else ℰ⟦ y ⟧ e s
 
 𝒪⟦ AndObs x y ⟧ e s = 𝒪⟦ x ⟧ e s ∧ 𝒪⟦ y ⟧ e s
 𝒪⟦ OrObs x y ⟧ e s = 𝒪⟦ x ⟧ e s ∨ 𝒪⟦ y ⟧ e s
 𝒪⟦ NotObs x ⟧ e s = not (𝒪⟦ x ⟧ e s)
-𝒪⟦ ChoseSomething c ⟧  _ s = c member (State.choices s)
+𝒪⟦ ChoseSomething c ⟧  _ s = ⌊ c ∈? choices s ⌋
 𝒪⟦ ValueGE y x ⟧ e s = ⌊ ℰ⟦ x ⟧ e s ≤? ℰ⟦ y ⟧ e s ⌋
 𝒪⟦ ValueGT y x ⟧ e s = ⌊ ℰ⟦ x ⟧ e s <? ℰ⟦ y ⟧ e s ⌋
 𝒪⟦ ValueLT x y ⟧ e s = ⌊ ℰ⟦ x ⟧ e s <? ℰ⟦ y ⟧ e s ⌋

@@ -2,6 +2,8 @@
 
 module Marlowe.Serialization.Json where
 
+{-
+
 open import Agda.Builtin.String using (primShowString)
 open import Agda.Builtin.Int using (Int)
 open import Data.Integer.Show using (show)
@@ -419,3 +421,5 @@ instance
       [
         "transaction_error" kv error
       ]
+
+-}

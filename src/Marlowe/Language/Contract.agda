@@ -6,6 +6,7 @@ open import Agda.Builtin.Int using (Int)
 open import Agda.Builtin.List using (List)
 open import Data.Bool using (Bool; false; _∧_)
 open import Primitives
+open import Relation.Binary using (DecidableEquality)
 open import Relation.Nullary.Decidable using (⌊_⌋)
 
 
@@ -40,9 +41,8 @@ _eqChoiceName_ (mkChoiceName x) (mkChoiceName y) = ⌊ x eqByteString y ⌋
 data ChoiceId : Set where
   mkChoiceId : ChoiceName → Party → ChoiceId
 
-_eqChoiceId_ : ChoiceId → ChoiceId → Bool
-_eqChoiceId_ (mkChoiceId xn xp) (mkChoiceId yn yp) = (xn eqChoiceName yn) ∧ (xp eqParty yp)
-
+postulate
+  _eqChoiceId_ : DecidableEquality ChoiceId
 
 data Token : Set where
   mkToken : ByteString → ByteString → Token
@@ -54,8 +54,8 @@ _eqToken_ (mkToken xs xn) (mkToken ys yn) = ⌊ xs eqByteString ys ⌋ ∧ ⌊ x
 data ValueId : Set where
   mkValueId : ByteString → ValueId
 
-_eqValueId_ : ValueId → ValueId → Bool
-_eqValueId_ (mkValueId x) (mkValueId y) = ⌊ x eqByteString y ⌋
+postulate
+  _eqValueId_ : DecidableEquality ValueId
 
 
 data Observation : Set

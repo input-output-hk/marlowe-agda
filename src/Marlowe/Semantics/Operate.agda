@@ -23,8 +23,11 @@ open import Relation.Nullary using (Dec; yes; no; ¬_)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; cong; sym)
 
-import Primitives as P
-open P.Decidable _eqAccountIdTokenDec_ using (_‼_)
+open import Primitives
+open Decidable _eqAccountIdTokenDec_  renaming (_‼_default_ to _‼ᵃ_default_) hiding (_∈?_)
+open Decidable _eqChoiceId_ renaming (_‼_default_ to _‼ᶜ_default_) using (_∈?_)
+open Decidable _eqValueId_ renaming (_‼_ to _‼ᵛ_; _‼_default_ to _‼ᵛ_default_; _∈?_ to _∈ᵛ?_)
+
 
 fixInterval : TimeInterval → State → IntervalResult
 fixInterval interval state =
@@ -55,7 +58,7 @@ refundOne (((mkAccountId ρ , τ) , ι) ∷ α) =
 
 
 moneyInAccount : AccountId → Token → Accounts → Int
-moneyInAccount αₓ τ α = fromMaybe 0ℤ ((αₓ , τ) ‼ α)
+moneyInAccount αₓ τ α = (αₓ , τ) ‼ᵃ α default 0ℤ
 
 updateMoneyInAccount : AccountId → Token → Int → Accounts → Accounts
 updateMoneyInAccount account token amount accounts =
@@ -162,9 +165,9 @@ reduceContractStep env state (Let valId val cont) =
   let
     evaluatedValue = ℰ⟦ val ⟧ env state
     boundVals = State.boundValues state
-    newState = record state {boundValues = valId insert evaluatedValue into boundVals}
-    warn = if valId member boundVals
-             then ReduceShadowing valId (valId lookup boundVals default 0ℤ) evaluatedValue
+    newState = record state {boundValues = (valId , evaluatedValue) ↑ boundVals}
+    warn = if ⌊ valId ∈ᵛ? boundVals ⌋
+             then ReduceShadowing valId (valId ‼ᵛ boundVals default 0ℤ) evaluatedValue
              else ReduceNoWarning
   in
     Reduced warn ReduceNoPayment newState cont
@@ -221,8 +224,8 @@ applyAction env state (IDeposit accId1 party1 tok1 amount) (Deposit accId2 party
            )
     else NotAppliedAction
 applyAction _ state (IChoice choId1 choice) (Choice choId2 bounds) =
-  if choId1 eqChoiceId choId2 ∧ choice inBounds bounds
-    then AppliedAction ApplyNoWarning (record state {choices = choId1 insert (unChosenNum choice) into (State.choices state)})
+  if ⌊ choId1 eqChoiceId choId2 ⌋ ∧ choice inBounds bounds
+    then AppliedAction ApplyNoWarning (record state {choices = (choId1 , unChosenNum choice) ↑ (State.choices state)})
     else NotAppliedAction
 applyAction env state INotify (Notify obs) =
   if 𝒪⟦ obs ⟧ env state
@@ -344,8 +347,8 @@ data _⇀_ : Configuration → Configuration → Set where
     ∀ { ϵ : Environment }
       { ω : List ReduceWarning }
       { μ : List Payment }
-      { c : Map ChoiceId Int }
-      { b : Map ValueId Int }
+      { c : AssocList ChoiceId Int }
+      { b : AssocList ValueId Int }
       { m : PosixTime }
       { αₓ : AccountId }
       { τ : Token }
@@ -557,7 +560,7 @@ data _⇀_ : Configuration → Configuration → Set where
       { ι : Int }
       { ω : List ReduceWarning }
       { μ : List Payment }
-    → νₓ lookup (State.boundValues σ) ≡ just ι
+    → νₓ ‼ᵛ State.boundValues σ ≡ just ι
     ------------------------------------------
     → record {
         contract = Let νₓ ν γ ;
@@ -584,7 +587,7 @@ data _⇀_ : Configuration → Configuration → Set where
       { ν : Value }
       { ω : List ReduceWarning }
       { μ : List Payment }
-    → νₓ lookup (State.boundValues σ) ≡ nothing
+    → νₓ ‼ᵛ State.boundValues σ ≡ nothing
     -------------------------------------------    
     → record {
         contract = Let νₓ ν γ ;
@@ -596,7 +599,7 @@ data _⇀_ : Configuration → Configuration → Set where
       ⇀
       record {
         contract = γ ;
-        state = record σ {boundValues = νₓ insert (ℰ⟦ ν ⟧ ϵ σ) into (State.boundValues σ) } ;
+        state = record σ {boundValues = (νₓ , ℰ⟦ ν ⟧ ϵ σ) ↑ State.boundValues σ } ;
         environment = ϵ ;
         warnings = ω ++ [ ReduceNoWarning ] ;
         payments = μ
