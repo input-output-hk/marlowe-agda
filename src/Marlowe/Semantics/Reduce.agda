@@ -443,7 +443,7 @@ data Quiescent : Configuration → Set where
             payments = ps
         }
 
--- Quiescent contracts do not reduce
+-- Quiescent configurations do not reduce
 Quiescent¬⇀ :
   ∀ { C₁ C₂ : Configuration }
   → Quiescent C₁
@@ -460,3 +460,10 @@ Quiescent¬⇀ { record
   let p = ℕ.1+n≰n {n₁}
       q = ℕ.≤-trans x x₁
   in p q
+
+-- If a configuration reduces, it is not quiescent
+⇀¬Quiescent :
+  ∀ { C₁ C₂ : Configuration }
+  → C₁ ⇀ C₂
+  → ¬ Quiescent C₁
+⇀¬Quiescent C₁⇀C₂ q = Quiescent¬⇀ q C₁⇀C₂
