@@ -7,6 +7,7 @@ open import Data.Bool using (Bool; if_then_else_; not; _∧_; _∨_; true; false
 open import Data.Integer using (_<?_; _≤?_; _≟_ ; _⊔_; _⊓_; _-_; 0ℤ ; _≤_ ; _>_ ; _≥_ ; _<_)
 open import Data.List using (List; []; _∷_; _++_; foldr; reverse; [_]; null)
 open import Data.Maybe using (Maybe; just; nothing; fromMaybe)
+open import Data.Nat as ℕ using ()
 open import Data.Product using (Σ; _,_; ∃; Σ-syntax; ∃-syntax)
 open import Data.Product using (_×_; proj₁; proj₂)
 import Data.String as String
@@ -34,17 +35,17 @@ fixInterval interval state =
   let
     (mkPosixTime low) , (mkPosixTime high) = interval
   in
-    if ⌊ high <? low ⌋
+    if ⌊ high ℕ.<? low ⌋
       then mkIntervalError (InvalidInterval interval)
       else
         let
           curMinTime = State.minTime state
-          newLow = low ⊔ PosixTime.getPosixTime curMinTime
+          newLow = low ℕ.⊔ PosixTime.getPosixTime curMinTime
           curInterval = record interval {fst = mkPosixTime newLow}
           env = record {timeInterval = curInterval}
           newState = record state {minTime = mkPosixTime newLow}
         in
-          if ⌊ high <? PosixTime.getPosixTime curMinTime ⌋
+          if ⌊ high ℕ.<? PosixTime.getPosixTime curMinTime ⌋
             then mkIntervalError (IntervalInPastError curMinTime interval)
             else IntervalTrimmed env newState
 
@@ -156,9 +157,9 @@ reduceContractStep env state (When _ (mkTimeout (mkPosixTime timeout)) cont) =
   let
     interval = Environment.timeInterval env
   in
-    if ⌊ PosixTime.getPosixTime (proj₁ interval) <? timeout ⌋
+    if ⌊ PosixTime.getPosixTime (proj₁ interval) ℕ.<? timeout ⌋
       then NotReduced
-      else if ⌊ timeout ≤? PosixTime.getPosixTime (proj₁ interval) ⌋
+      else if ⌊ timeout ℕ.≤? PosixTime.getPosixTime (proj₁ interval) ⌋
              then Reduced ReduceNoWarning ReduceNoPayment state cont
              else AmbiguousTimeIntervalReductionError
 reduceContractStep env state (Let valId val cont) =

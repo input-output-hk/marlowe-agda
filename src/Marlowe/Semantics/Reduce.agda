@@ -7,6 +7,7 @@ open import Data.Bool using (Bool; if_then_else_; not; _∧_; _∨_; true; false
 open import Data.Integer using (_<?_; _≤?_; _≟_ ; _⊔_; _⊓_; _-_; 0ℤ ; _≤_ ; _>_ ; _≥_ ; _<_)
 open import Data.List using (List; []; _∷_; _++_; foldr; reverse; [_]; null)
 open import Data.Maybe using (Maybe; just; nothing; fromMaybe)
+open import Data.Nat as ℕ using (ℕ)
 open import Data.Product using (Σ; _,_; ∃; Σ-syntax; ∃-syntax)
 open import Data.Product using (_×_; proj₁; proj₂)
 import Data.String as String
@@ -16,7 +17,16 @@ open import Marlowe.Language.Input
 open import Marlowe.Language.State
 open import Marlowe.Language.Transaction
 open import Marlowe.Semantics.Evaluate
-open import Marlowe.Semantics.Operate using (ReduceWarning; ReduceNoWarning; ReduceNonPositivePay; ReducePartialPay; ReduceShadowing; ReduceAssertionFailed; moneyInAccount; updateMoneyInAccount; addMoneyToAccount)
+open import Marlowe.Semantics.Operate using (
+  ReduceWarning;
+  ReduceNoWarning;
+  ReduceNonPositivePay;
+  ReducePartialPay;
+  ReduceShadowing;
+  ReduceAssertionFailed;
+  moneyInAccount;
+  updateMoneyInAccount;
+  addMoneyToAccount)
 open import Primitives
 open import Relation.Nullary.Decidable using (⌊_⌋)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
@@ -227,10 +237,10 @@ data _⇀_ : Configuration → Configuration → Set where
       { c : Contract }
       { ws : List ReduceWarning }
       { ps : List Payment }
-      { t : Int }
+      { t : ℕ }
       { cs : List Case }
-    → let (mkPosixTime startTime) = proj₁ (timeInterval e) in startTime ≥ t
-    → let (mkPosixTime endTime) = proj₂ (timeInterval e) in endTime ≥ t
+    → let (mkPosixTime startTime) = proj₁ (timeInterval e) in startTime ℕ.≥ t
+    → let (mkPosixTime endTime) = proj₂ (timeInterval e) in endTime ℕ.≥ t
     -----------------------------------------------------------------------
     → record {
         contract = When cs (mkTimeout (mkPosixTime t)) c ;
@@ -411,11 +421,11 @@ data Quiescent : Configuration → Set where
       { cs : AssocList ChoiceId Int }
       { vs : AssocList ValueId Int }
       { m : PosixTime }
-      { t : Int }
+      { t : ℕ }
       { c : Contract }
       { ws : List ReduceWarning }
       { ps : List Payment }
-    → let (mkPosixTime startTime) = proj₁ (timeInterval e) in startTime < t
+    → let (mkPosixTime startTime) = proj₁ (timeInterval e) in startTime ℕ.< t
     -----------------------------------------------------------------------
     → Quiescent record {
           contract = When (case ∷ cases) (mkTimeout (mkPosixTime t)) c ;
@@ -438,18 +448,4 @@ Quiescent¬⇀ :
   ---------------------------
   → ¬ (C₁ ⇀ C₂)
 Quiescent¬⇀ close ()
-Quiescent¬⇀ {record
-  { contract = When (case ∷ cases) (mkTimeout (mkPosixTime (Int.negsuc n))) c
-  ; state = record { accounts = as ; choices = cs₁ ; boundValues = vs ; minTime = m }
-  ; environment = mkEnvironment (mkPosixTime (Int.negsuc m₁) , snd)
-  ; warnings = ws
-  ; payments = ps
-  }} (waiting (_<_.-<- n<m)) (WhenTimeout { s } { e } { ο } { c } { ws } { ps } { t } { cs } x x₁) = {!!}
-Quiescent¬⇀ {c₁} (waiting _<_.-<+) y = {!!}
-Quiescent¬⇀ {record
-  { contract = When (case ∷ cases) (mkTimeout (mkPosixTime (Int.pos n))) c
-  ; state = record { accounts = as ; choices = cs₁ ; boundValues = vs ; minTime = m }
-  ; environment = mkEnvironment (mkPosixTime (Int.pos m₁) , snd)
-  ; warnings = ws
-  ; payments = ps
-  }} (waiting (_<_.+<+ m<n)) (WhenTimeout { s } { e } { ο } { c } { ws } { ps } { t } { cs } x x₁) = {!!}
+Quiescent¬⇀ (waiting (ℕ.s≤s x)) (WhenTimeout (ℕ.s≤s x₁) (ℕ.s≤s x₂)) = {!!}
