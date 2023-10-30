@@ -8,6 +8,7 @@ open import Data.Integer using (_<?_; _≤?_; _≟_ ; _⊔_; _⊓_; _-_; 0ℤ ; 
 open import Data.List using (List; []; _∷_; _++_; foldr; reverse; [_]; null)
 open import Data.Maybe using (Maybe; just; nothing; fromMaybe)
 open import Data.Nat as ℕ using (ℕ)
+open import Data.Nat.Properties as ℕ using ()
 open import Data.Product using (Σ; _,_; ∃; Σ-syntax; ∃-syntax)
 open import Data.Product using (_×_; proj₁; proj₂)
 import Data.String as String
@@ -33,6 +34,7 @@ open import Relation.Nullary using (Dec; yes; no; ¬_)
 
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; cong; sym)
+open import Data.Empty using (⊥; ⊥-elim)
 
 open import Primitives
 open Decidable _eqAccountIdTokenDec_  renaming (_‼_default_ to _‼ᵃ_default_) hiding (_∈?_)
@@ -448,4 +450,13 @@ Quiescent¬⇀ :
   ---------------------------
   → ¬ (C₁ ⇀ C₂)
 Quiescent¬⇀ close ()
-Quiescent¬⇀ (waiting (ℕ.s≤s x)) (WhenTimeout (ℕ.s≤s x₁) (ℕ.s≤s x₂)) = {!!}
+Quiescent¬⇀ { record
+  { contract = When (_ ∷ _) (mkTimeout (mkPosixTime (ℕ.suc _))) _
+  ; state = _
+  ; environment = mkEnvironment (mkPosixTime (ℕ.suc n₁) , _)
+  ; warnings = _
+  ; payments = _
+  }} (waiting (ℕ.s≤s x)) (WhenTimeout (ℕ.s≤s x₁) _) =
+  let p = ℕ.1+n≰n {n₁}
+      q = ℕ.≤-trans x x₁
+  in p q
