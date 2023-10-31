@@ -41,7 +41,7 @@ _/_ num den with (∣ den ∣ ℕ.≟ 0) | (λ proof -> _div_ num den {proof})
 
 𝒪⟦_⟧ : Observation → Environment → State → Bool
 
-ℰ⟦ AvailableMoney a t ⟧ _ s = (a , t) ‼ᵃ accounts s default 0ℤ
+ℰ⟦ AvailableMoney a t ⟧ _ s = + ((a , t) ‼ᵃ accounts s default 0)
 ℰ⟦ Constant x ⟧ _ _ = x
 ℰ⟦ NegValue x ⟧ e s = - ℰ⟦ x ⟧ e s
 ℰ⟦ AddValue x y ⟧ e s = ℰ⟦ x ⟧ e s + ℰ⟦ y ⟧ e s

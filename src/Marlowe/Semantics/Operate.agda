@@ -49,7 +49,7 @@ fixInterval interval state =
             then mkIntervalError (IntervalInPastError curMinTime interval)
             else IntervalTrimmed env newState
 
-
+{-
 refundOne : AssocList (AccountId × Token) Int → Maybe (Party × Token × Int × Accounts)
 refundOne [] = nothing
 refundOne (((mkAccountId ρ , τ) , ι) ∷ α) =
@@ -79,7 +79,7 @@ addMoneyToAccount account token amount accounts =
     if ⌊ amount ≤? 0ℤ ⌋
       then accounts
       else updateMoneyInAccount account token newBalance accounts
-
+-}
 
 data ReduceEffect : Set where
   ReduceWithPayment : Payment → ReduceEffect
@@ -101,7 +101,7 @@ data ReduceResult : Set where
   ContractQuiescent : Bool → List ReduceWarning → List Payment → State → Contract → ReduceResult
   RRAmbiguousTimeIntervalError : ReduceResult
 
-
+{-
 giveMoney : AccountId → Payee → Token → Int → Accounts → ReduceEffect × Accounts
 giveMoney account payee token amount accounts =
   record {fst = ReduceWithPayment (mkPayment account payee token amount); snd = newAccounts payee}
@@ -198,7 +198,7 @@ reduceContractUntilQuiescent env state contract =
       ... | Reduced warning effect newState cont = reductionLoop true (newWarnings warnings warning) (newPayments payments effect) env newState cont
       ... | AmbiguousTimeIntervalReductionError = RRAmbiguousTimeIntervalError
       ... | NotReduced = ContractQuiescent reduced (reverse warnings) (reverse payments) state contract
-
+-}
 
 data ApplyWarning : Set where
   ApplyNoWarning : ApplyWarning
@@ -208,7 +208,7 @@ data ApplyAction : Set where
   AppliedAction : ApplyWarning → State → ApplyAction
   NotAppliedAction : ApplyAction
 
-
+{-
 applyAction : Environment → State → InputContent → Action → ApplyAction
 applyAction env state (IDeposit accId1 party1 tok1 amount) (Deposit accId2 party2 tok2 val) =
   if accId1 eqAccountId accId2 ∧ party1 eqParty party2 ∧ (tok1 eqToken tok2) ∧ ⌊ (amount ≟ ℰ⟦ val ⟧ env state) ⌋ -- TODO: Use ×-dec
@@ -334,3 +334,4 @@ playTraceAux (mkError error) _ = mkError error
 
 playTrace : PosixTime → Contract → List TransactionInput → TransactionOutput
 playTrace minTime c = playTraceAux (mkTransactionOutput [] [] (emptyState minTime) c)
+-}

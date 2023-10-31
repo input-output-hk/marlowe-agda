@@ -5,7 +5,7 @@ module Marlowe.Semantics.Reduce where
 open import Agda.Builtin.Int using (Int)
 open import Data.Bool using (Bool; if_then_else_; not; _∧_; _∨_; true; false)
 open import Data.Bool.Properties as 𝔹 using ()
-open import Data.Integer using (_<?_; _≤?_; _≟_ ; _⊔_; _⊓_; _-_; 0ℤ ; _≤_ ; _>_ ; _≥_ ; _<_)
+open import Data.Integer using (_<?_; _≤?_; _≟_ ; _⊔_; _⊓_; _+_; _-_; 0ℤ ; _≤_ ; _>_ ; _≥_ ; _<_; ∣_∣; +_)
 open import Data.Integer.Properties as ℤ using ()
 open import Data.List using (List; []; _∷_; _++_; foldr; reverse; [_]; null)
 open import Data.Maybe using (Maybe; just; nothing; fromMaybe)
@@ -26,10 +26,8 @@ open import Marlowe.Semantics.Operate using (
   ReduceNonPositivePay;
   ReducePartialPay;
   ReduceShadowing;
-  ReduceAssertionFailed;
-  moneyInAccount;
-  updateMoneyInAccount;
-  addMoneyToAccount)
+  ReduceAssertionFailed
+  )
 open import Primitives
 open import Relation.Nullary.Decidable using (⌊_⌋)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
@@ -59,13 +57,13 @@ data _⇀_ : Configuration → Configuration → Set where
     ∀ { e : Environment }
       { ws : List ReduceWarning }
       { ps : List Payment }
-      { as : AssocList (AccountId × Token) Int }
+      { as : AssocList (AccountId × Token) ℕ }
       { cs : AssocList ChoiceId Int }
       { vs : AssocList ValueId Int }
       { m : PosixTime }
       { a : AccountId }
       { t : Token }
-      { i : Int }
+      { i : ℕ }
     --------------------------------------------
     → record {
         contract = Close ;
@@ -133,9 +131,10 @@ data _⇀_ : Configuration → Configuration → Set where
     → ℰ⟦ v ⟧ e s > 0ℤ
     -----------------------------
     → let value = ℰ⟦ v ⟧ e s
-          sₛ = (aₛ , t) ‼ᵃ accounts s default 0ℤ
-          sₜ = (aₜ , t) ‼ᵃ accounts s default 0ℤ
-          paid = sₛ ⊓ value
+          sₛ = (aₛ , t) ‼ᵃ accounts s default 0
+          sₜ = (aₜ , t) ‼ᵃ accounts s default 0
+          paid = (+ sₛ) ⊓ value
+          as = ((aₜ , t) , ∣ (+ sₜ) + paid ∣) ↑ (((aₛ , t) , ∣ (+ sₛ) - paid ∣) ↑ accounts s)
       in
       record {
         contract = Pay aₛ (mkAccount aₜ) t v c ;
@@ -147,12 +146,7 @@ data _⇀_ : Configuration → Configuration → Set where
       ⇀
       record {
         contract = c ;
-        state = record s {
-          accounts =
-            let v = sₛ - paid
-                as = addMoneyToAccount aₜ t paid (accounts s)
-            in updateMoneyInAccount aₛ t v as
-          } ;
+        state = record s { accounts = as } ;
         environment = e ;
         warnings = ws ++ [ if ⌊ paid <? value ⌋
             then ReducePartialPay aₛ (mkAccount aₜ) t paid value
@@ -174,8 +168,9 @@ data _⇀_ : Configuration → Configuration → Set where
     → ℰ⟦ v ⟧ e s > 0ℤ
     -----------------------------
     → let value = ℰ⟦ v ⟧ e s
-          available = moneyInAccount aₓ t (accounts s)
-          paid = available ⊓ value
+          available = (aₓ , t) ‼ᵃ accounts s default 0
+          paid = (+ available) ⊓ value
+          as = ((aₓ , t) , ∣ (+ available) - paid ∣) ↑ accounts s
       in
       record {
         contract = Pay aₓ (mkParty p) t v c ;
@@ -187,15 +182,13 @@ data _⇀_ : Configuration → Configuration → Set where
       ⇀
       record {
         contract = c ;
-        state = record s {
-            accounts = updateMoneyInAccount aₓ t (available - paid) (accounts s)
-          } ;
+        state = record s { accounts = as } ;
         environment = e ;
         warnings = ws ++ [ if ⌊ paid <? value ⌋
             then ReducePartialPay aₓ (mkParty p) t paid value
             else ReduceNoWarning
           ] ;
-        payments = ps ++ [ mkPayment aₓ (mkParty p) t paid ]
+        payments = ps ++ [ mkPayment aₓ (mkParty p) t (∣ paid ∣) ]
       }
 
   IfTrue :
@@ -250,18 +243,18 @@ data _⇀_ : Configuration → Configuration → Set where
 
   WhenTimeout :
     ∀ { s : State }
-      { e : Environment }
+      { startTime endTime t : PosixTime }
       { o : Observation }
       { c : Contract }
       { ws : List ReduceWarning }
       { ps : List Payment }
-      { t : ℕ }
       { cs : List Case }
-    → let (mkPosixTime startTime) = proj₁ (timeInterval e) in startTime ℕ.≥ t
-    → let (mkPosixTime endTime) = proj₂ (timeInterval e) in endTime ℕ.≥ t
+    → t before startTime
+    → t before endTime
     -----------------------------------------------------------------------
-    → record {
-        contract = When cs (mkTimeout (mkPosixTime t)) c ;
+    → let e = mkEnvironment (startTime , endTime) in
+      record {
+        contract = When cs (mkTimeout t) c ;
         state = s;
         environment = e ;
         warnings = ws ;
@@ -432,20 +425,18 @@ data Quiescent : Configuration → Set where
         }
 
   waiting :
-    ∀ { e : Environment }
+    ∀ { startTime endTime t m : PosixTime }
       { cases : List Case }
-      { as : AssocList (AccountId × Token) Int }
+      { as : AssocList (AccountId × Token) ℕ }
       { cs : AssocList ChoiceId Int }
       { vs : AssocList ValueId Int }
-      { m : PosixTime }
-      { t : ℕ }
       { c : Contract }
       { ws : List ReduceWarning }
       { ps : List Payment }
-    → let (mkPosixTime startTime) = proj₁ (timeInterval e) in startTime ℕ.< t
-    -----------------------------------------------------------------------
+    → t after startTime
+    ------------------------------------------
     → Quiescent record {
-          contract = When cases (mkTimeout (mkPosixTime t)) c ;
+          contract = When cases (mkTimeout t) c ;
           state =
             record
               { accounts = as ;
@@ -453,7 +444,7 @@ data Quiescent : Configuration → Set where
                 boundValues = vs ;
                 minTime = m
               } ;
-            environment = e ;
+            environment = mkEnvironment (startTime , endTime) ;
             warnings = ws ;
             payments = ps
         }
@@ -465,15 +456,10 @@ Quiescent¬⇀ :
   ---------------------------
   → ¬ (C₁ ⇀ C₂)
 Quiescent¬⇀ close ()
-Quiescent¬⇀ { record
-  { contract = When _ (mkTimeout (mkPosixTime (ℕ.suc _))) _
-  ; state = _
-  ; environment = mkEnvironment (mkPosixTime (ℕ.suc n₁) , _)
-  ; warnings = _
-  ; payments = _
-  }} (waiting (ℕ.s≤s x)) (WhenTimeout (ℕ.s≤s x₁) _) =
-  let p = ℕ.1+n≰n {n₁}
-      q = ℕ.≤-trans x x₁
+Quiescent¬⇀ (waiting {mkPosixTime ℕ.zero} {_} ℕ.z≤n) (WhenTimeout {_} {mkPosixTime ℕ.zero} () _)
+Quiescent¬⇀ (waiting {mkPosixTime (ℕ.suc _)} {_} (ℕ.s≤s x)) (WhenTimeout {_} {mkPosixTime (ℕ.suc _)} {_} {mkPosixTime (ℕ.suc n)} (ℕ.s≤s x₁) _) =
+  let p = ℕ.1+n≰n {n}
+      q = ℕ.≤-trans x₁ x
   in p q
 
 -- If a configuration reduces, it is not quiescent
@@ -521,7 +507,6 @@ progress record
   ; warnings = _
   ; payments = _
   } = step CloseRefund
-
 progress record
   { contract = Pay a (mkAccount p) t v c
   ; state = s
@@ -530,7 +515,7 @@ progress record
   ; payments = _
   } with ℰ⟦ v ⟧ e s ≤? 0ℤ
 ... | yes q = let t = PayNonPositive q in step t
-... | no q = {!!}
+... | no q = let t = PayInternalTransfer (ℤ.≰⇒> q) in step t
 progress record
   { contract = Pay a (mkParty p) t v c
   ; state = s
@@ -539,8 +524,7 @@ progress record
   ; payments = _
   } with ℰ⟦ v ⟧ e s ≤? 0ℤ
 ... | yes q = let t = PayNonPositive q in step t
-... | no q = {!!}
-
+... | no q = let t = PayExternal (ℤ.≰⇒> q) in step t
 progress record
   { contract = If o c₁ c₂
   ; state = s
@@ -550,7 +534,6 @@ progress record
   } with 𝒪⟦ o ⟧ e s 𝔹.≟ true
 ... | yes p = let t = IfTrue p in step t
 ... | no p = let t = IfFalse (𝔹.¬-not p) in step t
-
 progress record
   { contract = When cs (mkTimeout (mkPosixTime t)) c
   ; state = record
@@ -575,9 +558,9 @@ progress record
   ; environment = _
   ; warnings = _
   ; payments = _
-  } with i ‼ᵛ vs
-... | just v = {!!}
-... | nothing = {!!} -- step (LetNoShadow {!!})
+  } with i ∈ᵛ? vs
+... | yes p = {!!} -- step (LetShadow ?)
+... | no p = {!!} -- step (LetNoShadow {!!})
 
 progress record
   { contract = Assert o c
