@@ -4,7 +4,9 @@ module Marlowe.Semantics.Reduce where
 
 open import Agda.Builtin.Int using (Int)
 open import Data.Bool using (Bool; if_then_else_; not; _∧_; _∨_; true; false)
+open import Data.Bool.Properties as 𝔹 using ()
 open import Data.Integer using (_<?_; _≤?_; _≟_ ; _⊔_; _⊓_; _-_; 0ℤ ; _≤_ ; _>_ ; _≥_ ; _<_)
+open import Data.Integer.Properties as ℤ using ()
 open import Data.List using (List; []; _∷_; _++_; foldr; reverse; [_]; null)
 open import Data.Maybe using (Maybe; just; nothing; fromMaybe)
 open import Data.Nat as ℕ using (ℕ)
@@ -131,8 +133,9 @@ data _⇀_ : Configuration → Configuration → Set where
     → ℰ⟦ v ⟧ e s > 0ℤ
     -----------------------------
     → let value = ℰ⟦ v ⟧ e s
-          available = moneyInAccount aₛ t (accounts s)
-          paid = available ⊓ value
+          sₛ = (aₛ , t) ‼ᵃ accounts s default 0ℤ
+          sₜ = (aₜ , t) ‼ᵃ accounts s default 0ℤ
+          paid = sₛ ⊓ value
       in
       record {
         contract = Pay aₛ (mkAccount aₜ) t v c ;
@@ -144,9 +147,17 @@ data _⇀_ : Configuration → Configuration → Set where
       ⇀
       record {
         contract = c ;
-        state = record s { accounts = updateMoneyInAccount aₛ t (available - paid) (addMoneyToAccount aₜ t paid (accounts s)) } ;
+        state = record s {
+          accounts =
+            let v = sₛ - paid
+                as = addMoneyToAccount aₜ t paid (accounts s)
+            in updateMoneyInAccount aₛ t v as
+          } ;
         environment = e ;
-        warnings = ws ++ [ if ⌊ paid <? value ⌋ then ReducePartialPay aₛ (mkAccount aₜ) t paid value else ReduceNoWarning ];
+        warnings = ws ++ [ if ⌊ paid <? value ⌋
+            then ReducePartialPay aₛ (mkAccount aₜ) t paid value
+            else ReduceNoWarning
+          ];
         payments = ps
       }
 
@@ -176,23 +187,28 @@ data _⇀_ : Configuration → Configuration → Set where
       ⇀
       record {
         contract = c ;
-        state = record s {accounts = updateMoneyInAccount aₓ t (available - paid) (accounts s)} ;
+        state = record s {
+            accounts = updateMoneyInAccount aₓ t (available - paid) (accounts s)
+          } ;
         environment = e ;
-        warnings = ws ++ [ if ⌊ paid <? value ⌋ then ReducePartialPay aₓ (mkParty p) t paid value else ReduceNoWarning ] ;
+        warnings = ws ++ [ if ⌊ paid <? value ⌋
+            then ReducePartialPay aₓ (mkParty p) t paid value
+            else ReduceNoWarning
+          ] ;
         payments = ps ++ [ mkPayment aₓ (mkParty p) t paid ]
       }
 
   IfTrue :
     ∀ { s : State }
       { e : Environment }
-      { ο : Observation }
+      { o : Observation }
       { c₁ c₂ : Contract }
       { ws : List ReduceWarning }
       { ps : List Payment }
-    → 𝒪⟦ ο ⟧ e s ≡ true
+    → 𝒪⟦ o ⟧ e s ≡ true
     -----------------------------
     → record {
-        contract = If ο c₁ c₂ ;
+        contract = If o c₁ c₂ ;
         state = s ;
         environment = e ;
         warnings = ws ;
@@ -210,14 +226,14 @@ data _⇀_ : Configuration → Configuration → Set where
   IfFalse :
     ∀ { s : State }
       { e : Environment }
-      { ο : Observation }
+      { o : Observation }
       { c₁ c₂ : Contract }
       { ws : List ReduceWarning }
       { ps : List Payment }
-    → 𝒪⟦ ο ⟧ e s ≡ false
+    → 𝒪⟦ o ⟧ e s ≡ false
     -----------------------------
     → record {
-        contract = If ο c₁ c₂ ;
+        contract = If o c₁ c₂ ;
         state = s ;
         environment = e ;
         warnings = ws ;
@@ -235,7 +251,7 @@ data _⇀_ : Configuration → Configuration → Set where
   WhenTimeout :
     ∀ { s : State }
       { e : Environment }
-      { ο : Observation }
+      { o : Observation }
       { c : Contract }
       { ws : List ReduceWarning }
       { ps : List Payment }
@@ -263,7 +279,7 @@ data _⇀_ : Configuration → Configuration → Set where
   LetShadow :
     ∀ { s : State }
       { e : Environment }
-      { ο : Observation }
+      { o : Observation }
       { c : Contract }
       { vₓ : ValueId }
       { v : Value }
@@ -291,14 +307,14 @@ data _⇀_ : Configuration → Configuration → Set where
   LetNoShadow :
     ∀ { s : State }
       { e : Environment }
-      { ο : Observation }
+      { o : Observation }
       { c : Contract }
       { vₓ : ValueId }
       { v : Value }
       { ws : List ReduceWarning }
       { ps : List Payment }
     → vₓ ‼ᵛ boundValues s ≡ nothing
-    -------------------------------    
+    -------------------------------
     → record {
         contract = Let vₓ v c ;
         state = s ;
@@ -318,14 +334,14 @@ data _⇀_ : Configuration → Configuration → Set where
   AssertTrue :
     ∀ { s : State }
       { e : Environment }
-      { ο : Observation }
+      { o : Observation }
       { c : Contract }
       { ws : List ReduceWarning }
       { ps : List Payment }
-    → 𝒪⟦ ο ⟧ e s ≡ true
+    → 𝒪⟦ o ⟧ e s ≡ true
     -----------------------------
     → record {
-        contract = Assert ο c ;
+        contract = Assert o c ;
         state = s ;
         environment = e ;
         warnings = ws ;
@@ -343,14 +359,14 @@ data _⇀_ : Configuration → Configuration → Set where
   AssertFalse :
     ∀ { s : State }
       { e : Environment }
-      { ο : Observation }
+      { o : Observation }
       { c : Contract }
       { ws : List ReduceWarning }
       { ps : List Payment }
-    → 𝒪⟦ ο ⟧ e s ≡ false
+    → 𝒪⟦ o ⟧ e s ≡ false
     -----------------------------
     → record {
-        contract = Assert ο c ;
+        contract = Assert o c ;
         state = s ;
         environment = e ;
         warnings = ws;
@@ -417,7 +433,6 @@ data Quiescent : Configuration → Set where
 
   waiting :
     ∀ { e : Environment }
-      { case : Case }
       { cases : List Case }
       { as : AssocList (AccountId × Token) Int }
       { cs : AssocList ChoiceId Int }
@@ -430,7 +445,7 @@ data Quiescent : Configuration → Set where
     → let (mkPosixTime startTime) = proj₁ (timeInterval e) in startTime ℕ.< t
     -----------------------------------------------------------------------
     → Quiescent record {
-          contract = When (case ∷ cases) (mkTimeout (mkPosixTime t)) c ;
+          contract = When cases (mkTimeout (mkPosixTime t)) c ;
           state =
             record
               { accounts = as ;
@@ -451,7 +466,7 @@ Quiescent¬⇀ :
   → ¬ (C₁ ⇀ C₂)
 Quiescent¬⇀ close ()
 Quiescent¬⇀ { record
-  { contract = When (_ ∷ _) (mkTimeout (mkPosixTime (ℕ.suc _))) _
+  { contract = When _ (mkTimeout (mkPosixTime (ℕ.suc _))) _
   ; state = _
   ; environment = mkEnvironment (mkPosixTime (ℕ.suc n₁) , _)
   ; warnings = _
@@ -467,3 +482,109 @@ Quiescent¬⇀ { record
   → C₁ ⇀ C₂
   → ¬ Quiescent C₁
 ⇀¬Quiescent C₁⇀C₂ q = Quiescent¬⇀ q C₁⇀C₂
+
+data Progress (C : Configuration) : Set where
+
+  step : ∀ {D}
+    → C ⇀ D
+      ----------
+    → Progress C
+
+  done :
+      Quiescent C
+      -----------
+    → Progress C
+
+
+progress : ∀ (C : Configuration) → Progress C
+progress record
+  { contract = Close
+  ; state = record
+    { accounts = [] ;
+      choices = _ ;
+      boundValues = _ ;
+      minTime = _
+    }
+  ; environment = _
+  ; warnings = _
+  ; payments = _
+  } = done close
+progress record
+  { contract = Close
+  ; state = record
+    { accounts = a ∷ as ;
+      choices = _ ;
+      boundValues = _ ;
+      minTime = _
+    }
+  ; environment = _
+  ; warnings = _
+  ; payments = _
+  } = step CloseRefund
+
+progress record
+  { contract = Pay a (mkAccount p) t v c
+  ; state = s
+  ; environment = e
+  ; warnings = _
+  ; payments = _
+  } with ℰ⟦ v ⟧ e s ≤? 0ℤ
+... | yes q = let t = PayNonPositive q in step t
+... | no q = {!!}
+progress record
+  { contract = Pay a (mkParty p) t v c
+  ; state = s
+  ; environment = e
+  ; warnings = _
+  ; payments = _
+  } with ℰ⟦ v ⟧ e s ≤? 0ℤ
+... | yes q = let t = PayNonPositive q in step t
+... | no q = {!!}
+
+progress record
+  { contract = If o c₁ c₂
+  ; state = s
+  ; environment = e
+  ; warnings = _
+  ; payments = _
+  } with 𝒪⟦ o ⟧ e s 𝔹.≟ true
+... | yes p = let t = IfTrue p in step t
+... | no p = let t = IfFalse (𝔹.¬-not p) in step t
+
+progress record
+  { contract = When cs (mkTimeout (mkPosixTime t)) c
+  ; state = record
+    { accounts = _ ;
+      choices = _ ;
+      boundValues = _ ;
+      minTime = _
+    }
+  ; environment = _
+  ; warnings = _
+  ; payments = _
+  } = {!!}
+
+progress record
+  { contract = Let i v c
+  ; state = record
+    { accounts = _ ;
+      choices = _ ;
+      boundValues = vs ;
+      minTime = _
+    }
+  ; environment = _
+  ; warnings = _
+  ; payments = _
+  } with i ‼ᵛ vs
+... | just v = {!!}
+... | nothing = {!!} -- step (LetNoShadow {!!})
+
+progress record
+  { contract = Assert o c
+  ; state = s
+  ; environment = e
+  ; warnings = _
+  ; payments = _
+  } with 𝒪⟦ o ⟧ e s 𝔹.≟ true
+... | yes p = let t = AssertTrue p in step t
+... | no p = let t = AssertFalse (𝔹.¬-not p) in step t
