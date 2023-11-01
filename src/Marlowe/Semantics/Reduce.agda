@@ -11,8 +11,8 @@ open import Data.List using (List; []; _∷_; _++_; foldr; reverse; [_]; null)
 open import Data.List.Relation.Unary.Any using (satisfied; lookup)
 open import Data.List.Relation.Unary.All.Properties using (¬Any⇒All¬)
 open import Data.Maybe using (Maybe; just; nothing; fromMaybe)
-open import Data.Nat as ℕ using (ℕ)
-open import Data.Nat.Properties as ℕ using ()
+open import Data.Nat as ℕ using (ℕ; suc; s≤s)
+open import Data.Nat.Properties as ℕ using (1+n≰n; ≤-trans)
 open import Data.Product using (Σ; _,_; ∃; Σ-syntax; ∃-syntax)
 open import Data.Product using (_×_; proj₁; proj₂)
 import Data.String as String
@@ -458,10 +458,10 @@ Quiescent¬⇀ :
   ---------------------------
   → ¬ (C₁ ⇀ C₂)
 Quiescent¬⇀ close ()
-Quiescent¬⇀ (waiting {_} {mkPosixTime (ℕ.suc tₑ)} (ℕ.s≤s p₁)) (WhenTimeout {_} {_} (ℕ.s≤s p₂) (ℕ.s≤s p₃)) =
-  let tr = ℕ.≤-trans p₃ p₂
-      p = ℕ.1+n≰n {tₑ}
-      q = ℕ.≤-trans p₁ tr
+Quiescent¬⇀ (waiting {_} {mkPosixTime (suc tₑ)} (s≤s p₁)) (WhenTimeout {_} {_} (s≤s p₂) (s≤s p₃)) =
+  let tr = ≤-trans p₃ p₂
+      p = 1+n≰n {tₑ}
+      q = ≤-trans p₁ tr
   in p q
 
 -- If a configuration reduces, it is not quiescent
@@ -544,11 +544,12 @@ progress record
       boundValues = _ ;
       minTime = _
     }
-  ; environment = _
+  ; environment = mkEnvironment (mkPosixTime tₛ , mkPosixTime tₑ)
   ; warnings = _
   ; payments = _
-  } = {!!}
-
+  } with t ℕ.>? tₑ
+... | yes p = done (waiting p)
+... | no ¬p = let t = WhenTimeout {!!} {!!} in step t
 progress record
   { contract = Let i v c
   ; state = record
@@ -566,7 +567,6 @@ progress record
           z = i ‼ᵛ vs
           t = LetShadow {!!} in step t
 ... | no ¬p = let t = LetNoShadow (¬Any⇒All¬ vs ¬p) in step t
-
 progress record
   { contract = Assert o c
   ; state = s
