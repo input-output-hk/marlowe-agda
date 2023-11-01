@@ -8,6 +8,8 @@ open import Data.Bool.Properties as 𝔹 using ()
 open import Data.Integer using (_<?_; _≤?_; _≟_ ; _⊔_; _⊓_; _+_; _-_; 0ℤ ; _≤_ ; _>_ ; _≥_ ; _<_; ∣_∣; +_)
 open import Data.Integer.Properties as ℤ using ()
 open import Data.List using (List; []; _∷_; _++_; foldr; reverse; [_]; null)
+open import Data.List.Relation.Unary.Any using (satisfied; lookup)
+open import Data.List.Relation.Unary.All.Properties using (¬Any⇒All¬)
 open import Data.Maybe using (Maybe; just; nothing; fromMaybe)
 open import Data.Nat as ℕ using (ℕ)
 open import Data.Nat.Properties as ℕ using ()
@@ -159,7 +161,7 @@ data _⇀_ : Configuration → Configuration → Set where
     ∀ { s : State }
       { e : Environment }
       { v : Value }
-      { aₓ : AccountId }
+      { a : AccountId }
       { t : Token }
       { c : Contract }
       { ws : List ReduceWarning }
@@ -168,12 +170,12 @@ data _⇀_ : Configuration → Configuration → Set where
     → ℰ⟦ v ⟧ e s > 0ℤ
     -----------------------------
     → let value = ℰ⟦ v ⟧ e s
-          available = (aₓ , t) ‼ᵃ accounts s default 0
+          available = (a , t) ‼ᵃ accounts s default 0
           paid = (+ available) ⊓ value
-          as = ((aₓ , t) , ∣ (+ available) - paid ∣) ↑ accounts s
+          as = ((a , t) , ∣ (+ available) - paid ∣) ↑ accounts s
       in
       record {
-        contract = Pay aₓ (mkParty p) t v c ;
+        contract = Pay a (mkParty p) t v c ;
         state = s ;
         environment = e ;
         warnings = ws ;
@@ -185,10 +187,10 @@ data _⇀_ : Configuration → Configuration → Set where
         state = record s { accounts = as } ;
         environment = e ;
         warnings = ws ++ [ if ⌊ paid <? value ⌋
-            then ReducePartialPay aₓ (mkParty p) t paid value
+            then ReducePartialPay a (mkParty p) t paid value
             else ReduceNoWarning
           ] ;
-        payments = ps ++ [ mkPayment aₓ (mkParty p) t (∣ paid ∣) ]
+        payments = ps ++ [ mkPayment a (mkParty p) t (∣ paid ∣) ]
       }
 
   IfTrue :
@@ -243,16 +245,16 @@ data _⇀_ : Configuration → Configuration → Set where
 
   WhenTimeout :
     ∀ { s : State }
-      { startTime endTime t : PosixTime }
+      { tₛ tₑ t : PosixTime }
       { o : Observation }
       { c : Contract }
       { ws : List ReduceWarning }
       { ps : List Payment }
       { cs : List Case }
-    → t before startTime
-    → t before endTime
-    -----------------------------------------------------------------------
-    → let e = mkEnvironment (startTime , endTime) in
+    → tₛ ≤ᵖ tₑ
+    → t ≤ᵖ tₛ
+    -----------------------------
+    → let e = mkEnvironment (tₛ , tₑ) in
       record {
         contract = When cs (mkTimeout t) c ;
         state = s;
@@ -274,15 +276,15 @@ data _⇀_ : Configuration → Configuration → Set where
       { e : Environment }
       { o : Observation }
       { c : Contract }
-      { vₓ : ValueId }
+      { i : ValueId }
       { v : Value }
-      { i : Int }
+      { vᵢ : Int }
       { ws : List ReduceWarning }
       { ps : List Payment }
-    → vₓ ‼ᵛ boundValues s ≡ just i
-    ------------------------------
+    → i ‼ᵛ boundValues s ≡ just vᵢ
+    -----------------------------
     → record {
-        contract = Let vₓ v c ;
+        contract = Let i v c ;
         state = s ;
         environment = e ;
         warnings = ws ;
@@ -293,7 +295,7 @@ data _⇀_ : Configuration → Configuration → Set where
         contract = c ;
         state = s ;
         environment = e ;
-        warnings = ws ++ [ ReduceShadowing vₓ i (ℰ⟦ v ⟧ e s) ] ;
+        warnings = ws ++ [ ReduceShadowing i vᵢ (ℰ⟦ v ⟧ e s) ] ;
         payments = ps
       }
 
@@ -302,14 +304,14 @@ data _⇀_ : Configuration → Configuration → Set where
       { e : Environment }
       { o : Observation }
       { c : Contract }
-      { vₓ : ValueId }
+      { i : ValueId }
       { v : Value }
       { ws : List ReduceWarning }
       { ps : List Payment }
-    → vₓ ‼ᵛ boundValues s ≡ nothing
-    -------------------------------
+    → i ∉ boundValues s
+    -----------------------------
     → record {
-        contract = Let vₓ v c ;
+        contract = Let i v c ;
         state = s ;
         environment = e ;
         warnings = ws ;
@@ -318,7 +320,7 @@ data _⇀_ : Configuration → Configuration → Set where
       ⇀
       record {
         contract = c ;
-        state = record s { boundValues = (vₓ , ℰ⟦ v ⟧ e s) ↑ boundValues s } ;
+        state = record s { boundValues = (i , ℰ⟦ v ⟧ e s) ↑ boundValues s } ;
         environment = e ;
         warnings = ws ++ [ ReduceNoWarning ] ;
         payments = ps
@@ -425,7 +427,7 @@ data Quiescent : Configuration → Set where
         }
 
   waiting :
-    ∀ { startTime endTime t m : PosixTime }
+    ∀ { tₛ tₑ t m : PosixTime }
       { cases : List Case }
       { as : AssocList (AccountId × Token) ℕ }
       { cs : AssocList ChoiceId Int }
@@ -433,7 +435,7 @@ data Quiescent : Configuration → Set where
       { c : Contract }
       { ws : List ReduceWarning }
       { ps : List Payment }
-    → t after startTime
+    → tₑ <ᵖ t
     ------------------------------------------
     → Quiescent record {
           contract = When cases (mkTimeout t) c ;
@@ -444,7 +446,7 @@ data Quiescent : Configuration → Set where
                 boundValues = vs ;
                 minTime = m
               } ;
-            environment = mkEnvironment (startTime , endTime) ;
+            environment = mkEnvironment (tₛ , tₑ) ;
             warnings = ws ;
             payments = ps
         }
@@ -456,10 +458,10 @@ Quiescent¬⇀ :
   ---------------------------
   → ¬ (C₁ ⇀ C₂)
 Quiescent¬⇀ close ()
-Quiescent¬⇀ (waiting {mkPosixTime ℕ.zero} {_} ℕ.z≤n) (WhenTimeout {_} {mkPosixTime ℕ.zero} () _)
-Quiescent¬⇀ (waiting {mkPosixTime (ℕ.suc _)} {_} (ℕ.s≤s x)) (WhenTimeout {_} {mkPosixTime (ℕ.suc _)} {_} {mkPosixTime (ℕ.suc n)} (ℕ.s≤s x₁) _) =
-  let p = ℕ.1+n≰n {n}
-      q = ℕ.≤-trans x₁ x
+Quiescent¬⇀ (waiting {_} {mkPosixTime (ℕ.suc tₑ)} (ℕ.s≤s p₁)) (WhenTimeout {_} {_} (ℕ.s≤s p₂) (ℕ.s≤s p₃)) =
+  let tr = ℕ.≤-trans p₃ p₂
+      p = ℕ.1+n≰n {tₑ}
+      q = ℕ.≤-trans p₁ tr
   in p q
 
 -- If a configuration reduces, it is not quiescent
@@ -515,7 +517,7 @@ progress record
   ; payments = _
   } with ℰ⟦ v ⟧ e s ≤? 0ℤ
 ... | yes q = let t = PayNonPositive q in step t
-... | no q = let t = PayInternalTransfer (ℤ.≰⇒> q) in step t
+... | no ¬p = let t = PayInternalTransfer (ℤ.≰⇒> ¬p) in step t
 progress record
   { contract = Pay a (mkParty p) t v c
   ; state = s
@@ -524,7 +526,7 @@ progress record
   ; payments = _
   } with ℰ⟦ v ⟧ e s ≤? 0ℤ
 ... | yes q = let t = PayNonPositive q in step t
-... | no q = let t = PayExternal (ℤ.≰⇒> q) in step t
+... | no ¬p = let t = PayExternal (ℤ.≰⇒> ¬p) in step t
 progress record
   { contract = If o c₁ c₂
   ; state = s
@@ -533,7 +535,7 @@ progress record
   ; payments = _
   } with 𝒪⟦ o ⟧ e s 𝔹.≟ true
 ... | yes p = let t = IfTrue p in step t
-... | no p = let t = IfFalse (𝔹.¬-not p) in step t
+... | no ¬p = let t = IfFalse (𝔹.¬-not ¬p) in step t
 progress record
   { contract = When cs (mkTimeout (mkPosixTime t)) c
   ; state = record
@@ -559,8 +561,11 @@ progress record
   ; warnings = _
   ; payments = _
   } with i ∈ᵛ? vs
-... | yes p = {!!} -- step (LetShadow ?)
-... | no p = {!!} -- step (LetNoShadow {!!})
+... | yes p =
+      let (x , y) = lookup p
+          z = i ‼ᵛ vs
+          t = LetShadow {!!} in step t
+... | no ¬p = let t = LetNoShadow (¬Any⇒All¬ vs ¬p) in step t
 
 progress record
   { contract = Assert o c
@@ -570,4 +575,4 @@ progress record
   ; payments = _
   } with 𝒪⟦ o ⟧ e s 𝔹.≟ true
 ... | yes p = let t = AssertTrue p in step t
-... | no p = let t = AssertFalse (𝔹.¬-not p) in step t
+... | no ¬p = let t = AssertFalse (𝔹.¬-not ¬p) in step t

@@ -10,6 +10,7 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Maybe using (Maybe; just; nothing; fromMaybe)
 open import Data.Nat as ℕ using (ℕ)
 open import Data.List.Relation.Unary.Any using (Any; any?; lookup)
+open import Data.List.Relation.Unary.All using (All)
 open import Function
 open import Relation.Binary
 open import Relation.Binary.PropositionalEquality
@@ -32,14 +33,11 @@ record PosixTime : Set where
   field
     getPosixTime : ℕ
 
-_after_ : PosixTime → PosixTime → Set
-_after_ (mkPosixTime x) (mkPosixTime y) = x ℕ.≥ y
+_<ᵖ_ : PosixTime → PosixTime → Set
+_<ᵖ_ (mkPosixTime x) (mkPosixTime y) = x ℕ.< y
 
-_before_ : PosixTime → PosixTime → Set
-_before_ (mkPosixTime x) (mkPosixTime y) = x ℕ.< y
-
-postulate
-  _after?_ : ∀ (x y : PosixTime) → Dec (x after y)
+_≤ᵖ_ : PosixTime → PosixTime → Set
+_≤ᵖ_ (mkPosixTime x) (mkPosixTime y) = x ℕ.≤ y
 
 -- see also: https://stackoverflow.com/questions/58705398/is-there-an-associative-list-in-the-standard-library
 AssocList : Set → Set → Set
@@ -51,6 +49,9 @@ private
 
 _∈_ : A → AssocList A B → Set
 a ∈ abs = Any ((a ≡_) ∘ proj₁) abs
+
+_∉_ : A → AssocList A B → Set
+a ∉ abs = All ((a ≢_) ∘ proj₁) abs
 
 module Decidable {A : Set} (_≟_ : DecidableEquality A) where
 
