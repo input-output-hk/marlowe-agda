@@ -150,8 +150,8 @@ data _⇀_ : Configuration → Configuration → Set where
         state = record s
           { accounts = ((aₜ , t) , (sₜ ℕ.+ n)) ↑ (((aₛ , t) , (sₛ ℕ.∸ n)) ↑ accounts s) } ;
         environment = e ;
-        warnings = ws ++ [ if ⌊ sₛ ℕ.<? n ⌋
-            then ReducePartialPay aₛ (mkAccount aₜ) t (+ (sₛ ℕ.⊓ n)) (+ n)
+        warnings = ws ++ [ if (sₛ ℕ.<ᵇ n)
+            then ReducePartialPay aₛ (mkAccount aₜ) t sₛ n
             else ReduceNoWarning
           ];
         payments = ps
@@ -185,8 +185,8 @@ data _⇀_ : Configuration → Configuration → Set where
         state = record s
           { accounts = ((aₓ , t) , (sₓ ℕ.∸ n)) ↑ accounts s } ;
         environment = e ;
-        warnings = ws ++ [ if ⌊ sₓ ℕ.<? n ⌋
-            then ReducePartialPay aₓ (mkParty p) t (+ (sₓ ℕ.⊓ n)) (+ n)
+        warnings = ws ++ [ if (sₓ ℕ.<ᵇ n)
+            then ReducePartialPay aₓ (mkParty p) t sₓ n
             else ReduceNoWarning
           ] ;
         payments = ps ++ [ mkPayment aₓ (mkParty p) t (sₓ ℕ.⊓ n) ]

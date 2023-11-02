@@ -7,7 +7,7 @@ open import Data.Bool using (Bool; if_then_else_; not; _∧_; _∨_; true; false
 open import Data.Integer using (_<?_; _≤?_; _≟_ ; _⊔_; _⊓_; _-_; 0ℤ ; _≤_ ; _>_ ; _≥_ ; _<_)
 open import Data.List using (List; []; _∷_; _++_; foldr; reverse; [_]; null)
 open import Data.Maybe using (Maybe; just; nothing; fromMaybe)
-open import Data.Nat as ℕ using ()
+open import Data.Nat as ℕ using (ℕ)
 open import Data.Product using (Σ; _,_; ∃; Σ-syntax; ∃-syntax)
 open import Data.Product using (_×_; proj₁; proj₂)
 import Data.String as String
@@ -89,7 +89,7 @@ data ReduceEffect : Set where
 data ReduceWarning : Set where
   ReduceNoWarning : ReduceWarning
   ReduceNonPositivePay : AccountId → Payee → Token → Int → ReduceWarning
-  ReducePartialPay : AccountId → Payee → Token → Int → Int → ReduceWarning
+  ReducePartialPay : AccountId → Payee → Token → ℕ → ℕ → ReduceWarning
   ReduceShadowing : ValueId → Int → Int → ReduceWarning
   ReduceAssertionFailed : ReduceWarning
 
