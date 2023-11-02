@@ -133,11 +133,9 @@ data _⇀_ : Configuration → Configuration → Set where
       { ps : List Payment }
     → ℰ⟦ v ⟧ e s > 0ℤ
     -----------------------------
-    → let value = ℰ⟦ v ⟧ e s
+    → let n = ∣ ℰ⟦ v ⟧ e s ∣
           sₛ = (aₛ , t) ‼ᵃ accounts s default 0
           sₜ = (aₜ , t) ‼ᵃ accounts s default 0
-          paid = (+ sₛ) ⊓ value
-          as = ((aₜ , t) , ∣ (+ sₜ) + paid ∣) ↑ (((aₛ , t) , ∣ (+ sₛ) - paid ∣) ↑ accounts s)
       in
       record {
         contract = Pay aₛ (mkAccount aₜ) t v c ;
@@ -149,10 +147,11 @@ data _⇀_ : Configuration → Configuration → Set where
       ⇀
       record {
         contract = c ;
-        state = record s { accounts = as } ;
+        state = record s
+          { accounts = ((aₜ , t) , (sₜ ℕ.+ n)) ↑ (((aₛ , t) , (sₛ ℕ.∸ n)) ↑ accounts s) } ;
         environment = e ;
-        warnings = ws ++ [ if ⌊ paid <? value ⌋
-            then ReducePartialPay aₛ (mkAccount aₜ) t paid value
+        warnings = ws ++ [ if ⌊ sₛ ℕ.<? n ⌋
+            then ReducePartialPay aₛ (mkAccount aₜ) t (+ (sₛ ℕ.⊓ n)) (+ n)
             else ReduceNoWarning
           ];
         payments = ps
@@ -162,7 +161,7 @@ data _⇀_ : Configuration → Configuration → Set where
     ∀ { s : State }
       { e : Environment }
       { v : Value }
-      { a : AccountId }
+      { aₓ : AccountId }
       { t : Token }
       { c : Contract }
       { ws : List ReduceWarning }
@@ -170,13 +169,11 @@ data _⇀_ : Configuration → Configuration → Set where
       { p : Party }
     → ℰ⟦ v ⟧ e s > 0ℤ
     -----------------------------
-    → let value = ℰ⟦ v ⟧ e s
-          available = (a , t) ‼ᵃ accounts s default 0
-          paid = (+ available) ⊓ value
-          as = ((a , t) , ∣ (+ available) - paid ∣) ↑ accounts s
+    → let n = ∣ ℰ⟦ v ⟧ e s ∣
+          sₓ = (aₓ , t) ‼ᵃ accounts s default 0
       in
       record {
-        contract = Pay a (mkParty p) t v c ;
+        contract = Pay aₓ (mkParty p) t v c ;
         state = s ;
         environment = e ;
         warnings = ws ;
@@ -185,13 +182,14 @@ data _⇀_ : Configuration → Configuration → Set where
       ⇀
       record {
         contract = c ;
-        state = record s { accounts = as } ;
+        state = record s
+          { accounts = ((aₓ , t) , (sₓ ℕ.∸ n)) ↑ accounts s } ;
         environment = e ;
-        warnings = ws ++ [ if ⌊ paid <? value ⌋
-            then ReducePartialPay a (mkParty p) t paid value
+        warnings = ws ++ [ if ⌊ sₓ ℕ.<? n ⌋
+            then ReducePartialPay aₓ (mkParty p) t (+ (sₓ ℕ.⊓ n)) (+ n)
             else ReduceNoWarning
           ] ;
-        payments = ps ++ [ mkPayment a (mkParty p) t (∣ paid ∣) ]
+        payments = ps ++ [ mkPayment aₓ (mkParty p) t (sₓ ℕ.⊓ n) ]
       }
 
   IfTrue :
