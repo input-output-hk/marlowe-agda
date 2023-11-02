@@ -45,6 +45,7 @@ open Decidable _eqValueId_ renaming (_‼_ to _‼ᵛ_; _‼_default_ to _‼ᵛ
 
 open Environment using (timeInterval)
 open State using (accounts; boundValues; choices)
+open TimeInterval using (startTime)
 
 record Configuration : Set where
   field contract : Contract
@@ -245,20 +246,18 @@ data _⇀_ : Configuration → Configuration → Set where
 
   WhenTimeout :
     ∀ { s : State }
-      { tₛ tₑ t : PosixTime }
+      { t tₛ Δₜ : ℕ }
       { o : Observation }
       { c : Contract }
       { ws : List ReduceWarning }
       { ps : List Payment }
       { cs : List Case }
-    → tₛ ≤ᵖ tₑ
-    → t ≤ᵖ tₛ
+    → t ℕ.≤ tₛ
     -----------------------------
-    → let e = mkEnvironment (tₛ , tₑ) in
-      record {
-        contract = When cs (mkTimeout t) c ;
+    → record {
+        contract = When cs (mkTimeout (mkPosixTime t)) c ;
         state = s;
-        environment = e ;
+        environment = mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ) ;
         warnings = ws ;
         payments = ps
       }
@@ -266,7 +265,7 @@ data _⇀_ : Configuration → Configuration → Set where
       record {
         contract = c ;
         state = s ;
-        environment = e ;
+        environment = mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ) ;
         warnings = ws ++ [ ReduceNoWarning ] ;
         payments = ps
       }
@@ -427,7 +426,8 @@ data Quiescent : Configuration → Set where
         }
 
   waiting :
-    ∀ { tₛ tₑ t m : PosixTime }
+    ∀ { t tₛ Δₜ : ℕ }
+      { m : PosixTime }
       { cases : List Case }
       { as : AssocList (AccountId × Token) ℕ }
       { cs : AssocList ChoiceId Int }
@@ -435,10 +435,11 @@ data Quiescent : Configuration → Set where
       { c : Contract }
       { ws : List ReduceWarning }
       { ps : List Payment }
-    → tₑ <ᵖ t
+    → let tₑ = tₛ ℕ.+ Δₜ
+       in tₑ ℕ.< t
     ------------------------------------------
     → Quiescent record {
-          contract = When cases (mkTimeout t) c ;
+          contract = When cases (mkTimeout (mkPosixTime t)) c ;
           state =
             record
               { accounts = as ;
@@ -446,7 +447,7 @@ data Quiescent : Configuration → Set where
                 boundValues = vs ;
                 minTime = m
               } ;
-            environment = mkEnvironment (tₛ , tₑ) ;
+            environment = mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ) ;
             warnings = ws ;
             payments = ps
         }
@@ -458,11 +459,8 @@ Quiescent¬⇀ :
   ---------------------------
   → ¬ (C₁ ⇀ C₂)
 Quiescent¬⇀ close ()
-Quiescent¬⇀ (waiting {_} {mkPosixTime (suc tₑ)} (s≤s p₁)) (WhenTimeout {_} {_} (s≤s p₂) (s≤s p₃)) =
-  let tr = ≤-trans p₃ p₂
-      p = 1+n≰n {tₑ}
-      q = ≤-trans p₁ tr
-  in p q
+Quiescent¬⇀ (waiting {t} {tₛ} {Δₜ} (x)) (WhenTimeout {_} {t} {tₛ} {Δₜ} y) =
+  let ¬p = ℕ.≤⇒≯ (ℕ.≤-trans y (ℕ.m≤m+n tₛ Δₜ)) in ¬p x
 
 -- If a configuration reduces, it is not quiescent
 ⇀¬Quiescent :
@@ -483,7 +481,7 @@ data Progress (C : Configuration) : Set where
       -----------
     → Progress C
 
-
+{-
 progress : ∀ (C : Configuration) → Progress C
 progress record
   { contract = Close
@@ -544,12 +542,12 @@ progress record
       boundValues = _ ;
       minTime = _
     }
-  ; environment = mkEnvironment (mkPosixTime tₛ , mkPosixTime tₑ)
+  ; environment = e
   ; warnings = _
   ; payments = _
-  } with t ℕ.>? tₑ
+  } with t ℕ.>? PosixTime.getPosixTime (startTime (timeInterval e))
 ... | yes p = done (waiting p)
-... | no ¬p = let t = WhenTimeout {!!} {!!} in step t
+... | no ¬p = let t = WhenTimeout {!ℕ.≰⇒> ¬p!} in step t
 progress record
   { contract = Let i v c
   ; state = record
@@ -576,3 +574,4 @@ progress record
   } with 𝒪⟦ o ⟧ e s 𝔹.≟ true
 ... | yes p = let t = AssertTrue p in step t
 ... | no ¬p = let t = AssertFalse (𝔹.¬-not ¬p) in step t
+-}

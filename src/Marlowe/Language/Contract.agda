@@ -105,14 +105,8 @@ data Payee : Set where
 
 data Contract : Set
 
-
 data Case : Set where
   mkCase : Action → Contract → Case
-
-
-getAction : Case → Action
-getAction (mkCase action _) = action
-
 
 data Contract where
   Close : Contract
@@ -121,3 +115,8 @@ data Contract where
   When : List Case → Timeout → Contract → Contract
   Let : ValueId → Value → Contract → Contract
   Assert : Observation → Contract → Contract
+
+
+getAction : Case → Action
+getAction (mkCase action _) = action
+

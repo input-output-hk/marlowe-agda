@@ -30,6 +30,7 @@ open Decidable _eqChoiceId_ renaming (_‼_default_ to _‼ᶜ_default_) using (
 open Decidable _eqValueId_ renaming (_‼_ to _‼ᵛ_; _‼_default_ to _‼ᵛ_default_; _∈?_ to _∈ᵛ?_)
 
 
+{-
 fixInterval : TimeInterval → State → IntervalResult
 fixInterval interval state =
   let
@@ -49,7 +50,7 @@ fixInterval interval state =
             then mkIntervalError (IntervalInPastError curMinTime interval)
             else IntervalTrimmed env newState
 
-{-
+
 refundOne : AssocList (AccountId × Token) Int → Maybe (Party × Token × Int × Accounts)
 refundOne [] = nothing
 refundOne (((mkAccountId ρ , τ) , ι) ∷ α) =

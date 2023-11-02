@@ -16,6 +16,7 @@ open import Marlowe.Language.Contract
 open import Marlowe.Language.State
 
 open Environment using (timeInterval)
+open TimeInterval using (startTime; offset)
 open State using (accounts; boundValues; choices)
 open import Primitives
 open Decidable _eqAccountIdTokenDec_  renaming (_‼_default_ to _‼ᵃ_default_) hiding (_∈?_)
@@ -49,8 +50,8 @@ _/_ num den with (∣ den ∣ ℕ.≟ 0) | (λ proof -> _div_ num den {proof})
 ℰ⟦ MulValue x y ⟧ e s = ℰ⟦ x ⟧ e s * ℰ⟦ y ⟧ e s
 ℰ⟦ DivValue x y ⟧ e s = ℰ⟦ x ⟧ e s / ℰ⟦ y ⟧ e s
 ℰ⟦ ChoiceValue c ⟧ _ s = c ‼ᶜ choices s default 0ℤ
-ℰ⟦ TimeIntervalStart ⟧ e _ = + getPosixTime (proj₁ (timeInterval e))
-ℰ⟦ TimeIntervalEnd ⟧ e _ = + getPosixTime (proj₂ (timeInterval e))
+ℰ⟦ TimeIntervalStart ⟧ e _ = + getPosixTime (startTime (timeInterval e))
+ℰ⟦ TimeIntervalEnd ⟧ e _ = + getPosixTime (endTime (timeInterval e))
 ℰ⟦ UseValue v ⟧ _ s = v ‼ᵛ boundValues s default 0ℤ
 ℰ⟦ Cond o x y ⟧ e s = if 𝒪⟦ o ⟧ e s then ℰ⟦ x ⟧ e s else ℰ⟦ y ⟧ e s
 
