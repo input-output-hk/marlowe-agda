@@ -34,6 +34,8 @@ open import Primitives
 open import Relation.Nullary.Decidable using (⌊_⌋)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 
+open import Data.List.Membership.Propositional using () renaming (_∈_ to _⋵_)
+
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; cong; sym)
 open import Data.Empty using (⊥; ⊥-elim)
@@ -54,7 +56,17 @@ record Configuration : Set where
         warnings : List ReduceWarning
         payments : List Payment
 
+open Configuration
+
 data _⇀_ : Configuration → Configuration → Set where
+
+  {-
+  CloseRefund :
+    ∀ { c : Configuration } { a : AccountId } { t : Token } { i : ℕ } { as : AssocList (AccountId × Token) ℕ }
+    → (accounts (state c)) ≡ (( a , t ) , i) ∷ as
+    → (contract c) ≡ Close
+    → c ⇀ record c { state = record (state c) { accounts = as }}
+  -}
 
   CloseRefund :
     ∀ { e : Environment }
@@ -466,6 +478,141 @@ Quiescent¬⇀ (waiting {t} {tₛ} {Δₜ} (x)) (WhenTimeout {_} {t} {tₛ} {Δ�
   → C₁ ⇀ C₂
   → ¬ Quiescent C₁
 ⇀¬Quiescent C₁⇀C₂ q = Quiescent¬⇀ q C₁⇀C₂
+
+
+
+data _⇉_ : List Input × Configuration → List Input × Configuration → Set where
+
+  deposit :
+    ∀ { is : List Input }
+      { cases : List Case }
+      { s : State }
+      { e : Environment }
+      { as : AssocList (AccountId × Token) ℕ }
+      { cs : AssocList ChoiceId Int }
+      { vs : AssocList ValueId Int }
+      { ws : List ReduceWarning }
+      { m : PosixTime }
+      { ps : List Payment }
+      { a : AccountId }
+      { b : Party }
+      { t : Token }
+      { i : ℕ }
+      { v : Value }
+      { c : Contract }
+      { timeout : PosixTime }
+    → (mkCase (Deposit a b t v) c) ⋵ cases
+    → ℰ⟦ v ⟧ e s ≡ + i
+    → (((NormalInput (IDeposit a b t i)) ∷ is) ,
+        record {
+          contract = When cases (mkTimeout timeout) c ;
+          state = record {
+            accounts = as ;
+            choices = cs ;
+            boundValues = vs ;
+            minTime = m
+          } ;
+          environment = e ;
+          warnings = ws ;
+          payments = ps } )
+       ⇉ ( is ,
+        record {
+          contract = c ;
+          state = record {
+            accounts = let iₓ = (a , t) ‼ᵃ as default 0 in ((a , t) , iₓ ℕ.+ i) ↑ as ;
+            choices = cs ;
+            boundValues = vs ;
+            minTime = m
+          } ;
+          environment = e ;
+          warnings = ws ;
+          payments = ps } )
+
+  choice :
+    ∀ { is : List Input }
+      { cases : List Case }
+      { s : State }
+      { e : Environment }
+      { as : AssocList (AccountId × Token) ℕ }
+      { cs : AssocList ChoiceId Int }
+      { vs : AssocList ValueId Int }
+      { ws : List ReduceWarning }
+      { m : PosixTime }
+      { ps : List Payment }
+      { i : ChoiceId }
+      { n : ChosenNum }
+      { bs : List Bound }
+      { c : Contract }
+      { timeout : PosixTime }
+    → (mkCase (Choice i bs) c) ⋵ cases
+    → n inBounds bs ≡ true
+    → (((NormalInput (IChoice i n)) ∷ is) ,
+        record {
+          contract = When cases (mkTimeout timeout) c ;
+          state = record {
+            accounts = as ;
+            choices = cs ;
+            boundValues = vs ;
+            minTime = m
+          } ;
+          environment = e ;
+          warnings = ws ;
+          payments = ps } )
+       ⇉ ( is ,
+        record {
+          contract = c ;
+          state = record {
+            accounts = as ;
+            choices = (i , unChosenNum n) ↑ cs ;
+            boundValues = vs ;
+            minTime = m
+          } ;
+          environment = e ;
+          warnings = ws ;
+          payments = ps } )
+
+  notify :
+    ∀ { is : List Input }
+      { cases : List Case }
+      { s : State }
+      { e : Environment }
+      { as : AssocList (AccountId × Token) ℕ }
+      { cs : AssocList ChoiceId Int }
+      { vs : AssocList ValueId Int }
+      { ws : List ReduceWarning }
+      { m : PosixTime }
+      { ps : List Payment }
+      { i : ChoiceId }
+      { c : Contract }
+      { timeout : PosixTime }
+      { o : Observation }
+    → (mkCase (Notify o) c) ⋵ cases
+    → 𝒪⟦ o ⟧ e s ≡ true
+    → (((NormalInput INotify) ∷ is) ,
+        record {
+          contract = When cases (mkTimeout timeout) c ;
+          state = record {
+            accounts = as ;
+            choices = cs ;
+            boundValues = vs ;
+            minTime = m
+          } ;
+          environment = e ;
+          warnings = ws ;
+          payments = ps } )
+       ⇉ ( is ,
+        record {
+          contract = c ;
+          state = record {
+            accounts = as ;
+            choices = cs ;
+            boundValues = vs ;
+            minTime = m
+          } ;
+          environment = e ;
+          warnings = ws ;
+          payments = ps } )
+
 
 data Progress (C : Configuration) : Set where
 
