@@ -16,6 +16,7 @@ open import Data.Nat.Properties as ℕ using (1+n≰n; ≤-trans)
 open import Data.Product using (Σ; _,_; ∃; Σ-syntax; ∃-syntax)
 open import Data.Product using (_×_; proj₁; proj₂)
 import Data.String as String
+open import Data.These
 open import Function.Base using (case_of_)
 open import Marlowe.Language.Contract
 open import Marlowe.Language.Input
@@ -43,7 +44,7 @@ open import Data.Empty using (⊥; ⊥-elim)
 open import Primitives
 open Decidable _eqAccountIdTokenDec_  renaming (_‼_default_ to _‼ᵃ_default_) hiding (_∈?_)
 open Decidable _eqChoiceId_ renaming (_‼_default_ to _‼ᶜ_default_) using (_∈?_)
-open Decidable _eqValueId_ renaming (_‼_ to _‼ᵛ_; _‼_default_ to _‼ᵛ_default_; _∈?_ to _∈ᵛ?_)
+open Decidable _eqValueId_ renaming (_‼_ to _‼ᵛ_; _‼_default_ to _‼ᵛ_default_; _∈?_ to _∈ᵛ?_; isElem to isElemᵛ)
 
 open Environment using (timeInterval)
 open State using (accounts; boundValues; choices)
@@ -257,7 +258,6 @@ data _⇀_ : Configuration → Configuration → Set where
   WhenTimeout :
     ∀ { s : State }
       { t tₛ Δₜ : ℕ }
-      { o : Observation }
       { c : Contract }
       { ws : List ReduceWarning }
       { ps : List Payment }
@@ -283,15 +283,15 @@ data _⇀_ : Configuration → Configuration → Set where
   LetShadow :
     ∀ { s : State }
       { e : Environment }
-      { o : Observation }
       { c : Contract }
       { i : ValueId }
       { v : Value }
       { vᵢ : Int }
-      { ws : List ReduceWarning }
+      { ws ws' : List ReduceWarning }
       { ps : List Payment }
-    → i ‼ᵛ boundValues s ≡ just vᵢ
-    -----------------------------
+    → just vᵢ ≡ i ‼ᵛ boundValues s
+    → ws' ≡  ws ++ [ ReduceShadowing i vᵢ (ℰ⟦ v ⟧ e s) ]
+    ----------------------------------------------------
     → record {
         contract = Let i v c ;
         state = s ;
@@ -304,14 +304,13 @@ data _⇀_ : Configuration → Configuration → Set where
         contract = c ;
         state = s ;
         environment = e ;
-        warnings = ws ++ [ ReduceShadowing i vᵢ (ℰ⟦ v ⟧ e s) ] ;
+        warnings = ws' ;
         payments = ps
       }
 
   LetNoShadow :
     ∀ { s : State }
       { e : Environment }
-      { o : Observation }
       { c : Contract }
       { i : ValueId }
       { v : Value }
@@ -480,12 +479,125 @@ Quiescent¬⇀ (waiting {t} {tₛ} {Δₜ} (x)) (WhenTimeout {_} {t} {tₛ} {Δ�
 ⇀¬Quiescent C₁⇀C₂ q = Quiescent¬⇀ q C₁⇀C₂
 
 
+data Reduce (C : Configuration) : Set where
 
-data _⇉_ : List Input × Configuration → List Input × Configuration → Set where
+  reduce : ∀ {D}
+    → C ⇀ D
+      --------
+    → Reduce C
+
+  done :
+      Quiescent C
+      -----------
+    → Reduce C
+
+data Error : Set where
+
+  AmbiguousTimeInterval :
+    Error
+
+progress : ∀ (C : Configuration) → These (Reduce C) Error
+progress record
+  { contract = Close
+  ; state = record
+    { accounts = [] ;
+      choices = _ ;
+      boundValues = _ ;
+      minTime = _
+    }
+  ; environment = _
+  ; warnings = _
+  ; payments = _
+  } = this (done close)
+progress record
+  { contract = Close
+  ; state = record
+    { accounts = a ∷ as ;
+      choices = _ ;
+      boundValues = _ ;
+      minTime = _
+    }
+  ; environment = _
+  ; warnings = _
+  ; payments = _
+  } = this (reduce CloseRefund)
+progress record
+  { contract = Pay a (mkAccount p) t v c
+  ; state = s
+  ; environment = e
+  ; warnings = _
+  ; payments = _
+  } with ℰ⟦ v ⟧ e s ≤? 0ℤ
+... | yes q = let t = PayNonPositive q in this (reduce t)
+... | no ¬p = let t = PayInternalTransfer (ℤ.≰⇒> ¬p) in this (reduce t)
+progress record
+  { contract = Pay a (mkParty p) t v c
+  ; state = s
+  ; environment = e
+  ; warnings = _
+  ; payments = _
+  } with ℰ⟦ v ⟧ e s ≤? 0ℤ
+... | yes q = let t = PayNonPositive q in this (reduce t)
+... | no ¬p = let t = PayExternal (ℤ.≰⇒> ¬p) in this (reduce t)
+progress record
+  { contract = If o c₁ c₂
+  ; state = s
+  ; environment = e
+  ; warnings = _
+  ; payments = _
+  } with 𝒪⟦ o ⟧ e s 𝔹.≟ true
+... | yes p = let t = IfTrue p in this (reduce t)
+... | no ¬p = let t = IfFalse (𝔹.¬-not ¬p) in this (reduce t)
+progress r@(record
+  { contract = When cs (mkTimeout (mkPosixTime t)) c
+  ; state = record
+    { accounts = _ ;
+      choices = _ ;
+      boundValues = _ ;
+      minTime = _
+    }
+  ; environment = mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ)
+  ; warnings = _
+  ; payments = _
+  }) with (tₛ ℕ.+ Δₜ) ℕ.<? t | t ℕ.≤? tₛ
+... | yes p | _ = this (done (waiting p))
+... | _ | yes q = this (reduce (WhenTimeout q))
+... | no _ | no _ = that AmbiguousTimeInterval
+progress record
+  { contract = Let i v c
+  ; state = s@(record
+    { accounts = _ ;
+      choices = _ ;
+      boundValues = vs ;
+      minTime = _
+    })
+  ; environment = e
+  ; warnings = ws
+  ; payments = ps
+  } with i ∈ᵛ? vs
+... | yes p =
+         let ( _ , vₓ ) = lookup p
+             t = LetShadow {s} {e} {c} {i} {v} {vₓ} {ws} {ws ++ [ ReduceShadowing i vₓ (ℰ⟦ v ⟧ e s) ]} {ps} (isElemᵛ p) refl
+           in this (reduce t)
+... | no ¬p = let t = LetNoShadow (¬Any⇒All¬ vs ¬p) in this (reduce t)
+progress record
+  { contract = Assert o c
+  ; state = s
+  ; environment = e
+  ; warnings = _
+  ; payments = _
+  } with 𝒪⟦ o ⟧ e s 𝔹.≟ true
+... | yes p = let t = AssertTrue p in this (reduce t)
+... | no ¬p = let t = AssertFalse (𝔹.¬-not ¬p) in this (reduce t)
+
+
+
+-- Input application
+
+data _⇉_ : Input × Configuration → Configuration → Set where
 
   deposit :
-    ∀ { is : List Input }
-      { cases : List Case }
+    ∀ { cases : List Case }
       { s : State }
       { e : Environment }
       { as : AssocList (AccountId × Token) ℕ }
@@ -503,7 +615,7 @@ data _⇉_ : List Input × Configuration → List Input × Configuration → Set
       { timeout : PosixTime }
     → (mkCase (Deposit a b t v) c) ⋵ cases
     → ℰ⟦ v ⟧ e s ≡ + i
-    → (((NormalInput (IDeposit a b t i)) ∷ is) ,
+    → (NormalInput (IDeposit a b t i) ,
         record {
           contract = When cases (mkTimeout timeout) c ;
           state = record {
@@ -515,7 +627,7 @@ data _⇉_ : List Input × Configuration → List Input × Configuration → Set
           environment = e ;
           warnings = ws ;
           payments = ps } )
-       ⇉ ( is ,
+       ⇉
         record {
           contract = c ;
           state = record {
@@ -526,11 +638,10 @@ data _⇉_ : List Input × Configuration → List Input × Configuration → Set
           } ;
           environment = e ;
           warnings = ws ;
-          payments = ps } )
+          payments = ps }
 
   choice :
-    ∀ { is : List Input }
-      { cases : List Case }
+    ∀ { cases : List Case }
       { s : State }
       { e : Environment }
       { as : AssocList (AccountId × Token) ℕ }
@@ -546,7 +657,7 @@ data _⇉_ : List Input × Configuration → List Input × Configuration → Set
       { timeout : PosixTime }
     → (mkCase (Choice i bs) c) ⋵ cases
     → n inBounds bs ≡ true
-    → (((NormalInput (IChoice i n)) ∷ is) ,
+    → (NormalInput (IChoice i n) ,
         record {
           contract = When cases (mkTimeout timeout) c ;
           state = record {
@@ -558,7 +669,7 @@ data _⇉_ : List Input × Configuration → List Input × Configuration → Set
           environment = e ;
           warnings = ws ;
           payments = ps } )
-       ⇉ ( is ,
+       ⇉
         record {
           contract = c ;
           state = record {
@@ -569,11 +680,10 @@ data _⇉_ : List Input × Configuration → List Input × Configuration → Set
           } ;
           environment = e ;
           warnings = ws ;
-          payments = ps } )
+          payments = ps }
 
   notify :
-    ∀ { is : List Input }
-      { cases : List Case }
+    ∀ { cases : List Case }
       { s : State }
       { e : Environment }
       { as : AssocList (AccountId × Token) ℕ }
@@ -588,7 +698,7 @@ data _⇉_ : List Input × Configuration → List Input × Configuration → Set
       { o : Observation }
     → (mkCase (Notify o) c) ⋵ cases
     → 𝒪⟦ o ⟧ e s ≡ true
-    → (((NormalInput INotify) ∷ is) ,
+    → (NormalInput INotify ,
         record {
           contract = When cases (mkTimeout timeout) c ;
           state = record {
@@ -600,7 +710,7 @@ data _⇉_ : List Input × Configuration → List Input × Configuration → Set
           environment = e ;
           warnings = ws ;
           payments = ps } )
-       ⇉ ( is ,
+       ⇉
         record {
           contract = c ;
           state = record {
@@ -611,112 +721,50 @@ data _⇉_ : List Input × Configuration → List Input × Configuration → Set
           } ;
           environment = e ;
           warnings = ws ;
-          payments = ps } )
-
-
-data Progress (C : Configuration) : Set where
-
-  step : ∀ {D}
-    → C ⇀ D
-      ----------
-    → Progress C
-
-  done :
-      Quiescent C
-      -----------
-    → Progress C
+          payments = ps }
 
 {-
-progress : ∀ (C : Configuration) → Progress C
-progress record
-  { contract = Close
-  ; state = record
-    { accounts = [] ;
-      choices = _ ;
-      boundValues = _ ;
-      minTime = _
-    }
-  ; environment = _
-  ; warnings = _
-  ; payments = _
-  } = done close
-progress record
-  { contract = Close
-  ; state = record
-    { accounts = a ∷ as ;
-      choices = _ ;
-      boundValues = _ ;
-      minTime = _
-    }
-  ; environment = _
-  ; warnings = _
-  ; payments = _
-  } = step CloseRefund
-progress record
-  { contract = Pay a (mkAccount p) t v c
-  ; state = s
-  ; environment = e
-  ; warnings = _
-  ; payments = _
-  } with ℰ⟦ v ⟧ e s ≤? 0ℤ
-... | yes q = let t = PayNonPositive q in step t
-... | no ¬p = let t = PayInternalTransfer (ℤ.≰⇒> ¬p) in step t
-progress record
-  { contract = Pay a (mkParty p) t v c
-  ; state = s
-  ; environment = e
-  ; warnings = _
-  ; payments = _
-  } with ℰ⟦ v ⟧ e s ≤? 0ℤ
-... | yes q = let t = PayNonPositive q in step t
-... | no ¬p = let t = PayExternal (ℤ.≰⇒> ¬p) in step t
-progress record
-  { contract = If o c₁ c₂
-  ; state = s
-  ; environment = e
-  ; warnings = _
-  ; payments = _
-  } with 𝒪⟦ o ⟧ e s 𝔹.≟ true
-... | yes p = let t = IfTrue p in step t
-... | no ¬p = let t = IfFalse (𝔹.¬-not ¬p) in step t
-progress record
-  { contract = When cs (mkTimeout (mkPosixTime t)) c
-  ; state = record
-    { accounts = _ ;
-      choices = _ ;
-      boundValues = _ ;
-      minTime = _
-    }
-  ; environment = e
-  ; warnings = _
-  ; payments = _
-  } with t ℕ.>? PosixTime.getPosixTime (startTime (timeInterval e))
-... | yes p = done (waiting p)
-... | no ¬p = let t = WhenTimeout {!ℕ.≰⇒> ¬p!} in step t
-progress record
-  { contract = Let i v c
-  ; state = record
-    { accounts = _ ;
-      choices = _ ;
-      boundValues = vs ;
-      minTime = _
-    }
-  ; environment = _
-  ; warnings = _
-  ; payments = _
-  } with i ∈ᵛ? vs
-... | yes p =
-      let (x , y) = lookup p
-          z = i ‼ᵛ vs
-          t = LetShadow {!!} in step t
-... | no ¬p = let t = LetNoShadow (¬Any⇒All¬ vs ¬p) in step t
-progress record
-  { contract = Assert o c
-  ; state = s
-  ; environment = e
-  ; warnings = _
-  ; payments = _
-  } with 𝒪⟦ o ⟧ e s 𝔹.≟ true
-... | yes p = let t = AssertTrue p in step t
-... | no ¬p = let t = AssertFalse (𝔹.¬-not ¬p) in step t
+data NotApplicable : Configuration → Set where
+
+data ApplyInput : Input → Configuration → Set where
+
+  reduce : ∀ {C D} {i}
+    → (i , C) ⇉ D
+    → ApplyInput i C
+
+  notApplicable : ∀ {C : Configuration} {i}
+    → NotApplicable C
+    → ApplyInput i C
+-}
+
+{-
+⇉Quiescent :
+  ∀ { C₁ C₂ : Configuration }
+    { i₁ i₂ : List Input }
+  → ( i₁ , C₁ ) ⇉ ( i₂ , C₂ )
+    ---------------------------
+  → Quiescent C₁
+⇉Quiescent (deposit x x₁) = waiting {!!}
+⇉Quiescent (choice x x₁) = waiting {!!}
+⇉Quiescent (notify x x₁) = waiting {!!}
+-}
+
+
+{-
+data Apply (i : List Input) (C : Configuration) : Set where
+
+  applyInput : ∀ {D} {j}
+    → ( i , C ) ⇉ ( j , D )
+      ---------------------
+    → Apply i C
+
+  done :
+      i ≡ []
+    → Quiescent C
+      -----------
+    → Apply i C
+
+apply : ∀ { C : Configuration } (i : List Input) → Quiescent C → Apply i C
+apply [] = done refl
+apply {c} i q = {!!}
 -}

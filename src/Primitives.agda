@@ -66,6 +66,10 @@ module Decidable {A : Set} (_≟_ : DecidableEquality A) where
   _‼_default_ : (a : A) (abs : AssocList A B) → (b : B) → B
   a ‼ abs default b = fromMaybe b (a ‼ abs)
 
+  postulate
+    isElem : ∀ {a : A} { abs : AssocList A B } {i} → (p : Any (λ x → i ≡ proj₁ x) abs) → just (proj₂ (lookup p)) ≡ (a ‼ abs)
+
+
 postulate
   _↑_ : (p : A × B) (abs : AssocList A B) → AssocList A B
   _↓_ : (a : A) (abs : AssocList A B) → AssocList A B
