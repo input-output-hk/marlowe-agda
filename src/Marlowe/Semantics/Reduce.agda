@@ -493,7 +493,7 @@ data Reduce (C : Configuration) : Set where
 
 data Error : Set where
 
-  AmbiguousTimeInterval :
+  AmbiguousTimeIntervalReductionError :
     Error
 
 progress : ∀ (C : Configuration) → These (Reduce C) Error
@@ -548,7 +548,7 @@ progress record
   } with 𝒪⟦ o ⟧ e s 𝔹.≟ true
 ... | yes p = let t = IfTrue p in this (reduce t)
 ... | no ¬p = let t = IfFalse (𝔹.¬-not ¬p) in this (reduce t)
-progress r@(record
+progress record
   { contract = When cs (mkTimeout (mkPosixTime t)) c
   ; state = record
     { accounts = _ ;
@@ -559,10 +559,10 @@ progress r@(record
   ; environment = mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ)
   ; warnings = _
   ; payments = _
-  }) with (tₛ ℕ.+ Δₜ) ℕ.<? t | t ℕ.≤? tₛ
+  } with (tₛ ℕ.+ Δₜ) ℕ.<? t | t ℕ.≤? tₛ
 ... | yes p | _ = this (done (waiting p))
 ... | _ | yes q = this (reduce (WhenTimeout q))
-... | no _ | no _ = that AmbiguousTimeInterval
+... | no _ | no _ = that AmbiguousTimeIntervalReductionError
 progress record
   { contract = Let i v c
   ; state = s@(record
@@ -589,182 +589,3 @@ progress record
   } with 𝒪⟦ o ⟧ e s 𝔹.≟ true
 ... | yes p = let t = AssertTrue p in this (reduce t)
 ... | no ¬p = let t = AssertFalse (𝔹.¬-not ¬p) in this (reduce t)
-
-
-
--- Input application
-
-data _⇉_ : Input × Configuration → Configuration → Set where
-
-  deposit :
-    ∀ { cases : List Case }
-      { s : State }
-      { e : Environment }
-      { as : AssocList (AccountId × Token) ℕ }
-      { cs : AssocList ChoiceId Int }
-      { vs : AssocList ValueId Int }
-      { ws : List ReduceWarning }
-      { m : PosixTime }
-      { ps : List Payment }
-      { a : AccountId }
-      { b : Party }
-      { t : Token }
-      { i : ℕ }
-      { v : Value }
-      { c : Contract }
-      { timeout : PosixTime }
-    → (mkCase (Deposit a b t v) c) ⋵ cases
-    → ℰ⟦ v ⟧ e s ≡ + i
-    → (NormalInput (IDeposit a b t i) ,
-        record {
-          contract = When cases (mkTimeout timeout) c ;
-          state = record {
-            accounts = as ;
-            choices = cs ;
-            boundValues = vs ;
-            minTime = m
-          } ;
-          environment = e ;
-          warnings = ws ;
-          payments = ps } )
-       ⇉
-        record {
-          contract = c ;
-          state = record {
-            accounts = let iₓ = (a , t) ‼ᵃ as default 0 in ((a , t) , iₓ ℕ.+ i) ↑ as ;
-            choices = cs ;
-            boundValues = vs ;
-            minTime = m
-          } ;
-          environment = e ;
-          warnings = ws ;
-          payments = ps }
-
-  choice :
-    ∀ { cases : List Case }
-      { s : State }
-      { e : Environment }
-      { as : AssocList (AccountId × Token) ℕ }
-      { cs : AssocList ChoiceId Int }
-      { vs : AssocList ValueId Int }
-      { ws : List ReduceWarning }
-      { m : PosixTime }
-      { ps : List Payment }
-      { i : ChoiceId }
-      { n : ChosenNum }
-      { bs : List Bound }
-      { c : Contract }
-      { timeout : PosixTime }
-    → (mkCase (Choice i bs) c) ⋵ cases
-    → n inBounds bs ≡ true
-    → (NormalInput (IChoice i n) ,
-        record {
-          contract = When cases (mkTimeout timeout) c ;
-          state = record {
-            accounts = as ;
-            choices = cs ;
-            boundValues = vs ;
-            minTime = m
-          } ;
-          environment = e ;
-          warnings = ws ;
-          payments = ps } )
-       ⇉
-        record {
-          contract = c ;
-          state = record {
-            accounts = as ;
-            choices = (i , unChosenNum n) ↑ cs ;
-            boundValues = vs ;
-            minTime = m
-          } ;
-          environment = e ;
-          warnings = ws ;
-          payments = ps }
-
-  notify :
-    ∀ { cases : List Case }
-      { s : State }
-      { e : Environment }
-      { as : AssocList (AccountId × Token) ℕ }
-      { cs : AssocList ChoiceId Int }
-      { vs : AssocList ValueId Int }
-      { ws : List ReduceWarning }
-      { m : PosixTime }
-      { ps : List Payment }
-      { i : ChoiceId }
-      { c : Contract }
-      { timeout : PosixTime }
-      { o : Observation }
-    → (mkCase (Notify o) c) ⋵ cases
-    → 𝒪⟦ o ⟧ e s ≡ true
-    → (NormalInput INotify ,
-        record {
-          contract = When cases (mkTimeout timeout) c ;
-          state = record {
-            accounts = as ;
-            choices = cs ;
-            boundValues = vs ;
-            minTime = m
-          } ;
-          environment = e ;
-          warnings = ws ;
-          payments = ps } )
-       ⇉
-        record {
-          contract = c ;
-          state = record {
-            accounts = as ;
-            choices = cs ;
-            boundValues = vs ;
-            minTime = m
-          } ;
-          environment = e ;
-          warnings = ws ;
-          payments = ps }
-
-{-
-data NotApplicable : Configuration → Set where
-
-data ApplyInput : Input → Configuration → Set where
-
-  reduce : ∀ {C D} {i}
-    → (i , C) ⇉ D
-    → ApplyInput i C
-
-  notApplicable : ∀ {C : Configuration} {i}
-    → NotApplicable C
-    → ApplyInput i C
--}
-
-{-
-⇉Quiescent :
-  ∀ { C₁ C₂ : Configuration }
-    { i₁ i₂ : List Input }
-  → ( i₁ , C₁ ) ⇉ ( i₂ , C₂ )
-    ---------------------------
-  → Quiescent C₁
-⇉Quiescent (deposit x x₁) = waiting {!!}
-⇉Quiescent (choice x x₁) = waiting {!!}
-⇉Quiescent (notify x x₁) = waiting {!!}
--}
-
-
-{-
-data Apply (i : List Input) (C : Configuration) : Set where
-
-  applyInput : ∀ {D} {j}
-    → ( i , C ) ⇉ ( j , D )
-      ---------------------
-    → Apply i C
-
-  done :
-      i ≡ []
-    → Quiescent C
-      -----------
-    → Apply i C
-
-apply : ∀ { C : Configuration } (i : List Input) → Quiescent C → Apply i C
-apply [] = done refl
-apply {c} i q = {!!}
--}
