@@ -16,7 +16,6 @@ open import Data.Nat.Properties as ℕ using (1+n≰n; ≤-trans)
 open import Data.Product using (Σ; _,_; ∃; Σ-syntax; ∃-syntax)
 open import Data.Product using (_×_; proj₁; proj₂)
 import Data.String as String
-open import Data.These
 open import Function.Base using (case_of_)
 open import Marlowe.Language.Contract
 open import Marlowe.Language.Input
@@ -479,6 +478,26 @@ Quiescent¬⇀ (waiting {t} {tₛ} {Δₜ} (x)) (WhenTimeout {_} {t} {tₛ} {Δ�
 ⇀¬Quiescent C₁⇀C₂ q = Quiescent¬⇀ q C₁⇀C₂
 
 
+data AmbiguousTimeInterval : Configuration → Set where
+
+  AmbiguousTimeIntervalError :
+    ∀ {t tₛ Δₜ : ℕ}
+      { cs : List Case }
+      { c : Contract }
+      { s : State }
+      { ws : List ReduceWarning }
+      { ps : List Payment }
+    → tₛ ℕ.< t
+    → (tₛ ℕ.+ Δₜ) ℕ.≥ t
+    → AmbiguousTimeInterval record {
+           contract = When cs (mkTimeout (mkPosixTime t)) c ;
+           state = s ;
+           environment = mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ) ;
+           warnings = ws ;
+           payments = ps
+        }
+
+
 data Reduce (C : Configuration) : Set where
 
   reduce : ∀ {D}
@@ -491,12 +510,13 @@ data Reduce (C : Configuration) : Set where
       -----------
     → Reduce C
 
-data Error : Set where
+  error :
+      AmbiguousTimeInterval C
+      -----------------------
+    → Reduce C
 
-  AmbiguousTimeIntervalReductionError :
-    Error
 
-progress : ∀ (C : Configuration) → These (Reduce C) Error
+progress : ∀ (C : Configuration) → Reduce C
 progress record
   { contract = Close
   ; state = record
@@ -508,7 +528,7 @@ progress record
   ; environment = _
   ; warnings = _
   ; payments = _
-  } = this (done close)
+  } = done close
 progress record
   { contract = Close
   ; state = record
@@ -520,7 +540,7 @@ progress record
   ; environment = _
   ; warnings = _
   ; payments = _
-  } = this (reduce CloseRefund)
+  } = reduce CloseRefund
 progress record
   { contract = Pay a (mkAccount p) t v c
   ; state = s
@@ -528,8 +548,8 @@ progress record
   ; warnings = _
   ; payments = _
   } with ℰ⟦ v ⟧ e s ≤? 0ℤ
-... | yes q = let t = PayNonPositive q in this (reduce t)
-... | no ¬p = let t = PayInternalTransfer (ℤ.≰⇒> ¬p) in this (reduce t)
+... | yes q = let t = PayNonPositive q in reduce t
+... | no ¬p = let t = PayInternalTransfer (ℤ.≰⇒> ¬p) in reduce t
 progress record
   { contract = Pay a (mkParty p) t v c
   ; state = s
@@ -537,8 +557,8 @@ progress record
   ; warnings = _
   ; payments = _
   } with ℰ⟦ v ⟧ e s ≤? 0ℤ
-... | yes q = let t = PayNonPositive q in this (reduce t)
-... | no ¬p = let t = PayExternal (ℤ.≰⇒> ¬p) in this (reduce t)
+... | yes q = let t = PayNonPositive q in reduce t
+... | no ¬p = let t = PayExternal (ℤ.≰⇒> ¬p) in reduce t
 progress record
   { contract = If o c₁ c₂
   ; state = s
@@ -546,8 +566,8 @@ progress record
   ; warnings = _
   ; payments = _
   } with 𝒪⟦ o ⟧ e s 𝔹.≟ true
-... | yes p = let t = IfTrue p in this (reduce t)
-... | no ¬p = let t = IfFalse (𝔹.¬-not ¬p) in this (reduce t)
+... | yes p = let t = IfTrue p in reduce t
+... | no ¬p = let t = IfFalse (𝔹.¬-not ¬p) in reduce t
 progress record
   { contract = When cs (mkTimeout (mkPosixTime t)) c
   ; state = record
@@ -560,9 +580,9 @@ progress record
   ; warnings = _
   ; payments = _
   } with (tₛ ℕ.+ Δₜ) ℕ.<? t | t ℕ.≤? tₛ
-... | yes p | _ = this (done (waiting p))
-... | _ | yes q = this (reduce (WhenTimeout q))
-... | no _ | no _ = that AmbiguousTimeIntervalReductionError
+... | yes p | _ = done (waiting p)
+... | _ | yes q = reduce (WhenTimeout q)
+... | no ¬p | no ¬q = error (AmbiguousTimeIntervalError (ℕ.≰⇒> ¬q) (ℕ.≮⇒≥ ¬p))
 progress record
   { contract = Let i v c
   ; state = s@(record
@@ -578,8 +598,8 @@ progress record
 ... | yes p =
          let ( _ , vₓ ) = lookup p
              t = LetShadow {s} {e} {c} {i} {v} {vₓ} {ws} {ws ++ [ ReduceShadowing i vₓ (ℰ⟦ v ⟧ e s) ]} {ps} (isElemᵛ p) refl
-           in this (reduce t)
-... | no ¬p = let t = LetNoShadow (¬Any⇒All¬ vs ¬p) in this (reduce t)
+           in reduce t
+... | no ¬p = let t = LetNoShadow (¬Any⇒All¬ vs ¬p) in reduce t
 progress record
   { contract = Assert o c
   ; state = s
@@ -587,5 +607,5 @@ progress record
   ; warnings = _
   ; payments = _
   } with 𝒪⟦ o ⟧ e s 𝔹.≟ true
-... | yes p = let t = AssertTrue p in this (reduce t)
-... | no ¬p = let t = AssertFalse (𝔹.¬-not ¬p) in this (reduce t)
+... | yes p = let t = AssertTrue p in reduce t
+... | no ¬p = let t = AssertFalse (𝔹.¬-not ¬p) in reduce t
