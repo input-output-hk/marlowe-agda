@@ -28,7 +28,7 @@ data Payment : Set where
 data TransactionWarning : Set where
   TransactionNonPositiveDeposit : Party → AccountId → Token → Int → TransactionWarning
   TransactionNonPositivePay : AccountId → Payee → Token → Int → TransactionWarning
-  TransactionPartialPay : AccountId → Payee → Token → Int → Int → TransactionWarning
+  TransactionPartialPay : AccountId → Payee → Token → ℕ → ℕ → TransactionWarning
   TransactionShadowing : ValueId → Int → Int → TransactionWarning
   TransactionAssertionFailed : TransactionWarning
 

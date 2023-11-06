@@ -13,9 +13,6 @@ open import Relation.Nullary using (Dec; yes; no)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; cong; sym)
 
-Accounts : Set
-Accounts = AssocList (AccountId × Token) Int
-
 postulate
   _eqAccountIdTokenDec_ : ∀ (x y : AccountId × Token) → Dec (x ≡ y)
 

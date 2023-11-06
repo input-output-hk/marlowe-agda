@@ -4,7 +4,7 @@ module Marlowe.Semantics.Operate where
 
 open import Agda.Builtin.Int using (Int)
 open import Data.Bool using (Bool; if_then_else_; not; _∧_; _∨_; true; false)
-open import Data.Integer using (_<?_; _≤?_; _≟_ ; _⊔_; _⊓_; _-_; 0ℤ ; _≤_ ; _>_ ; _≥_ ; _<_)
+open import Data.Integer using (_<?_; _≤?_; _≟_ ; _⊔_; _⊓_; _+_; _-_; +_; 0ℤ ; _≤_ ; _>_ ; _≥_ ; _<_; ∣_∣)
 open import Data.List using (List; []; _∷_; _++_; foldr; reverse; [_]; null)
 open import Data.Maybe using (Maybe; just; nothing; fromMaybe)
 open import Data.Nat as ℕ using (ℕ)
@@ -29,12 +29,14 @@ open Decidable _eqAccountIdTokenDec_  renaming (_‼_default_ to _‼ᵃ_default
 open Decidable _eqChoiceId_ renaming (_‼_default_ to _‼ᶜ_default_) using (_∈?_)
 open Decidable _eqValueId_ renaming (_‼_ to _‼ᵛ_; _‼_default_ to _‼ᵛ_default_; _∈?_ to _∈ᵛ?_)
 
+Accounts : Set
+Accounts = AssocList (AccountId × Token) ℕ
 
-{-
 fixInterval : TimeInterval → State → IntervalResult
 fixInterval interval state =
   let
-    (mkPosixTime low) , (mkPosixTime high) = interval
+    mkInterval (mkPosixTime low) delta = interval
+    high = low ℕ.+ delta
   in
     if ⌊ high ℕ.<? low ⌋
       then mkIntervalError (InvalidInterval interval)
@@ -42,7 +44,7 @@ fixInterval interval state =
         let
           curMinTime = State.minTime state
           newLow = low ℕ.⊔ PosixTime.getPosixTime curMinTime
-          curInterval = record interval {fst = mkPosixTime newLow}
+          curInterval = record interval {startTime = mkPosixTime newLow}
           env = record {timeInterval = curInterval}
           newState = record state {minTime = mkPosixTime newLow}
         in
@@ -51,36 +53,27 @@ fixInterval interval state =
             else IntervalTrimmed env newState
 
 
-refundOne : AssocList (AccountId × Token) Int → Maybe (Party × Token × Int × Accounts)
+refundOne : AssocList (AccountId × Token) ℕ → Maybe (Party × Token × ℕ × Accounts)
 refundOne [] = nothing
-refundOne (((mkAccountId ρ , τ) , ι) ∷ α) =
-  if ⌊ ι ≤? 0ℤ ⌋
-    then refundOne α
-    else just (ρ , τ , ι , α)
+refundOne (((mkAccountId p , t) , i) ∷ a) = just (p , t , i , a)
 
+moneyInAccount : AccountId → Token → Accounts → ℕ
+moneyInAccount a t as = (a , t) ‼ᵃ as default 0
 
-moneyInAccount : AccountId → Token → Accounts → Int
-moneyInAccount αₓ τ α = (αₓ , τ) ‼ᵃ α default 0ℤ
-
-updateMoneyInAccount : AccountId → Token → Int → Accounts → Accounts
+updateMoneyInAccount : AccountId → Token → ℕ → Accounts → Accounts
 updateMoneyInAccount account token amount accounts =
   let
     key = account , token
   in
-    if ⌊ amount ≤? 0ℤ ⌋
-      then key ↓ accounts
-      else ((key , amount) ↑ accounts)
+    (key , amount) ↑ accounts
 
-addMoneyToAccount : AccountId → Token → Int → Accounts → Accounts
+addMoneyToAccount : AccountId → Token → ℕ → Accounts → Accounts
 addMoneyToAccount account token amount accounts =
   let
     balance = moneyInAccount account token accounts
-    newBalance = balance Data.Integer.+ amount
+    newBalance = balance ℕ.+ amount
   in
-    if ⌊ amount ≤? 0ℤ ⌋
-      then accounts
-      else updateMoneyInAccount account token newBalance accounts
--}
+    updateMoneyInAccount account token newBalance accounts
 
 data ReduceEffect : Set where
   ReduceWithPayment : Payment → ReduceEffect
@@ -102,10 +95,13 @@ data ReduceResult : Set where
   ContractQuiescent : Bool → List ReduceWarning → List Payment → State → Contract → ReduceResult
   RRAmbiguousTimeIntervalError : ReduceResult
 
-{-
-giveMoney : AccountId → Payee → Token → Int → Accounts → ReduceEffect × Accounts
+
+giveMoney : AccountId → Payee → Token → ℕ → Accounts → ReduceEffect × Accounts
 giveMoney account payee token amount accounts =
-  record {fst = ReduceWithPayment (mkPayment account payee token amount); snd = newAccounts payee}
+  record {
+    fst = ReduceWithPayment (mkPayment account payee token amount);
+    snd = newAccounts payee
+    }
     where
       newAccounts : Payee → Accounts
       newAccounts payee' with payee'
@@ -136,11 +132,11 @@ reduceContractStep env state (Pay accId payee tok val cont) =
       else (
         let
           balance = moneyInAccount accId tok (State.accounts state)
-          paidAmount = balance ⊓ amountToPay
-          newBalance = balance - paidAmount
+          paidAmount = balance ℕ.⊓ ∣ amountToPay ∣
+          newBalance = balance ℕ.∸ paidAmount
           newAccs = updateMoneyInAccount accId tok newBalance (State.accounts state)
-          warning = if ⌊ paidAmount <? amountToPay ⌋
-                      then ReducePartialPay accId payee tok paidAmount amountToPay
+          warning = if ⌊ paidAmount ℕ.<? ∣ amountToPay ∣ ⌋
+                      then ReducePartialPay accId payee tok paidAmount ∣ amountToPay ∣
                       else ReduceNoWarning
           (payment , finalAccs) = giveMoney accId payee tok paidAmount newAccs
           newState = record state {accounts = finalAccs}
@@ -158,9 +154,9 @@ reduceContractStep env state (When _ (mkTimeout (mkPosixTime timeout)) cont) =
   let
     interval = Environment.timeInterval env
   in
-    if ⌊ PosixTime.getPosixTime (proj₁ interval) ℕ.<? timeout ⌋
+    if ⌊ PosixTime.getPosixTime (TimeInterval.startTime interval) ℕ.<? timeout ⌋
       then NotReduced
-      else if ⌊ timeout ℕ.≤? PosixTime.getPosixTime (proj₁ interval) ⌋
+      else if ⌊ timeout ℕ.≤? PosixTime.getPosixTime (TimeInterval.startTime interval) ⌋
              then Reduced ReduceNoWarning ReduceNoPayment state cont
              else AmbiguousTimeIntervalReductionError
 reduceContractStep env state (Let valId val cont) =
@@ -199,7 +195,7 @@ reduceContractUntilQuiescent env state contract =
       ... | Reduced warning effect newState cont = reductionLoop true (newWarnings warnings warning) (newPayments payments effect) env newState cont
       ... | AmbiguousTimeIntervalReductionError = RRAmbiguousTimeIntervalError
       ... | NotReduced = ContractQuiescent reduced (reverse warnings) (reverse payments) state contract
--}
+
 
 data ApplyWarning : Set where
   ApplyNoWarning : ApplyWarning
@@ -209,16 +205,12 @@ data ApplyAction : Set where
   AppliedAction : ApplyWarning → State → ApplyAction
   NotAppliedAction : ApplyAction
 
-{-
+
 applyAction : Environment → State → InputContent → Action → ApplyAction
 applyAction env state (IDeposit accId1 party1 tok1 amount) (Deposit accId2 party2 tok2 val) =
-  if accId1 eqAccountId accId2 ∧ party1 eqParty party2 ∧ (tok1 eqToken tok2) ∧ ⌊ (amount ≟ ℰ⟦ val ⟧ env state) ⌋ -- TODO: Use ×-dec
+  if accId1 eqAccountId accId2 ∧ party1 eqParty party2 ∧ (tok1 eqToken tok2) ∧ ⌊ ((+ amount) ≟ ℰ⟦ val ⟧ env state) ⌋
     then AppliedAction
-           (
-             if ⌊ 0ℤ <? amount ⌋
-               then ApplyNoWarning
-               else ApplyNonPositiveDeposit party2 accId2 tok2 amount
-           )
+           ApplyNoWarning
            (
              record state {
                accounts = addMoneyToAccount accId1 tok1 amount (State.accounts state)
@@ -335,4 +327,4 @@ playTraceAux (mkError error) _ = mkError error
 
 playTrace : PosixTime → Contract → List TransactionInput → TransactionOutput
 playTrace minTime c = playTraceAux (mkTransactionOutput [] [] (emptyState minTime) c)
--}
+
