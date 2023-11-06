@@ -1,32 +1,26 @@
-
 module Primitives where
 
-
-open import Agda.Builtin.Int using (Int)
 open import Agda.Builtin.List using (List; []; _∷_)
-open import Data.Bool using (Bool; false; true; if_then_else_; _∨_)
 open import Data.String as String using (String)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Maybe using (Maybe; just; nothing; fromMaybe)
 open import Data.Nat as ℕ using (ℕ)
 open import Data.List.Relation.Unary.Any using (Any; any?; lookup)
 open import Data.List.Relation.Unary.All using (All)
-open import Function
-open import Relation.Binary
-open import Relation.Binary.PropositionalEquality
-open import Relation.Nullary using (Dec; yes; no)
-open import Relation.Nullary.Decidable using (⌊_⌋)
+open import Function using (_∘_)
+open import Relation.Binary using (Decidable; DecidableEquality)
+open import Relation.Binary.PropositionalEquality using (cong; _≡_; _≢_)
+open import Relation.Nullary using (yes; no)
 
 record ByteString : Set where
   constructor mkByteString
   field
     getByteString : String
 
-_eqByteString_ : ∀ (a b : ByteString) → Dec (a ≡ b)
+_eqByteString_ : DecidableEquality ByteString
 _eqByteString_ (mkByteString x) (mkByteString y) with x String.≟ y
 ... | yes p = yes (cong mkByteString p)
-... | no p = no (λ x →  p (cong ByteString.getByteString x))
-
+... | no ¬p = no (λ x → ¬p (cong getByteString x)) where open ByteString
 
 record PosixTime : Set where
   constructor mkPosixTime
