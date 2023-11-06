@@ -7,7 +7,7 @@ open import Data.List using ([])
 open import Data.Nat using (ℕ; _≤_; _+_)
 open import Data.Product using (_×_; _,_)
 open import Marlowe.Language.Contract using (AccountId; ChoiceId; Token; ValueId; _eqAccountId_; _eqChoiceId_; _eqToken_; _eqValueId_)
-open import Primitives using (AssocList; PosixTime; _≤ᵖ_; mkPosixTime)
+open import Primitives using (AssocList; PosixTime; mkPosixTime)
 open PosixTime using (getPosixTime)
 open import Relation.Nullary using (Dec; yes; no)
 import Relation.Binary.PropositionalEquality as Eq

@@ -33,12 +33,6 @@ record PosixTime : Set where
   field
     getPosixTime : ℕ
 
-_<ᵖ_ : PosixTime → PosixTime → Set
-_<ᵖ_ (mkPosixTime x) (mkPosixTime y) = x ℕ.< y
-
-_≤ᵖ_ : PosixTime → PosixTime → Set
-_≤ᵖ_ (mkPosixTime x) (mkPosixTime y) = x ℕ.≤ y
-
 -- see also: https://stackoverflow.com/questions/58705398/is-there-an-associative-list-in-the-standard-library
 AssocList : Set → Set → Set
 AssocList A B = List (A × B)
