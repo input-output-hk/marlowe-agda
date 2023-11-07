@@ -19,9 +19,9 @@ unByteString : ByteString → String
 unByteString (mkByteString s) = s
 
 _≟-ByteString_ : DecidableEquality ByteString
-_≟-ByteString_ (mkByteString x) (mkByteString y) with x String.≟ y
+mkByteString s₁ ≟-ByteString mkByteString s₂ with s₁ String.≟ s₂
 ... | yes p = yes (cong mkByteString p)
-... | no ¬p = no (λ x → ¬p (cong unByteString x))
+... | no ¬p = no λ x → ¬p (cong unByteString x)
 
 record PosixTime : Set where
   constructor mkPosixTime
@@ -37,14 +37,14 @@ unParty (Address x) = x
 unParty (Role x) = x
 
 _≟-Party_ : DecidableEquality Party
-_≟-Party_ (Address x) (Address y) with x ≟-ByteString y
+Address b₁ ≟-Party Address b₂ with b₁ ≟-ByteString b₂
 ... | yes p = yes (cong Address p)
-... | no ¬p = no (λ x → let y = cong unParty x in ¬p y)
-_≟-Party_ (Role x) (Role y) with x ≟-ByteString y
+... | no ¬p = no λ x → let y = cong unParty x in ¬p y
+Role b₁ ≟-Party Role b₂ with b₁ ≟-ByteString b₂
 ... | yes p = yes (cong Role p)
 ... | no ¬p = no λ x → let y = cong unParty x in ¬p y
-_≟-Party_ (Role r) (Address a) = no λ ()
-_≟-Party_ (Address _) (Role _) = no λ ()
+Role _ ≟-Party Address _ = no λ ()
+Address _ ≟-Party Role _ = no λ ()
 
 data AccountId : Set where
   mkAccountId : Party → AccountId
@@ -53,7 +53,7 @@ unAccountId : AccountId → Party
 unAccountId (mkAccountId a) = a
 
 _≟-AccountId_ : DecidableEquality AccountId
-_≟-AccountId_ (mkAccountId a₁) (mkAccountId a₂) with a₁ ≟-Party a₂
+mkAccountId a₁ ≟-AccountId mkAccountId a₂ with a₁ ≟-Party a₂
 ... | yes p = yes (cong mkAccountId p)
 ... | no ¬p = no λ x → ¬p (cong unAccountId x)
 
@@ -67,9 +67,9 @@ unChoiceName : ChoiceName → ByteString
 unChoiceName (mkChoiceName s) = s
 
 _≟-ChoiceName_ : DecidableEquality ChoiceName
-_≟-ChoiceName_ (mkChoiceName x) (mkChoiceName y) with x ≟-ByteString y
+mkChoiceName b₁ ≟-ChoiceName mkChoiceName b₂ with b₁ ≟-ByteString b₂
 ... | yes p = yes (cong mkChoiceName p)
-... | no ¬p = no (λ x → ¬p (cong unChoiceName x))
+... | no ¬p = no λ x → ¬p (cong unChoiceName x)
 
 record ChoiceId : Set where
   constructor mkChoiceId
@@ -78,7 +78,7 @@ record ChoiceId : Set where
     party : Party
 
 _≟-ChoiceId_ : DecidableEquality ChoiceId
-(mkChoiceId n₁ p₁) ≟-ChoiceId (mkChoiceId n₂ p₂) with n₁ ≟-ChoiceName n₂ | p₁ ≟-Party p₂
+mkChoiceId n₁ p₁ ≟-ChoiceId mkChoiceId n₂ p₂ with n₁ ≟-ChoiceName n₂ | p₁ ≟-Party p₂
 ... | yes p | yes q = yes (cong₂ mkChoiceId p q)
 ... | _ | no ¬q = no λ x → ¬q (cong ChoiceId.party x)
 ... | no ¬p | _ = no λ x → ¬p (cong ChoiceId.name x)
@@ -93,7 +93,7 @@ getTokenName : Token → ByteString
 getTokenName (mkToken _ n) = n
 
 _≟-Token_ : DecidableEquality Token
-(mkToken c₁ n₁) ≟-Token (mkToken c₂ n₂) with c₁ ≟-ByteString c₂ | n₁ ≟-ByteString n₂
+mkToken c₁ n₁ ≟-Token mkToken c₂ n₂ with c₁ ≟-ByteString c₂ | n₁ ≟-ByteString n₂
 ... | yes p | yes q = yes (cong₂ mkToken p q)
 ... | _ | no ¬q = no λ x → ¬q (cong getTokenName x)
 ... | no ¬p | _ = no λ x → ¬p (cong getCurrencySymbol x)
@@ -104,9 +104,9 @@ record ValueId : Set where
     getValueId : ByteString
 
 _≟-ValueId_ : DecidableEquality ValueId
-(mkValueId v₁) ≟-ValueId (mkValueId v₂) with (v₁ ≟-ByteString v₂)
+mkValueId b₁ ≟-ValueId mkValueId b₂ with b₁ ≟-ByteString b₂
 ... | yes p = yes (cong mkValueId p)
-... | no ¬p = no (λ x → ¬p (cong getValueId x)) where open ValueId
+... | no ¬p = no λ x → ¬p (cong getValueId x) where open ValueId
 
 _≟-AccountId×Token_ : DecidableEquality (AccountId × Token)
 _≟-AccountId×Token_ = let _eq_ = ≡-dec _≟-AccountId_ _≟-Token_ in λ x y →  x eq y

@@ -1,6 +1,5 @@
 module Marlowe.Language.State where
 
-
 open import Agda.Builtin.Int using (Int)
 open import Data.Bool using (Bool; _∧_)
 open import Data.List using ([])

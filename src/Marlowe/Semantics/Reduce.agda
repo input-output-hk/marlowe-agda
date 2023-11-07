@@ -1,6 +1,4 @@
-
 module Marlowe.Semantics.Reduce where
-
 
 open import Agda.Builtin.Int using (Int)
 open import Data.Bool using (Bool; if_then_else_; not; _∧_; _∨_; true; false)
@@ -41,9 +39,9 @@ open Eq using (_≡_; refl; cong; sym)
 open import Data.Empty using (⊥; ⊥-elim)
 
 open import Primitives
-open Decidable _≟-AccountId×Token_  renaming (_‼_default_ to _‼ᵃ_default_) hiding (_∈?_)
-open Decidable _≟-ChoiceId_ renaming (_‼_default_ to _‼ᶜ_default_) using (_∈?_)
-open Decidable _≟-ValueId_ renaming (_‼_ to _‼ᵛ_; _‼_default_ to _‼ᵛ_default_; _∈?_ to _∈ᵛ?_; isElem to isElemᵛ)
+open Decidable _≟-AccountId×Token_  renaming (_‼_default_ to _‼-AccountId×Token_default_; _↑_ to _↑-AccountId×Token_) hiding (_∈?_)
+open Decidable _≟-ChoiceId_ renaming (_‼_default_ to _‼-ChoiceId_default_) using (_∈?_)
+open Decidable _≟-ValueId_ renaming (_‼_ to _‼-ValueId_; _‼_default_ to _‼-ValueId_default_; _∈?_ to _∈-ValueId?_; isElem to isElem-ValueId) hiding (_↑_)
 
 open Environment using (timeInterval)
 open State using (accounts; boundValues; choices)
@@ -146,8 +144,8 @@ data _⇀_ : Configuration → Configuration → Set where
     → ℰ⟦ v ⟧ e s > 0ℤ
     -----------------------------
     → let n = ∣ ℰ⟦ v ⟧ e s ∣
-          sₛ = (aₛ , t) ‼ᵃ accounts s default 0
-          sₜ = (aₜ , t) ‼ᵃ accounts s default 0
+          sₛ = (aₛ , t) ‼-AccountId×Token accounts s default 0
+          sₜ = (aₜ , t) ‼-AccountId×Token accounts s default 0
       in
       record {
         contract = Pay aₛ (mkAccount aₜ) t v c ;
@@ -160,7 +158,7 @@ data _⇀_ : Configuration → Configuration → Set where
       record {
         contract = c ;
         state = record s
-          { accounts = ((aₜ , t) , (sₜ ℕ.+ n)) ↑ (((aₛ , t) , (sₛ ℕ.∸ n)) ↑ accounts s) } ;
+          { accounts = ((aₜ , t) , (sₜ ℕ.+ n)) ↑-AccountId×Token (((aₛ , t) , (sₛ ℕ.∸ n)) ↑-AccountId×Token accounts s) } ;
         environment = e ;
         warnings = ws ++ [ if (sₛ ℕ.<ᵇ n)
             then ReducePartialPay aₛ (mkAccount aₜ) t sₛ n
@@ -182,7 +180,7 @@ data _⇀_ : Configuration → Configuration → Set where
     → ℰ⟦ v ⟧ e s > 0ℤ
     -----------------------------
     → let n = ∣ ℰ⟦ v ⟧ e s ∣
-          sₓ = (aₓ , t) ‼ᵃ accounts s default 0
+          sₓ = (aₓ , t) ‼-AccountId×Token accounts s default 0
       in
       record {
         contract = Pay aₓ (mkParty p) t v c ;
@@ -195,7 +193,7 @@ data _⇀_ : Configuration → Configuration → Set where
       record {
         contract = c ;
         state = record s
-          { accounts = ((aₓ , t) , (sₓ ℕ.∸ n)) ↑ accounts s } ;
+          { accounts = ((aₓ , t) , (sₓ ℕ.∸ n)) ↑-AccountId×Token accounts s } ;
         environment = e ;
         warnings = ws ++ [ if (sₓ ℕ.<ᵇ n)
             then ReducePartialPay aₓ (mkParty p) t sₓ n
@@ -288,7 +286,7 @@ data _⇀_ : Configuration → Configuration → Set where
       { vᵢ : Int }
       { ws ws' : List ReduceWarning }
       { ps : List Payment }
-    → just vᵢ ≡ i ‼ᵛ boundValues s
+    → just vᵢ ≡ i ‼-ValueId boundValues s
     → ws' ≡  ws ++ [ ReduceShadowing i vᵢ (ℰ⟦ v ⟧ e s) ]
     ----------------------------------------------------
     → record {
@@ -327,7 +325,7 @@ data _⇀_ : Configuration → Configuration → Set where
       ⇀
       record {
         contract = c ;
-        state = record s { boundValues = (i , ℰ⟦ v ⟧ e s) ↑ boundValues s } ;
+        state = record s { boundValues = (i , ℰ⟦ v ⟧ e s) ∷ boundValues s } ;
         environment = e ;
         warnings = ws ++ [ ReduceNoWarning ] ;
         payments = ps
@@ -594,10 +592,10 @@ progress record
   ; environment = e
   ; warnings = ws
   ; payments = ps
-  } with i ∈ᵛ? vs
+  } with i ∈-ValueId? vs
 ... | yes p =
          let ( _ , vₓ ) = lookup p
-             t = LetShadow {s} {e} {c} {i} {v} {vₓ} {ws} {ws ++ [ ReduceShadowing i vₓ (ℰ⟦ v ⟧ e s) ]} {ps} (isElemᵛ p) refl
+             t = LetShadow {s} {e} {c} {i} {v} {vₓ} {ws} {ws ++ [ ReduceShadowing i vₓ (ℰ⟦ v ⟧ e s) ]} {ps} (isElem-ValueId p) refl
            in reduce t
 ... | no ¬p = let t = LetNoShadow (¬Any⇒All¬ vs ¬p) in reduce t
 progress record

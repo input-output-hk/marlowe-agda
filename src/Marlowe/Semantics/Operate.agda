@@ -25,9 +25,9 @@ import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; cong; sym)
 
 open import Primitives
-open Decidable _≟-AccountId×Token_  renaming (_‼_default_ to _‼ᵃ_default_) hiding (_∈?_)
-open Decidable _≟-ChoiceId_ renaming (_‼_default_ to _‼ᶜ_default_) using (_∈?_)
-open Decidable _≟-ValueId_ renaming (_‼_ to _‼ᵛ_; _‼_default_ to _‼ᵛ_default_; _∈?_ to _∈ᵛ?_)
+open Decidable _≟-AccountId×Token_  renaming (_‼_default_ to _‼ᵃ_default_; _↑_ to _↑-AccountId×Token_) hiding (_∈?_)
+open Decidable _≟-ChoiceId_ renaming (_‼_default_ to _‼-ChoiceId_default_;  _↑_ to _↑-ChoiceId_) using (_∈?_)
+open Decidable _≟-ValueId_ renaming (_‼_ to _‼_ValueId_; _‼_default_ to _‼-ValueId_default_; _∈?_ to _∈-ValueId?_; _↑_ to _↑-ValueId_)
 
 Accounts : Set
 Accounts = AssocList (AccountId × Token) ℕ
@@ -65,7 +65,7 @@ updateMoneyInAccount account token amount accounts =
   let
     key = account , token
   in
-    (key , amount) ↑ accounts
+    (key , amount) ↑-AccountId×Token accounts
 
 addMoneyToAccount : AccountId → Token → ℕ → Accounts → Accounts
 addMoneyToAccount account token amount accounts =
@@ -163,9 +163,9 @@ reduceContractStep env state (Let valId val cont) =
   let
     evaluatedValue = ℰ⟦ val ⟧ env state
     boundVals = State.boundValues state
-    newState = record state {boundValues = (valId , evaluatedValue) ↑ boundVals}
-    warn = if ⌊ valId ∈ᵛ? boundVals ⌋
-             then ReduceShadowing valId (valId ‼ᵛ boundVals default 0ℤ) evaluatedValue
+    newState = record state {boundValues = (valId , evaluatedValue) ↑-ValueId boundVals}
+    warn = if ⌊ valId ∈-ValueId? boundVals ⌋
+             then ReduceShadowing valId (valId ‼-ValueId boundVals default 0ℤ) evaluatedValue
              else ReduceNoWarning
   in
     Reduced warn ReduceNoPayment newState cont
@@ -219,7 +219,7 @@ applyAction env state (IDeposit accId1 party1 tok1 amount) (Deposit accId2 party
     else NotAppliedAction
 applyAction _ state (IChoice choId1 choice) (Choice choId2 bounds) =
   if ⌊ choId1 ≟-ChoiceId choId2 ⌋ ∧ choice inBounds bounds
-    then AppliedAction ApplyNoWarning (record state {choices = (choId1 , unChosenNum choice) ↑ (State.choices state)})
+    then AppliedAction ApplyNoWarning (record state {choices = (choId1 , unChosenNum choice) ↑-ChoiceId (State.choices state)})
     else NotAppliedAction
 applyAction env state INotify (Notify obs) =
   if 𝒪⟦ obs ⟧ env state
