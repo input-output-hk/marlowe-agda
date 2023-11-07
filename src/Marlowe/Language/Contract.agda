@@ -7,18 +7,30 @@ open import Agda.Builtin.List using (List)
 open import Data.Bool using (Bool; false; _∧_)
 open import Primitives
 open import Relation.Binary using (DecidableEquality)
+open import Relation.Binary.PropositionalEquality using (cong; cong₂; _≡_; _≢_)
 open import Relation.Nullary.Decidable using (⌊_⌋)
-
+open import Relation.Nullary using (yes; no)
 
 data Party : Set where
   Address : ByteString → Party
   Role : ByteString → Party
 
-_eqParty_ : Party → Party → Bool
-_eqParty_ (Address x) (Address y) = ⌊ x eqByteString y ⌋
-_eqParty_ (Role x) (Role y) = ⌊ x eqByteString y ⌋
-_eqParty_ _ _ = false
+unParty : Party → ByteString
+unParty (Address x) = x
+unParty (Role x) = x
 
+_eqPartyDec_ : DecidableEquality Party
+_eqPartyDec_ (Address x) (Address y) with x eqByteString y
+... | yes p = yes (cong Address p)
+... | no ¬p = no (λ x → let y = cong unParty x in ¬p y)
+_eqPartyDec_ (Role x) (Role y) with x eqByteString y
+... | yes p = yes (cong Role p)
+... | no ¬p = no λ x → let y = cong unParty x in ¬p y
+_eqPartyDec_ (Role r) (Address a) = no λ ()
+_eqPartyDec_ (Address _) (Role _) = no λ ()
+
+_eqParty_ : Party → Party → Bool
+p₁ eqParty p₂ = ⌊ p₁ eqPartyDec p₂ ⌋
 
 data AccountId : Set where
   mkAccountId : Party → AccountId
@@ -26,37 +38,56 @@ data AccountId : Set where
 _eqAccountId_ : AccountId → AccountId → Bool
 _eqAccountId_ (mkAccountId x) (mkAccountId y) = x eqParty y
 
-
 data Timeout : Set where
   mkTimeout : PosixTime → Timeout
-
 
 data ChoiceName : Set where
   mkChoiceName : ByteString → ChoiceName
 
+unChoiceName : ChoiceName → ByteString
+unChoiceName (mkChoiceName s) = s
+
+_eqChoiceNameDec_ : DecidableEquality ChoiceName
+_eqChoiceNameDec_ (mkChoiceName x) (mkChoiceName y) with x eqByteString y
+... | yes p = yes (cong mkChoiceName p)
+... | no ¬p = no (λ x → ¬p (cong unChoiceName x))
+
 _eqChoiceName_ : ChoiceName → ChoiceName → Bool
-_eqChoiceName_ (mkChoiceName x) (mkChoiceName y) = ⌊ x eqByteString y ⌋
+c₁ eqChoiceName c₂ = ⌊ c₁ eqChoiceNameDec c₂ ⌋
 
+record ChoiceId : Set where
+  constructor mkChoiceId
+  field
+    name : ChoiceName
+    party : Party
 
-data ChoiceId : Set where
-  mkChoiceId : ChoiceName → Party → ChoiceId
+getChoiceName : ChoiceId → ChoiceName
+getChoiceName (mkChoiceId n _) = n
 
-postulate
-  _eqChoiceId_ : DecidableEquality ChoiceId
+getParty : ChoiceId → Party
+getParty (mkChoiceId _ p) = p
+
+_eqChoiceId_ : DecidableEquality ChoiceId
+(mkChoiceId n₁ p₁) eqChoiceId (mkChoiceId n₂ p₂) with n₁ eqChoiceNameDec n₂ | p₁ eqPartyDec p₂
+... | yes p | yes q = yes (cong₂ mkChoiceId p q)
+... | _ | no ¬q = no λ x → ¬q (cong getParty x)
+... | no ¬p | _ = no λ x → ¬p (cong getChoiceName x)
 
 data Token : Set where
   mkToken : ByteString → ByteString → Token
 
 _eqToken_ : Token → Token → Bool
 _eqToken_ (mkToken xs xn) (mkToken ys yn) = ⌊ xs eqByteString ys ⌋ ∧ ⌊ xn eqByteString yn ⌋
-    
 
-data ValueId : Set where
-  mkValueId : ByteString → ValueId
+record ValueId : Set where
+  constructor mkValueId
+  field
+    getValueId : ByteString
 
-postulate
-  _eqValueId_ : DecidableEquality ValueId
-
+_eqValueId_ : DecidableEquality ValueId
+_eqValueId_ (mkValueId x) (mkValueId y) with (x eqByteString y)
+... | yes p = yes (cong mkValueId p)
+... | no ¬p = no (λ x → ¬p (cong getValueId x)) where open ValueId
 
 data Observation : Set
 
@@ -101,7 +132,7 @@ data Action : Set where
 data Payee : Set where
   mkAccount : AccountId → Payee
   mkParty : Party → Payee
-  
+
 
 data Contract : Set
 
@@ -119,4 +150,3 @@ data Contract where
 
 getAction : Case → Action
 getAction (mkCase action _) = action
-
