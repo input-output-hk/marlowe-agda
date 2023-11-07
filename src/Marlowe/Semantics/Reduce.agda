@@ -41,9 +41,9 @@ open Eq using (_≡_; refl; cong; sym)
 open import Data.Empty using (⊥; ⊥-elim)
 
 open import Primitives
-open Decidable _eqAccountIdTokenDec_  renaming (_‼_default_ to _‼ᵃ_default_) hiding (_∈?_)
-open Decidable _eqChoiceId_ renaming (_‼_default_ to _‼ᶜ_default_) using (_∈?_)
-open Decidable _eqValueId_ renaming (_‼_ to _‼ᵛ_; _‼_default_ to _‼ᵛ_default_; _∈?_ to _∈ᵛ?_; isElem to isElemᵛ)
+open Decidable _≟-AccountId×Token_  renaming (_‼_default_ to _‼ᵃ_default_) hiding (_∈?_)
+open Decidable _≟-ChoiceId_ renaming (_‼_default_ to _‼ᶜ_default_) using (_∈?_)
+open Decidable _≟-ValueId_ renaming (_‼_ to _‼ᵛ_; _‼_default_ to _‼ᵛ_default_; _∈?_ to _∈ᵛ?_; isElem to isElemᵛ)
 
 open Environment using (timeInterval)
 open State using (accounts; boundValues; choices)

@@ -25,9 +25,9 @@ import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; cong; sym)
 
 open import Primitives
-open Decidable _eqAccountIdTokenDec_  renaming (_‼_default_ to _‼ᵃ_default_) hiding (_∈?_)
-open Decidable _eqChoiceId_ renaming (_‼_default_ to _‼ᶜ_default_) using (_∈?_)
-open Decidable _eqValueId_ renaming (_‼_ to _‼ᵛ_; _‼_default_ to _‼ᵛ_default_; _∈?_ to _∈ᵛ?_)
+open Decidable _≟-AccountId×Token_  renaming (_‼_default_ to _‼ᵃ_default_) hiding (_∈?_)
+open Decidable _≟-ChoiceId_ renaming (_‼_default_ to _‼ᶜ_default_) using (_∈?_)
+open Decidable _≟-ValueId_ renaming (_‼_ to _‼ᵛ_; _‼_default_ to _‼ᵛ_default_; _∈?_ to _∈ᵛ?_)
 
 Accounts : Set
 Accounts = AssocList (AccountId × Token) ℕ
@@ -208,7 +208,7 @@ data ApplyAction : Set where
 
 applyAction : Environment → State → InputContent → Action → ApplyAction
 applyAction env state (IDeposit accId1 party1 tok1 amount) (Deposit accId2 party2 tok2 val) =
-  if accId1 eqAccountId accId2 ∧ party1 eqParty party2 ∧ (tok1 eqToken tok2) ∧ ⌊ ((+ amount) ≟ ℰ⟦ val ⟧ env state) ⌋
+  if ⌊ accId1 ≟-AccountId accId2 ⌋ ∧ ⌊ party1 ≟-Party party2 ⌋ ∧ ⌊ tok1 ≟-Token tok2 ⌋ ∧ ⌊ ((+ amount) ≟ ℰ⟦ val ⟧ env state) ⌋
     then AppliedAction
            ApplyNoWarning
            (
@@ -218,7 +218,7 @@ applyAction env state (IDeposit accId1 party1 tok1 amount) (Deposit accId2 party
            )
     else NotAppliedAction
 applyAction _ state (IChoice choId1 choice) (Choice choId2 bounds) =
-  if ⌊ choId1 eqChoiceId choId2 ⌋ ∧ choice inBounds bounds
+  if ⌊ choId1 ≟-ChoiceId choId2 ⌋ ∧ choice inBounds bounds
     then AppliedAction ApplyNoWarning (record state {choices = (choId1 , unChosenNum choice) ↑ (State.choices state)})
     else NotAppliedAction
 applyAction env state INotify (Notify obs) =
