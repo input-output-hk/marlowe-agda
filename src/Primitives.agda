@@ -1,31 +1,14 @@
 module Primitives where
 
 open import Agda.Builtin.List using (List; []; _∷_)
-open import Data.String as String using (String)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Maybe using (Maybe; just; nothing; fromMaybe)
-open import Data.Nat as ℕ using (ℕ)
 open import Data.List.Relation.Unary.Any using (Any; any?; lookup)
 open import Data.List.Relation.Unary.All using (All)
 open import Function using (_∘_)
 open import Relation.Binary using (Decidable; DecidableEquality)
 open import Relation.Binary.PropositionalEquality using (cong; _≡_; _≢_)
 open import Relation.Nullary using (yes; no)
-
-record ByteString : Set where
-  constructor mkByteString
-  field
-    getByteString : String
-
-_eqByteString_ : DecidableEquality ByteString
-_eqByteString_ (mkByteString x) (mkByteString y) with x String.≟ y
-... | yes p = yes (cong mkByteString p)
-... | no ¬p = no (λ x → ¬p (cong getByteString x)) where open ByteString
-
-record PosixTime : Set where
-  constructor mkPosixTime
-  field
-    getPosixTime : ℕ
 
 -- see also: https://stackoverflow.com/questions/58705398/is-there-an-associative-list-in-the-standard-library
 AssocList : Set → Set → Set

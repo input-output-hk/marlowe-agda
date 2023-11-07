@@ -1,15 +1,32 @@
-
 module Marlowe.Language.Contract where
-
 
 open import Agda.Builtin.Int using (Int)
 open import Agda.Builtin.List using (List)
 open import Data.Bool using (Bool; false; _∧_)
+open import Data.Nat as ℕ using (ℕ)
+open import Data.Product using (_×_; _,_)
+open import Data.Product.Properties using (≡-dec)
+open import Data.String as String using (String)
 open import Primitives
 open import Relation.Binary using (DecidableEquality)
 open import Relation.Binary.PropositionalEquality using (cong; cong₂; _≡_; _≢_)
 open import Relation.Nullary.Decidable using (⌊_⌋)
 open import Relation.Nullary using (yes; no)
+
+record ByteString : Set where
+  constructor mkByteString
+  field
+    getByteString : String
+
+_eqByteString_ : DecidableEquality ByteString
+_eqByteString_ (mkByteString x) (mkByteString y) with x String.≟ y
+... | yes p = yes (cong mkByteString p)
+... | no ¬p = no (λ x → ¬p (cong getByteString x)) where open ByteString
+
+record PosixTime : Set where
+  constructor mkPosixTime
+  field
+    getPosixTime : ℕ
 
 data Party : Set where
   Address : ByteString → Party
@@ -35,8 +52,16 @@ p₁ eqParty p₂ = ⌊ p₁ eqPartyDec p₂ ⌋
 data AccountId : Set where
   mkAccountId : Party → AccountId
 
+unAccountId : AccountId → Party
+unAccountId (mkAccountId a) = a
+
+_eqAccountIdDec_ : DecidableEquality AccountId
+_eqAccountIdDec_ (mkAccountId a₁) (mkAccountId a₂) with a₁ eqPartyDec a₂
+... | yes p = yes (cong mkAccountId p)
+... | no ¬p = no λ x → ¬p (cong unAccountId x)
+
 _eqAccountId_ : AccountId → AccountId → Bool
-_eqAccountId_ (mkAccountId x) (mkAccountId y) = x eqParty y
+_eqAccountId_ a₁ a₂ =  ⌊ a₁ eqAccountIdDec a₂ ⌋
 
 data Timeout : Set where
   mkTimeout : PosixTime → Timeout
@@ -76,8 +101,20 @@ _eqChoiceId_ : DecidableEquality ChoiceId
 data Token : Set where
   mkToken : ByteString → ByteString → Token
 
+getCurrencySymbol : Token → ByteString
+getCurrencySymbol (mkToken c _) = c
+
+getTokenName : Token → ByteString
+getTokenName (mkToken _ n) = n
+
+_eqTokenDec_ : DecidableEquality Token
+(mkToken c₁ n₁) eqTokenDec (mkToken c₂ n₂) with c₁ eqByteString c₂ | n₁ eqByteString n₂
+... | yes p | yes q = yes (cong₂ mkToken p q)
+... | _ | no ¬q = no λ x → ¬q (cong getTokenName x)
+... | no ¬p | _ = no λ x → ¬p (cong getCurrencySymbol x)
+
 _eqToken_ : Token → Token → Bool
-_eqToken_ (mkToken xs xn) (mkToken ys yn) = ⌊ xs eqByteString ys ⌋ ∧ ⌊ xn eqByteString yn ⌋
+_eqToken_ t₁ t₂ = ⌊ t₁ eqTokenDec t₂ ⌋
 
 record ValueId : Set where
   constructor mkValueId
@@ -88,6 +125,9 @@ _eqValueId_ : DecidableEquality ValueId
 _eqValueId_ (mkValueId x) (mkValueId y) with (x eqByteString y)
 ... | yes p = yes (cong mkValueId p)
 ... | no ¬p = no (λ x → ¬p (cong getValueId x)) where open ValueId
+
+_eqAccountIdTokenDec_ : DecidableEquality (AccountId × Token)
+_eqAccountIdTokenDec_ = let _eq_ = ≡-dec _eqAccountIdDec_ _eqTokenDec_ in λ x y →  x eq y
 
 data Observation : Set
 
