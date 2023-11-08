@@ -4,6 +4,7 @@ open import Agda.Builtin.List using (List; []; _∷_)
 open import Agda.Builtin.Bool using (Bool; true; false)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Maybe using (Maybe; just; nothing; fromMaybe)
+open import Data.List.Membership.Propositional using () renaming (_∈_ to _∈-List_)
 open import Data.List.Relation.Unary.Any using (Any; any?; lookup; _∷=_)
 open import Data.List.Relation.Unary.All using (All)
 open import Function using (_∘_)
@@ -25,6 +26,13 @@ a ∈ abs = Any ((a ≡_) ∘ proj₁) abs
 _∉_ : A → AssocList A B → Set
 a ∉ abs = All ((a ≢_) ∘ proj₁) abs
 
+_∈-L_ : (A × B) → List (A × B) → Set
+p ∈-L abs = Any (p ≡_) abs
+
+postulate
+  -- lookup∈-L : ∀ {a : A} { abs : AssocList A B } → (p : a ∈ abs) → lookup p ∈-L abs
+  lookup∈-L' : ∀ {a : A} { abs : AssocList A B } → (p : a ∈ abs) → (a , proj₂ (lookup p)) ∈-L abs
+
 module Decidable {A : Set} (_≟_ : DecidableEquality A) where
 
   _∈?_ : Decidable (_∈_ {A} {B})
@@ -42,6 +50,3 @@ module Decidable {A : Set} (_≟_ : DecidableEquality A) where
   (a , b) ↑ abs with a ∈? abs
   ... | yes p = p ∷= (a , b)
   ... | no _ = (a , b) ∷ abs
-
-  postulate
-    isElem : ∀ {a : A} { abs : AssocList A B } → (p : Any (λ x → a ≡ proj₁ x) abs) → just (proj₂ (lookup p)) ≡ (a ‼ abs)

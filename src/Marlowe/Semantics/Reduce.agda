@@ -6,7 +6,7 @@ open import Data.Bool.Properties as 𝔹 using ()
 open import Data.Integer using (_<?_; _≤?_; _≟_ ; _⊔_; _⊓_; _+_; _-_; 0ℤ ; _≤_ ; _>_ ; _≥_ ; _<_; ∣_∣; +_)
 open import Data.Integer.Properties as ℤ using ()
 open import Data.List using (List; []; _∷_; _++_; foldr; reverse; [_]; null)
-open import Data.List.Relation.Unary.Any using (satisfied; lookup)
+open import Data.List.Relation.Unary.Any using (lookup)
 open import Data.List.Relation.Unary.All.Properties using (¬Any⇒All¬)
 open import Data.Maybe using (Maybe; just; nothing; fromMaybe)
 open import Data.Nat as ℕ using (ℕ; suc; s≤s)
@@ -32,7 +32,7 @@ open import Primitives
 open import Relation.Nullary.Decidable using (⌊_⌋)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 
-open import Data.List.Membership.Propositional using () renaming (_∈_ to _⋵_)
+open import Data.List.Membership.Propositional using () renaming (_∈_ to _∈-List_)
 
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; cong; sym)
@@ -41,7 +41,7 @@ open import Data.Empty using (⊥; ⊥-elim)
 open import Primitives
 open Decidable _≟-AccountId×Token_  renaming (_‼_default_ to _‼-AccountId×Token_default_; _↑_ to _↑-AccountId×Token_) hiding (_∈?_)
 open Decidable _≟-ChoiceId_ renaming (_‼_default_ to _‼-ChoiceId_default_) using (_∈?_)
-open Decidable _≟-ValueId_ renaming (_‼_ to _‼-ValueId_; _‼_default_ to _‼-ValueId_default_; _∈?_ to _∈-ValueId?_; isElem to isElem-ValueId) hiding (_↑_)
+open Decidable _≟-ValueId_ renaming (_‼_ to _‼-ValueId_; _‼_default_ to _‼-ValueId_default_; _∈?_ to _∈-ValueId?_) hiding (_↑_)
 
 open Environment using (timeInterval)
 open State using (accounts; boundValues; choices)
@@ -286,7 +286,7 @@ data _⇀_ : Configuration → Configuration → Set where
       { vᵢ : Int }
       { ws ws' : List ReduceWarning }
       { ps : List Payment }
-    → just vᵢ ≡ i ‼-ValueId boundValues s
+    → (i , vᵢ) ∈-L boundValues s
     → ws' ≡  ws ++ [ ReduceShadowing i vᵢ (ℰ⟦ v ⟧ e s) ]
     ----------------------------------------------------
     → record {
@@ -594,9 +594,9 @@ progress record
   ; payments = ps
   } with i ∈-ValueId? vs
 ... | yes p =
-         let ( _ , vₓ ) = lookup p
-             t = LetShadow {s} {e} {c} {i} {v} {vₓ} {ws} {ws ++ [ ReduceShadowing i vₓ (ℰ⟦ v ⟧ e s) ]} {ps} (isElem-ValueId p) refl
-           in reduce t
+          let vᵢ = proj₂ (lookup p)
+              t = LetShadow {s} {e} {c} {i} {v} {vᵢ} {ws} {ws ++ [ ReduceShadowing i vᵢ (ℰ⟦ v ⟧ e s) ]} {ps} (lookup∈-L' p) refl
+          in reduce t
 ... | no ¬p = let t = LetNoShadow (¬Any⇒All¬ vs ¬p) in reduce t
 progress record
   { contract = Assert o c
