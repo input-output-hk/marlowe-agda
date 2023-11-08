@@ -496,25 +496,25 @@ data AmbiguousTimeInterval : Configuration → Set where
         }
 
 
-data Reduce (C : Configuration) : Set where
+data Reducible (C : Configuration) : Set where
 
-  reduce : ∀ {D}
+  step : ∀ {D}
     → C ⇀ D
-      --------
-    → Reduce C
+      -----------
+    → Reducible C
 
-  done :
+  quiescent :
       Quiescent C
       -----------
-    → Reduce C
+    → Reducible C
 
-  error :
+  ambiguousTimeInterval :
       AmbiguousTimeInterval C
       -----------------------
-    → Reduce C
+    → Reducible C
 
 
-progress : ∀ (C : Configuration) → Reduce C
+progress : ∀ (C : Configuration) → Reducible C
 progress record
   { contract = Close
   ; state = record
@@ -526,7 +526,7 @@ progress record
   ; environment = _
   ; warnings = _
   ; payments = _
-  } = done close
+  } = quiescent close
 progress record
   { contract = Close
   ; state = record
@@ -538,7 +538,7 @@ progress record
   ; environment = _
   ; warnings = _
   ; payments = _
-  } = reduce CloseRefund
+  } = step CloseRefund
 progress record
   { contract = Pay a (mkAccount p) t v c
   ; state = s
@@ -546,8 +546,8 @@ progress record
   ; warnings = _
   ; payments = _
   } with ℰ⟦ v ⟧ e s ≤? 0ℤ
-... | yes q = let t = PayNonPositive q in reduce t
-... | no ¬p = let t = PayInternalTransfer (ℤ.≰⇒> ¬p) in reduce t
+... | yes q = let t = PayNonPositive q in step t
+... | no ¬p = let t = PayInternalTransfer (ℤ.≰⇒> ¬p) in step t
 progress record
   { contract = Pay a (mkParty p) t v c
   ; state = s
@@ -555,8 +555,8 @@ progress record
   ; warnings = _
   ; payments = _
   } with ℰ⟦ v ⟧ e s ≤? 0ℤ
-... | yes q = let t = PayNonPositive q in reduce t
-... | no ¬p = let t = PayExternal (ℤ.≰⇒> ¬p) in reduce t
+... | yes q = let t = PayNonPositive q in step t
+... | no ¬p = let t = PayExternal (ℤ.≰⇒> ¬p) in step t
 progress record
   { contract = If o c₁ c₂
   ; state = s
@@ -564,8 +564,8 @@ progress record
   ; warnings = _
   ; payments = _
   } with 𝒪⟦ o ⟧ e s 𝔹.≟ true
-... | yes p = let t = IfTrue p in reduce t
-... | no ¬p = let t = IfFalse (𝔹.¬-not ¬p) in reduce t
+... | yes p = let t = IfTrue p in step t
+... | no ¬p = let t = IfFalse (𝔹.¬-not ¬p) in step t
 progress record
   { contract = When cs (mkTimeout (mkPosixTime t)) c
   ; state = record
@@ -578,9 +578,9 @@ progress record
   ; warnings = _
   ; payments = _
   } with (tₛ ℕ.+ Δₜ) ℕ.<? t | t ℕ.≤? tₛ
-... | yes p | _ = done (waiting p)
-... | _ | yes q = reduce (WhenTimeout q)
-... | no ¬p | no ¬q = error (AmbiguousTimeIntervalError (ℕ.≰⇒> ¬q) (ℕ.≮⇒≥ ¬p))
+... | yes p | _ = quiescent (waiting p)
+... | _ | yes q = step (WhenTimeout q)
+... | no ¬p | no ¬q = ambiguousTimeInterval (AmbiguousTimeIntervalError (ℕ.≰⇒> ¬q) (ℕ.≮⇒≥ ¬p))
 progress record
   { contract = Let i v c
   ; state = s@(record
@@ -596,8 +596,8 @@ progress record
 ... | yes p =
           let vᵢ = proj₂ (lookup p)
               t = LetShadow {s} {e} {c} {i} {v} {vᵢ} {ws} {ws ++ [ ReduceShadowing i vᵢ (ℰ⟦ v ⟧ e s) ]} {ps} (lookup∈-L' p) refl
-          in reduce t
-... | no ¬p = let t = LetNoShadow (¬Any⇒All¬ vs ¬p) in reduce t
+          in step t
+... | no ¬p = let t = LetNoShadow (¬Any⇒All¬ vs ¬p) in step t
 progress record
   { contract = Assert o c
   ; state = s
@@ -605,5 +605,5 @@ progress record
   ; warnings = _
   ; payments = _
   } with 𝒪⟦ o ⟧ e s 𝔹.≟ true
-... | yes p = let t = AssertTrue p in reduce t
-... | no ¬p = let t = AssertFalse (𝔹.¬-not ¬p) in reduce t
+... | yes p = let t = AssertTrue p in step t
+... | no ¬p = let t = AssertFalse (𝔹.¬-not ¬p) in step t
