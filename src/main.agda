@@ -7,6 +7,7 @@ module main where
 
 
 open import Data.List.Base using ([]; _∷_)
+open import Data.Product using (_×_) renaming (_,_ to ⟨_,_⟩)
 open import IO
 open import Marlowe.Language.Contract
 open import Marlowe.Serialization.Json
@@ -14,7 +15,7 @@ open import Marlowe.Examples.Escrow
 open import Marlowe.Semantics.Operate
 open import Primitives
 
-open Json {{...}} public
+-- open Json {{...}} public
 
 
 pattern [_,_,_,_] w x y z = w ∷ x ∷ y ∷ z ∷ []
@@ -23,13 +24,14 @@ pattern [_,_,_,_] w x y z = w ∷ x ∷ y ∷ z ∷ []
 main : Main
 main =
   let
-    triple minTime contract inputs = escrowExample
+    ⟨ minTime , ⟨ contract , inputs ⟩ ⟩ = escrowExample
     output = playTrace minTime contract inputs
   in
     run
       (
-        putStrLn
-          (
+        -- FIXME: re-introduce JSON serialization
+        putStrLn "done"
+          {-
             object
               [
                 "minTime" kv minTime
@@ -37,5 +39,5 @@ main =
               , "inputs" kv inputs
               , "output" kv output
               ]
-          )
+          -}
       )

@@ -1,43 +1,39 @@
-
 module Marlowe.Language.State where
-
 
 open import Agda.Builtin.Int using (Int)
 open import Data.Bool using (Bool; _∧_)
-open import Marlowe.Language.Contract using (AccountId; ChoiceId; Token; ValueId; _eqAccountId_; _eqChoiceId_; _eqToken_; _eqValueId_)
-open import Primitives using (Map; emptyMap; Pair; PosixTime; pair)
-
-
-Accounts : Set
-Accounts = Map (Pair AccountId Token) Int
-
-
-_eqAccountIdToken_ : Pair AccountId Token → Pair AccountId Token → Bool
-_eqAccountIdToken_ (pair account token) (pair account' token') = account eqAccountId account' ∧ token eqToken token'
-
+open import Data.List using ([])
+open import Data.Nat using (ℕ; _≤_; _+_)
+open import Data.Product using (_×_; _,_)
+open import Marlowe.Language.Contract
+open import Primitives using (AssocList)
+open PosixTime using (getPosixTime)
+open import Relation.Nullary using (Dec; yes; no)
+import Relation.Binary.PropositionalEquality as Eq
+open Eq using (_≡_; refl; cong; sym)
 
 record State : Set where
   constructor mkState
   field
-    accounts : Accounts
-    choices : Map ChoiceId Int
-    boundValues : Map ValueId Int
+    accounts : AssocList (AccountId × Token) ℕ
+    choices : AssocList ChoiceId Int
+    boundValues : AssocList ValueId Int
     minTime : PosixTime
 
-
 emptyState : PosixTime → State
-emptyState =
-  mkState
-    (emptyMap _eqAccountIdToken_)
-    (emptyMap _eqChoiceId_)
-    (emptyMap _eqValueId_)
+emptyState = mkState [] [] []
 
+record TimeInterval : Set where
+  constructor mkInterval
+  field
+    startTime : PosixTime
+    offset : ℕ
 
-TimeInterval : Set
-TimeInterval = Pair PosixTime PosixTime
-
+endTime : TimeInterval → PosixTime
+endTime (mkInterval (mkPosixTime s) o) = mkPosixTime (s + o)
 
 record Environment : Set where
   constructor mkEnvironment
   field
     timeInterval : TimeInterval
+

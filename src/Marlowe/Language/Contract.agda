@@ -1,62 +1,115 @@
-
 module Marlowe.Language.Contract where
-
 
 open import Agda.Builtin.Int using (Int)
 open import Agda.Builtin.List using (List)
 open import Data.Bool using (Bool; false; _∧_)
+open import Data.Nat as ℕ using (ℕ)
+open import Data.Product using (_×_; _,_)
+open import Data.Product.Properties using (≡-dec)
+open import Data.String as String using (String)
 open import Primitives
-open import Relation.Nullary.Decidable using (⌊_⌋)
+open import Relation.Binary using (DecidableEquality)
+open import Relation.Binary.PropositionalEquality using (cong; cong₂; _≡_; _≢_)
+open import Relation.Nullary using (yes; no)
 
+data ByteString : Set where
+  mkByteString : String → ByteString
+
+unByteString : ByteString → String
+unByteString (mkByteString s) = s
+
+_≟-ByteString_ : DecidableEquality ByteString
+mkByteString s₁ ≟-ByteString mkByteString s₂ with s₁ String.≟ s₂
+... | yes p = yes (cong mkByteString p)
+... | no ¬p = no λ x → ¬p (cong unByteString x)
+
+record PosixTime : Set where
+  constructor mkPosixTime
+  field
+    getPosixTime : ℕ
 
 data Party : Set where
   Address : ByteString → Party
   Role : ByteString → Party
 
-_eqParty_ : Party → Party → Bool
-_eqParty_ (Address x) (Address y) = x eqByteString y
-_eqParty_ (Role x) (Role y) = x eqByteString y
-_eqParty_ _ _ = false
+unParty : Party → ByteString
+unParty (Address x) = x
+unParty (Role x) = x
 
+_≟-Party_ : DecidableEquality Party
+Address b₁ ≟-Party Address b₂ with b₁ ≟-ByteString b₂
+... | yes p = yes (cong Address p)
+... | no ¬p = no λ x → let y = cong unParty x in ¬p y
+Role b₁ ≟-Party Role b₂ with b₁ ≟-ByteString b₂
+... | yes p = yes (cong Role p)
+... | no ¬p = no λ x → let y = cong unParty x in ¬p y
+Role _ ≟-Party Address _ = no λ ()
+Address _ ≟-Party Role _ = no λ ()
 
 data AccountId : Set where
   mkAccountId : Party → AccountId
 
-_eqAccountId_ : AccountId → AccountId → Bool
-_eqAccountId_ (mkAccountId x) (mkAccountId y) = x eqParty y
+unAccountId : AccountId → Party
+unAccountId (mkAccountId a) = a
 
+_≟-AccountId_ : DecidableEquality AccountId
+mkAccountId a₁ ≟-AccountId mkAccountId a₂ with a₁ ≟-Party a₂
+... | yes p = yes (cong mkAccountId p)
+... | no ¬p = no λ x → ¬p (cong unAccountId x)
 
 data Timeout : Set where
   mkTimeout : PosixTime → Timeout
 
-
 data ChoiceName : Set where
   mkChoiceName : ByteString → ChoiceName
 
-_eqChoiceName_ : ChoiceName → ChoiceName → Bool
-_eqChoiceName_ (mkChoiceName x) (mkChoiceName y) = x eqByteString y
+unChoiceName : ChoiceName → ByteString
+unChoiceName (mkChoiceName s) = s
 
+_≟-ChoiceName_ : DecidableEquality ChoiceName
+mkChoiceName b₁ ≟-ChoiceName mkChoiceName b₂ with b₁ ≟-ByteString b₂
+... | yes p = yes (cong mkChoiceName p)
+... | no ¬p = no λ x → ¬p (cong unChoiceName x)
 
-data ChoiceId : Set where
-  mkChoiceId : ChoiceName → Party → ChoiceId
+record ChoiceId : Set where
+  constructor mkChoiceId
+  field
+    name : ChoiceName
+    party : Party
 
-_eqChoiceId_ : ChoiceId → ChoiceId → Bool
-_eqChoiceId_ (mkChoiceId xn xp) (mkChoiceId yn yp) = (xn eqChoiceName yn) ∧ (xp eqParty yp)
-
+_≟-ChoiceId_ : DecidableEquality ChoiceId
+mkChoiceId n₁ p₁ ≟-ChoiceId mkChoiceId n₂ p₂ with n₁ ≟-ChoiceName n₂ | p₁ ≟-Party p₂
+... | yes p | yes q = yes (cong₂ mkChoiceId p q)
+... | _ | no ¬q = no λ x → ¬q (cong ChoiceId.party x)
+... | no ¬p | _ = no λ x → ¬p (cong ChoiceId.name x)
 
 data Token : Set where
   mkToken : ByteString → ByteString → Token
 
-_eqToken_ : Token → Token → Bool
-_eqToken_ (mkToken xs xn) (mkToken ys yn) = xs eqByteString ys ∧ xn eqByteString yn
-    
+getCurrencySymbol : Token → ByteString
+getCurrencySymbol (mkToken c _) = c
 
-data ValueId : Set where
-  mkValueId : ByteString → ValueId
+getTokenName : Token → ByteString
+getTokenName (mkToken _ n) = n
 
-_eqValueId_ : ValueId → ValueId → Bool
-_eqValueId_ (mkValueId x) (mkValueId y) = x eqByteString y
+_≟-Token_ : DecidableEquality Token
+mkToken c₁ n₁ ≟-Token mkToken c₂ n₂ with c₁ ≟-ByteString c₂ | n₁ ≟-ByteString n₂
+... | yes p | yes q = yes (cong₂ mkToken p q)
+... | _ | no ¬q = no λ x → ¬q (cong getTokenName x)
+... | no ¬p | _ = no λ x → ¬p (cong getCurrencySymbol x)
 
+record ValueId : Set where
+  constructor mkValueId
+  field
+    getValueId : ByteString
+
+_≟-ValueId_ : DecidableEquality ValueId
+mkValueId b₁ ≟-ValueId mkValueId b₂ with b₁ ≟-ByteString b₂
+... | yes p = yes (cong mkValueId p)
+... | no ¬p = no λ x → ¬p (cong getValueId x) where open ValueId
+
+_≟-AccountId×Token_ : DecidableEquality (AccountId × Token)
+_≟-AccountId×Token_ = let _eq_ = ≡-dec _≟-AccountId_ _≟-Token_ in λ x y →  x eq y
 
 data Observation : Set
 
@@ -101,18 +154,12 @@ data Action : Set where
 data Payee : Set where
   mkAccount : AccountId → Payee
   mkParty : Party → Payee
-  
+
 
 data Contract : Set
 
-
 data Case : Set where
   mkCase : Action → Contract → Case
-
-
-getAction : Case → Action
-getAction (mkCase action _) = action
-
 
 data Contract where
   Close : Contract
@@ -121,3 +168,7 @@ data Contract where
   When : List Case → Timeout → Contract → Contract
   Let : ValueId → Value → Contract → Contract
   Assert : Observation → Contract → Contract
+
+
+getAction : Case → Action
+getAction (mkCase action _) = action

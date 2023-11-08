@@ -6,6 +6,7 @@ open import Agda.Builtin.Int using (Int)
 open import Agda.Builtin.List using (List)
 open import Data.Bool using (Bool; _∧_)
 open import Data.Integer using (_≤?_)
+open import Data.Nat using (ℕ)
 open import Data.List using (any)
 open import Marlowe.Language.Contract using (AccountId; Bound; ChoiceId; Party; Token)
 open import Relation.Nullary.Decidable using (⌊_⌋)
@@ -27,7 +28,7 @@ _inBounds_ (mkChosenNum num) bounds =
 
 
 data InputContent : Set where
-  IDeposit : AccountId → Party → Token → Int → InputContent
+  IDeposit : AccountId → Party → Token → ℕ → InputContent
   IChoice : ChoiceId → ChosenNum → InputContent
   INotify : InputContent
 

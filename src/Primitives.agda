@@ -1,95 +1,53 @@
-
 module Primitives where
 
-
-open import Agda.Builtin.Int using (Int)
 open import Agda.Builtin.List using (List; []; _∷_)
-open import Data.Bool using (Bool; false; true; if_then_else_; _∨_)
-open import Data.String as String using (String)
-open import Relation.Nullary.Decidable using (⌊_⌋)
+open import Agda.Builtin.Bool using (Bool; true; false)
+open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Maybe using (Maybe; just; nothing; fromMaybe)
+open import Data.List.Membership.Propositional using () renaming (_∈_ to _∈-List_)
+open import Data.List.Relation.Unary.Any using (Any; any?; lookup; _∷=_; here; there)
+open import Data.List.Relation.Unary.Any.Properties using (lookup-result; lookup-index)
+open import Data.List.Relation.Unary.All using (All)
+open import Function using (_∘_)
+open import Relation.Binary using (Decidable; DecidableEquality)
+open import Relation.Binary.PropositionalEquality using (cong; _≡_; _≢_; refl)
+open import Relation.Nullary using (yes; no)
 
+-- see also: https://stackoverflow.com/questions/58705398/is-there-an-associative-list-in-the-standard-library
+AssocList : Set → Set → Set
+AssocList A B = List (A × B)
 
-record ByteString : Set where
-  constructor mkByteString
-  field
-    getByteString : String
+private
+  variable
+    A B : Set
 
-_eqByteString_ : ByteString → ByteString → Bool
-_eqByteString_ (mkByteString x) (mkByteString y) =  ⌊ x String.≟ y ⌋
+_∈_ : A → AssocList A B → Set
+a ∈ abs = Any ((a ≡_) ∘ proj₁) abs
 
+_∉_ : A → AssocList A B → Set
+a ∉ abs = All ((a ≢_) ∘ proj₁) abs
 
-record PosixTime : Set where
-  constructor mkPosixTime
-  field
-    getPosixTime : Int
+_∈-L_ : (A × B) → List (A × B) → Set
+a×b ∈-L abs = Any (a×b ≡_) abs
 
+lookup∈-L' : ∀ {a : A} { abs : AssocList A B } → (p : a ∈ abs) → (a , proj₂ (lookup p)) ∈-L abs
+lookup∈-L' (here refl) = here refl
+lookup∈-L' (there p) = there (lookup∈-L' p)
 
-record Pair (A B : Set) : Set where
-  constructor pair
-  field
-    fst : A
-    snd : B
+module Decidable {A : Set} (_≟_ : DecidableEquality A) where
 
+  _∈?_ : Decidable (_∈_ {A} {B})
+  a ∈? abs = any? ((a ≟_) ∘ proj₁) abs
 
-record Triple (A B C : Set) : Set where
-  constructor triple
-  field
-    fst : A
-    snd : B
-    trd : C
+  _‼_ : (a : A) (abs : AssocList A B) → Maybe B
+  a ‼ abs with a ∈? abs
+  ... | yes p = just (proj₂ (lookup p))
+  ... | no _ = nothing
 
+  _‼_default_ : (a : A) (abs : AssocList A B) → (b : B) → B
+  a ‼ abs default b = fromMaybe b (a ‼ abs)
 
-record Map (K V : Set) : Set where
-  constructor _via_
-  field
-    pairs : List (Pair K V)
-    eqKey : K → K → Bool
-    
-
-emptyMap : {K V : Set} → (K → K → Bool) → Map K V
-emptyMap eq = [] via eq
-
-
-nullMap : {K V : Set} → Map K V → Bool
-nullMap {K} {V} m =
-  nullMap' (Map.pairs m)
-    where
-      nullMap' : List (Pair K V) → Bool
-      nullMap' [] = true
-      nullMap' _ = false
-
-_member_ : {K V : Set} → K → Map K V → Bool
-_member_ {K} {V} k m =
-  member' (Map.pairs m)
-    where
-      _eq_ = Map.eqKey m
-      member' : List (Pair K V) → Bool
-      member' [] = false
-      member' (pair k' _ ∷ xs) = k eq k' ∨ member' xs
-
-_lookup_default_ : {K V : Set} → K → Map K V → V → V
-_lookup_default_ {K} {V} k m v =
-  lookup' (Map.pairs m)
-    where
-      _eq_ = Map.eqKey m
-      lookup' : List (Pair K V) → V
-      lookup' [] = v
-      lookup' (pair k' v' ∷ xs) = if k eq k' then v' else lookup' xs
-
-_delete_ : {K V : Set} → K → Map K V → Map K V
-_delete_ {K} {V} k m =
-  record m {pairs = delete' (Map.pairs m)}
-    where
-      _eq_ = Map.eqKey m
-      delete' : List (Pair K V) → List (Pair K V)
-      delete' [] = []
-      delete' (x ∷ xs) = if k eq Pair.fst x then delete' xs else x ∷ delete' xs
-
-_insert_into_ : {K V : Set} → K → V → Map K V → Map K V
-_insert_into_ {K} {V} k v m =
-  record m {pairs = record {fst = k; snd = v} ∷ delete' (Map.pairs m)}
-    where
-      _eq_ = Map.eqKey m
-      delete' : List (Pair K V) → List (Pair K V)
-      delete' [] = []
-      delete' (x ∷ xs) = if k eq Pair.fst x then delete' xs else x ∷ delete' xs
+  _↑_ : (p : A × B) (abs : AssocList A B) → AssocList A B
+  (a , b) ↑ abs with a ∈? abs
+  ... | yes p = p ∷= (a , b)
+  ... | no _ = (a , b) ∷ abs
