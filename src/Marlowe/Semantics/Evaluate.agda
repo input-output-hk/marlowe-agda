@@ -7,45 +7,109 @@ open import Agda.Builtin.Int using (Int)
 open import Data.Bool using (_∧_; _∨_; if_then_else_; not)
 open import Data.Integer using (-_; _+_; _-_; _*_; _≟_; _<?_; _≤?_; ∣_∣; 0ℤ; NonZero)
 open import Data.Integer.DivMod using (_div_)
+open import Data.Integer.Properties using (+-identityʳ; *-identityʳ; +-assoc)
+open import Data.Maybe using (fromMaybe)
 open import Data.Nat as ℕ using ()
+open import Data.Product using (_,_; _×_; proj₁; proj₂)
+open import Data.Integer using (0ℤ; 1ℤ; +_)
 open import Marlowe.Language.Contract
 open import Marlowe.Language.State
+
+open Environment using (timeInterval)
+open TimeInterval using (startTime; offset)
+open State using (accounts; boundValues; choices)
 open import Primitives
+open Decidable _≟-AccountId×Token_  renaming (_‼_default_ to _‼ᵃ_default_) hiding (_∈?_)
+open Decidable _≟-ChoiceId_ renaming (_‼_default_ to _‼ᶜ_default_) using (_∈?_)
+open Decidable _≟-ValueId_ renaming (_‼_default_ to _‼ᵛ_default_) hiding (_∈?_)
+open PosixTime using (getPosixTime)
+
 open import Relation.Nullary using (_because_)
 open import Relation.Nullary.Decidable using (⌊_⌋)
+import Relation.Binary.PropositionalEquality as Eq
+open Eq using (_≡_; refl; cong; sym)
+open Eq.≡-Reasoning using (begin_; _≡⟨⟩_; step-≡; _∎)
+import Relation.Nullary using (Dec; yes; no)
 
 
-divide : Int → Int → Int
-divide num den with (∣ den ∣ ℕ.≟ 0) | (λ proof -> _div_ num den {proof})
+_/_ : Int → Int → Int
+_/_ num den with (∣ den ∣ ℕ.≟ 0) | (λ proof -> _div_ num den {proof})
 ... | true  because _ | _      = 0ℤ
 ... | false because _ | result = result _
 
 
-evaluate : Environment → State → Value → Int
+ℰ⟦_⟧ : Value → Environment → State → Int
 
-observe : Environment → State → Observation → Bool
+𝒪⟦_⟧ : Observation → Environment → State → Bool
 
-evaluate _ s (AvailableMoney a t) = (pair a t) lookup (State.accounts s) default 0ℤ
-evaluate _ _ (Constant x) = x
-evaluate e s (NegValue x) = - evaluate e s x
-evaluate e s (AddValue x y) = evaluate e s x + evaluate e s y
-evaluate e s (SubValue x y) = evaluate e s x - evaluate e s y
-evaluate e s (MulValue x y) = evaluate e s x * evaluate e s y
-evaluate e s (DivValue x y) = divide (evaluate e s x) (evaluate e s y)
-evaluate _ s (ChoiceValue c) = c lookup (State.choices s) default 0ℤ
-evaluate e _ TimeIntervalStart = PosixTime.getPosixTime (Pair.fst (Environment.timeInterval e))
-evaluate e _ TimeIntervalEnd = PosixTime.getPosixTime (Pair.snd (Environment.timeInterval e))
-evaluate _ s (UseValue v) = v lookup (State.boundValues s) default 0ℤ
-evaluate e s (Cond o x y) = if observe e s o then evaluate e s x else evaluate e s y
+ℰ⟦ AvailableMoney a t ⟧ _ s = + ((a , t) ‼ᵃ accounts s default 0)
+ℰ⟦ Constant x ⟧ _ _ = x
+ℰ⟦ NegValue x ⟧ e s = - ℰ⟦ x ⟧ e s
+ℰ⟦ AddValue x y ⟧ e s = ℰ⟦ x ⟧ e s + ℰ⟦ y ⟧ e s
+ℰ⟦ SubValue x y ⟧ e s = ℰ⟦ x ⟧ e s - ℰ⟦ y ⟧ e s
+ℰ⟦ MulValue x y ⟧ e s = ℰ⟦ x ⟧ e s * ℰ⟦ y ⟧ e s
+ℰ⟦ DivValue x y ⟧ e s = ℰ⟦ x ⟧ e s / ℰ⟦ y ⟧ e s
+ℰ⟦ ChoiceValue c ⟧ _ s = c ‼ᶜ choices s default 0ℤ
+ℰ⟦ TimeIntervalStart ⟧ e _ = + getPosixTime (startTime (timeInterval e))
+ℰ⟦ TimeIntervalEnd ⟧ e _ = + getPosixTime (endTime (timeInterval e))
+ℰ⟦ UseValue v ⟧ _ s = v ‼ᵛ boundValues s default 0ℤ
+ℰ⟦ Cond o x y ⟧ e s = if 𝒪⟦ o ⟧ e s then ℰ⟦ x ⟧ e s else ℰ⟦ y ⟧ e s
 
-observe e s (AndObs x y) = observe e s x ∧ observe e s y
-observe e s (OrObs x y) = observe e s x ∨ observe e s y
-observe e s (NotObs x) = not (observe e s x)
-observe _ s (ChoseSomething c) = c member (State.choices s)
-observe e s (ValueGE y x) = ⌊ evaluate e s x ≤? evaluate e s y ⌋
-observe e s (ValueGT y x) = ⌊ evaluate e s x <? evaluate e s y ⌋
-observe e s (ValueLT x y) = ⌊ evaluate e s x <? evaluate e s y ⌋
-observe e s (ValueLE x y) = ⌊ evaluate e s x ≤? evaluate e s y ⌋
-observe e s (ValueEQ x y) = ⌊ evaluate e s x ≟ evaluate e s y ⌋
-observe _ _ TrueObs = true
-observe _ _ FalseObs = false
+𝒪⟦ AndObs x y ⟧ e s = 𝒪⟦ x ⟧ e s ∧ 𝒪⟦ y ⟧ e s
+𝒪⟦ OrObs x y ⟧ e s = 𝒪⟦ x ⟧ e s ∨ 𝒪⟦ y ⟧ e s
+𝒪⟦ NotObs x ⟧ e s = not (𝒪⟦ x ⟧ e s)
+𝒪⟦ ChoseSomething c ⟧  _ s = ⌊ c ∈? choices s ⌋
+𝒪⟦ ValueGE y x ⟧ e s = ⌊ ℰ⟦ x ⟧ e s ≤? ℰ⟦ y ⟧ e s ⌋
+𝒪⟦ ValueGT y x ⟧ e s = ⌊ ℰ⟦ x ⟧ e s <? ℰ⟦ y ⟧ e s ⌋
+𝒪⟦ ValueLT x y ⟧ e s = ⌊ ℰ⟦ x ⟧ e s <? ℰ⟦ y ⟧ e s ⌋
+𝒪⟦ ValueLE x y ⟧ e s = ⌊ ℰ⟦ x ⟧ e s ≤? ℰ⟦ y ⟧ e s ⌋
+𝒪⟦ ValueEQ x y ⟧ e s = ⌊ ℰ⟦ x ⟧ e s ≟ ℰ⟦ y ⟧ e s ⌋
+𝒪⟦ TrueObs ⟧ _ _ = true
+𝒪⟦ FalseObs ⟧ _ _ = false
+
+
+0ᵥ : Value
+0ᵥ = Constant 0ℤ
+
+1ᵥ : Value
+1ᵥ = Constant 1ℤ
+
+AddValue-identityʳ : ∀ (e : Environment) → ∀ (s : State) → ∀ (n : Value) → ℰ⟦ AddValue n 0ᵥ ⟧ e s ≡ ℰ⟦ n ⟧ e s
+AddValue-identityʳ e s n =
+  begin
+    ℰ⟦ AddValue n 0ᵥ ⟧ e s
+    ≡⟨⟩
+    ℰ⟦ n ⟧ e s + ℰ⟦ 0ᵥ ⟧ e s
+    ≡⟨⟩
+    ℰ⟦ n ⟧ e s + 0ℤ
+    ≡⟨ +-identityʳ (ℰ⟦ n ⟧ e s) ⟩
+    ℰ⟦ n ⟧ e s
+  ∎
+
+MulValue-identityʳ : ∀ (e : Environment) → ∀ (s : State) → ∀ (n : Value) → ℰ⟦ MulValue n 1ᵥ ⟧ e s ≡ ℰ⟦ n ⟧ e s
+MulValue-identityʳ e s n =
+  begin
+    ℰ⟦ MulValue n 1ᵥ ⟧ e s
+    ≡⟨⟩
+    ℰ⟦ n ⟧ e s * ℰ⟦ 1ᵥ ⟧ e s
+    ≡⟨⟩
+    ℰ⟦ n ⟧ e s * 1ℤ
+    ≡⟨ *-identityʳ (ℰ⟦ n ⟧ e s) ⟩
+    ℰ⟦ n ⟧  e s
+  ∎
+
+AddValue-assoc : ∀ (e : Environment) → ∀ (s : State) → ∀ (m n p : Value) → ℰ⟦ AddValue (AddValue m n) p ⟧ e s ≡ ℰ⟦ AddValue m (AddValue n p) ⟧ e s 
+AddValue-assoc e s m n p =
+  begin
+    ℰ⟦ AddValue (AddValue m n) p ⟧ e s
+    ≡⟨⟩
+    ℰ⟦ AddValue m n ⟧ e s + ℰ⟦ p ⟧ e s
+    ≡⟨⟩
+    (ℰ⟦ m ⟧ e s + ℰ⟦ n ⟧ e s) + ℰ⟦ p ⟧ e s
+    ≡⟨ +-assoc (ℰ⟦ m ⟧ e s) (ℰ⟦ n ⟧ e s) (ℰ⟦ p ⟧ e s) ⟩
+    ℰ⟦ m ⟧ e s + (ℰ⟦ n ⟧ e s + ℰ⟦ p ⟧ e s)
+    ≡⟨⟩
+    ℰ⟦ m ⟧ e s + ℰ⟦ AddValue n p ⟧ e s
+    ≡⟨⟩
+    ℰ⟦ AddValue m (AddValue n p) ⟧ e s
+  ∎
