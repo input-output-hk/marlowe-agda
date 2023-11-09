@@ -383,7 +383,6 @@ data _⇀_ : Configuration → Configuration → Set where
 
 
 -- reflexive and transitive closure
-{-
 infix  2 _⇀⋆_
 infix  1 begin_
 infixr 2 _⇀⟨_⟩_
@@ -405,7 +404,6 @@ begin_ : ∀ {M N}
     ------
   → M ⇀⋆ N
 begin M⇀⋆N = M⇀⋆N
--}
 
 data Quiescent : Configuration → Set where
 
@@ -474,78 +472,6 @@ Quiescent¬⇀ (waiting {t} {tₛ} {Δₜ} (x)) (WhenTimeout {_} {t} {tₛ} {Δ�
   → C₁ ⇀ C₂
   → ¬ Quiescent C₁
 ⇀¬Quiescent C₁⇀C₂ q = Quiescent¬⇀ q C₁⇀C₂
-
--- Reduce a configuration until quiescent
-infix  2 _⇀⋆_
-infix  1 begin_
-infixr 2 _⇀⟨_⟩_
-infix  3 _∎
-
-data _⇀⋆_ : Configuration → Configuration → Set where
-  _∎ : ∀ { M }
-    → Quiescent M
-      -----------
-    → M ⇀⋆ M
-
-  _⇀⟨_⟩_ : ∀ L {M N}
-    → L ⇀ M
-    → M ⇀⋆ N
-      ------
-    → L ⇀⋆ N
-
-begin_ : ∀ {M N}
-  → M ⇀⋆ N
-    ------
-  → M ⇀⋆ N
-begin M⇀⋆N = M⇀⋆N
-
-
--- Examples
-role₁ : Party
-role₁ = Role (mkByteString "foo")
-
-account₁ : AccountId
-account₁ = mkAccountId role₁
-
-token₁ : Token
-token₁ =  mkToken (mkByteString "") (mkByteString "")
-
-config₁ : Configuration
-config₁ = record
-  { contract = Close
-  ; state = record
-    { accounts = [ ( account₁ , token₁ ) , 5 ]
-    ; choices = []
-    ; boundValues = []
-    ; minTime = mkPosixTime 0
-    }
-  ; environment = mkEnvironment (mkInterval (mkPosixTime 0) 5)
-  ; warnings = []
-  ; payments = []
-  }
-
-config₂ : Configuration
-config₂ = record
-  { contract = Close
-  ; state = record
-    { accounts = []
-    ; choices = []
-    ; boundValues = []
-    ; minTime = mkPosixTime 0
-    }
-  ; environment = mkEnvironment (mkInterval (mkPosixTime 0) 5)
-  ; warnings =  [ ReduceNoWarning ]
-  ; payments = [ mkPayment account₁ (mkAccount account₁) token₁ 5 ]
-  }
-
-reduction : config₁ ⇀⋆ config₂
-reduction =
-  begin
-    config₁
-      ⇀⟨ CloseRefund ⟩
-    close
-  ∎
-
 
 
 data AmbiguousTimeInterval : Configuration → Set where
@@ -679,3 +605,79 @@ progress record
   } with 𝒪⟦ o ⟧ e s 𝔹.≟ true
 ... | yes p = let t = AssertTrue p in step t
 ... | no ¬p = let t = AssertFalse (𝔹.¬-not ¬p) in step t
+
+data Steps (C : Configuration) : Set where
+
+  steps : ∀ {D}
+    → C ⇀⋆ D
+    → Steps C
+
+  done :
+    Steps C
+
+-- Evaluator
+eval : ∀ (C : Configuration) → ℕ → Steps C
+eval C ℕ.zero = steps (C ∎)
+eval C (suc m) with progress C
+... | quiescent _ = steps (C ∎)
+... | ambiguousTimeInterval _ = done
+... | step {D} C⇀D with eval D m
+...      | steps D⇀⋆E = steps ( C ⇀⟨ C⇀D ⟩ D⇀⋆E )
+...      | _ = done
+
+-- Examples
+
+role₁ role₂ : Party
+role₁ = Role (mkByteString "foo")
+role₂ = Role (mkByteString "bar")
+
+accountId₁ accountId₂ : AccountId
+accountId₁ = mkAccountId role₁
+accountId₂ = mkAccountId role₂
+
+token₁ : Token
+token₁ =  mkToken (mkByteString "") (mkByteString "")
+
+config₀ : Configuration
+config₀ = record
+  { contract = If TrueObs Close Close
+  ; state = record
+    { accounts = [ (accountId₁ , token₁ ) , 5 ]
+    ; choices = []
+    ; boundValues = []
+    ; minTime = mkPosixTime 0
+    }
+  ; environment = mkEnvironment (mkInterval (mkPosixTime 0) 5)
+  ; warnings = []
+  ; payments = []
+  }
+
+config₁ : Configuration
+config₁ = record
+  { contract = Close
+  ; state = record
+    { accounts = [ ( accountId₁ , token₁ ) , 5 ]
+    ; choices = []
+    ; boundValues = []
+    ; minTime = mkPosixTime 0
+    }
+  ; environment = mkEnvironment (mkInterval (mkPosixTime 0) 5)
+  ; warnings = [ ReduceNoWarning ]
+  ; payments = []
+  }
+
+config₂ : Configuration
+config₂ = record
+  { contract = Close
+  ; state = record
+    { accounts = []
+    ; choices = []
+    ; boundValues = []
+    ; minTime = mkPosixTime 0
+    }
+  ; environment = mkEnvironment (mkInterval (mkPosixTime 0) 5)
+  ; warnings =  ReduceNoWarning ∷ ReduceNoWarning ∷ []
+  ; payments = [ mkPayment accountId₁ (mkAccount accountId₁) token₁ 5 ]
+  }
+
+_ = eval config₀ 100 ≡ steps (config₀ ⇀⟨ IfTrue refl ⟩ config₁ ⇀⟨ CloseRefund ⟩ config₂ ∎)
