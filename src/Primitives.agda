@@ -5,7 +5,7 @@ open import Agda.Builtin.Bool using (Bool; true; false)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Maybe using (Maybe; just; nothing; fromMaybe)
 open import Data.List.Membership.Propositional using () renaming (_∈_ to _∈-List_)
-open import Data.List.Relation.Unary.Any using (Any; any?; lookup; _∷=_; here; there)
+open import Data.List.Relation.Unary.Any using (Any; any?; lookup; _∷=_; here; there; _─_)
 open import Data.List.Relation.Unary.Any.Properties using (lookup-result; lookup-index)
 open import Data.List.Relation.Unary.All using (All)
 open import Function using (_∘_)
@@ -51,3 +51,8 @@ module Decidable {A : Set} (_≟_ : DecidableEquality A) where
   (a , b) ↑ abs with a ∈? abs
   ... | yes p = p ∷= (a , b)
   ... | no _ = (a , b) ∷ abs
+
+  _↓_ : (a : A) (abs : AssocList A B) → AssocList A B
+  a ↓ abs with a ∈? abs
+  ... | yes p = abs ─ p
+  ... | no _ = abs

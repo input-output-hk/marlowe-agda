@@ -5,16 +5,16 @@ open import Data.Bool using (Bool; if_then_else_; not; _∧_; _∨_; true; false
 open import Data.Bool.Properties as 𝔹 using ()
 open import Data.Integer using (_<?_; _≤?_; _≟_ ; _⊔_; _⊓_; _+_; _-_; 0ℤ ; _≤_ ; _>_ ; _≥_ ; _<_; ∣_∣; +_)
 open import Data.Integer.Properties as ℤ using ()
-open import Data.List using (List; []; _∷_; _++_; foldr; reverse; [_]; null)
-open import Data.List.Relation.Unary.Any using (lookup)
-open import Data.List.Relation.Unary.All.Properties using (¬Any⇒All¬)
+open import Data.List using (List; []; _∷_; _++_; foldr; reverse; [_]; null; sum; filter; map)
+open import Data.List.Relation.Unary.Any using (lookup; _─_; _∷=_; here; there)
+open import Data.List.Relation.Unary.All.Properties using (¬Any⇒All¬; All¬⇒¬Any)
 open import Data.Maybe using (Maybe; just; nothing; fromMaybe)
 open import Data.Nat as ℕ using (ℕ; suc; s≤s)
-open import Data.Nat.Properties as ℕ using (1+n≰n; ≤-trans)
+open import Data.Nat.Properties as ℕ using (1+n≰n; ≤-trans; +-identityʳ; +-comm; +-assoc)
 open import Data.Product using (Σ; _,_; ∃; Σ-syntax; ∃-syntax)
 open import Data.Product using (_×_; proj₁; proj₂)
 import Data.String as String
-open import Function.Base using (case_of_)
+open import Function.Base using (case_of_; _∘_)
 open import Marlowe.Language.Contract
 open import Marlowe.Language.Input
 open import Marlowe.Language.State
@@ -22,7 +22,6 @@ open import Marlowe.Language.Transaction
 open import Marlowe.Semantics.Evaluate
 open import Marlowe.Semantics.Operate using (
   ReduceWarning;
-  ReduceNoWarning;
   ReduceNonPositivePay;
   ReducePartialPay;
   ReduceShadowing;
@@ -39,7 +38,7 @@ open Eq using (_≡_; refl; cong; sym)
 open import Data.Empty using (⊥; ⊥-elim)
 
 open import Primitives
-open Decidable _≟-AccountId×Token_  renaming (_‼_default_ to _‼-AccountId×Token_default_; _↑_ to _↑-AccountId×Token_) hiding (_∈?_)
+open Decidable _≟-AccountId×Token_  renaming (_↑_ to _↑-AccountId×Token_; _∈?_ to _∈?-AccountId×Token_)
 open Decidable _≟-ChoiceId_ renaming (_‼_default_ to _‼-ChoiceId_default_) using (_∈?_)
 open Decidable _≟-ValueId_ renaming (_‼_ to _‼-ValueId_; _‼_default_ to _‼-ValueId_default_; _∈?_ to _∈-ValueId?_) hiding (_↑_)
 
@@ -57,14 +56,6 @@ record Configuration : Set where
 open Configuration
 
 data _⇀_ : Configuration → Configuration → Set where
-
-  {-
-  CloseRefund :
-    ∀ { c : Configuration } { a : AccountId } { t : Token } { i : ℕ } { as : AssocList (AccountId × Token) ℕ }
-    → (accounts (state c)) ≡ (( a , t ) , i) ∷ as
-    → (contract c) ≡ Close
-    → c ⇀ record c { state = record (state c) { accounts = as }}
-  -}
 
   CloseRefund :
     ∀ { e : Environment }
@@ -100,8 +91,8 @@ data _⇀_ : Configuration → Configuration → Set where
           minTime = m
           } ;
         environment = e ;
-        warnings = ws ++ [ ReduceNoWarning ] ;
-        payments = ps ++ [ mkPayment a (mkAccount a) t i ]
+        warnings = ws ;
+        payments = mkPayment a (mkAccount a) t i ∷ ps
       }
 
   PayNonPositive :
@@ -128,7 +119,36 @@ data _⇀_ : Configuration → Configuration → Set where
         contract = c ;
         state = s ;
         environment = e ;
-        warnings = ws ++ [ ReduceNonPositivePay a y t (ℰ⟦ v ⟧ e s) ] ;
+        warnings = ReduceNonPositivePay a y t (ℰ⟦ v ⟧ e s) ∷ ws ;
+        payments = ps
+      }
+
+  PayNoAccount :
+    ∀ { s : State }
+      { e : Environment }
+      { v : Value }
+      { a : AccountId }
+      { y : Payee }
+      { t : Token }
+      { c : Contract }
+      { ws : List ReduceWarning }
+      { ps : List Payment }
+    → ℰ⟦ v ⟧ e s > 0ℤ
+    → (a , t) ∉ accounts s
+    -----------------------------
+    → record {
+        contract = Pay a y t v c ;
+        state = s ;
+        environment = e ;
+        warnings = ws ;
+        payments = ps
+      }
+      ⇀
+      record {
+        contract = c ;
+        state = s ;
+        environment = e ;
+        warnings = ReducePartialPay a y t 0 ∣ ℰ⟦ v ⟧ e s ∣ ∷ ws ; -- TODO: proper warning?
         payments = ps
       }
 
@@ -142,10 +162,10 @@ data _⇀_ : Configuration → Configuration → Set where
       { ws : List ReduceWarning }
       { ps : List Payment }
     → ℰ⟦ v ⟧ e s > 0ℤ
+    → (p : (aₛ , t) ∈ accounts s)
     -----------------------------
-    → let n = ∣ ℰ⟦ v ⟧ e s ∣
-          sₛ = (aₛ , t) ‼-AccountId×Token accounts s default 0
-          sₜ = (aₜ , t) ‼-AccountId×Token accounts s default 0
+    → let m = proj₂ (lookup p)
+          n = ∣ ℰ⟦ v ⟧ e s ∣
       in
       record {
         contract = Pay aₛ (mkAccount aₜ) t v c ;
@@ -157,13 +177,9 @@ data _⇀_ : Configuration → Configuration → Set where
       ⇀
       record {
         contract = c ;
-        state = record s
-          { accounts = ((aₜ , t) , (sₜ ℕ.+ n)) ↑-AccountId×Token (((aₛ , t) , (sₛ ℕ.∸ n)) ↑-AccountId×Token accounts s) } ;
+        state = record s { accounts = ((aₜ , t) , (m ℕ.⊓ n)) ↑-AccountId×Token (p ∷= (proj₁ (lookup p) , m ℕ.∸ n)) } ;
         environment = e ;
-        warnings = ws ++ [ if (sₛ ℕ.<ᵇ n)
-            then ReducePartialPay aₛ (mkAccount aₜ) t sₛ n
-            else ReduceNoWarning
-          ];
+        warnings = if (m ℕ.<ᵇ n) then ReducePartialPay aₛ (mkAccount aₜ) t m n ∷ ws else ws ;
         payments = ps
       }
 
@@ -171,19 +187,20 @@ data _⇀_ : Configuration → Configuration → Set where
     ∀ { s : State }
       { e : Environment }
       { v : Value }
-      { aₓ : AccountId }
+      { a : AccountId }
       { t : Token }
       { c : Contract }
       { ws : List ReduceWarning }
       { ps : List Payment }
       { p : Party }
     → ℰ⟦ v ⟧ e s > 0ℤ
+    → (q : (a , t) ∈ accounts s)
     -----------------------------
-    → let n = ∣ ℰ⟦ v ⟧ e s ∣
-          sₓ = (aₓ , t) ‼-AccountId×Token accounts s default 0
+    → let m = proj₂ (lookup q)
+          n = ∣ ℰ⟦ v ⟧ e s ∣
       in
       record {
-        contract = Pay aₓ (mkParty p) t v c ;
+        contract = Pay a (mkParty p) t v c ;
         state = s ;
         environment = e ;
         warnings = ws ;
@@ -192,14 +209,10 @@ data _⇀_ : Configuration → Configuration → Set where
       ⇀
       record {
         contract = c ;
-        state = record s
-          { accounts = ((aₓ , t) , (sₓ ℕ.∸ n)) ↑-AccountId×Token accounts s } ;
+        state = record s { accounts = q ∷= (proj₁ (lookup q) , m ℕ.∸ n) } ;
         environment = e ;
-        warnings = ws ++ [ if (sₓ ℕ.<ᵇ n)
-            then ReducePartialPay aₓ (mkParty p) t sₓ n
-            else ReduceNoWarning
-          ] ;
-        payments = ps ++ [ mkPayment aₓ (mkParty p) t (sₓ ℕ.⊓ n) ]
+        warnings = if (m ℕ.<ᵇ n) then ReducePartialPay a (mkParty p) t m n ∷ ws else ws ;
+        payments = mkPayment a (mkParty p) t (m ℕ.⊓ n) ∷ ps
       }
 
   IfTrue :
@@ -223,7 +236,7 @@ data _⇀_ : Configuration → Configuration → Set where
         contract = c₁ ;
         state = s ;
         environment = e ;
-        warnings = ws ++ [ ReduceNoWarning ] ;
+        warnings = ws ;
         payments = ps
       }
 
@@ -248,7 +261,7 @@ data _⇀_ : Configuration → Configuration → Set where
         contract = c₂ ;
         state = s ;
         environment = e ;
-        warnings = ws ++ [ ReduceNoWarning ] ;
+        warnings = ws ;
         payments = ps
       }
 
@@ -273,7 +286,7 @@ data _⇀_ : Configuration → Configuration → Set where
         contract = c ;
         state = s ;
         environment = mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ) ;
-        warnings = ws ++ [ ReduceNoWarning ] ;
+        warnings = ws ;
         payments = ps
       }
 
@@ -287,7 +300,7 @@ data _⇀_ : Configuration → Configuration → Set where
       { ws ws' : List ReduceWarning }
       { ps : List Payment }
     → (i , vᵢ) ∈-L boundValues s
-    → ws' ≡  ws ++ [ ReduceShadowing i vᵢ (ℰ⟦ v ⟧ e s) ]
+    → ws' ≡  ReduceShadowing i vᵢ (ℰ⟦ v ⟧ e s) ∷ ws
     ----------------------------------------------------
     → record {
         contract = Let i v c ;
@@ -327,7 +340,7 @@ data _⇀_ : Configuration → Configuration → Set where
         contract = c ;
         state = record s { boundValues = (i , ℰ⟦ v ⟧ e s) ∷ boundValues s } ;
         environment = e ;
-        warnings = ws ++ [ ReduceNoWarning ] ;
+        warnings = ws ;
         payments = ps
       }
 
@@ -352,7 +365,7 @@ data _⇀_ : Configuration → Configuration → Set where
         contract = c ;
         state = s ;
         environment = e ;
-        warnings = ws ++ [ ReduceNoWarning ] ;
+        warnings = ws ;
         payments = ps
       }
 
@@ -377,7 +390,7 @@ data _⇀_ : Configuration → Configuration → Set where
         contract = c ;
         state = s ;
         environment = e ;
-        warnings = ws ++ [ ReduceAssertionFailed ] ;
+        warnings = ReduceAssertionFailed ∷ ws ;
         payments = ps
       }
 
@@ -451,9 +464,9 @@ data Quiescent : Configuration → Set where
                 boundValues = vs ;
                 minTime = m
               } ;
-            environment = mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ) ;
-            warnings = ws ;
-            payments = ps
+          environment = mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ) ;
+          warnings = ws ;
+          payments = ps
         }
 
 -- Quiescent configurations do not reduce
@@ -543,18 +556,20 @@ progress record
   ; environment = e
   ; warnings = _
   ; payments = _
-  } with ℰ⟦ v ⟧ e s ≤? 0ℤ
-... | yes q = let t = PayNonPositive q in step t
-... | no ¬p = let t = PayInternalTransfer (ℤ.≰⇒> ¬p) in step t
+  } with ℰ⟦ v ⟧ e s ≤? 0ℤ | (a , t) ∈?-AccountId×Token (accounts s)
+... | yes q | _ = step (PayNonPositive q)
+... | no ¬p | yes q = step (PayInternalTransfer (ℤ.≰⇒> ¬p) q)
+... | no ¬p | no ¬q = step (PayNoAccount (ℤ.≰⇒> ¬p) (¬Any⇒All¬ (accounts s) ¬q))
 progress record
   { contract = Pay a (mkParty p) t v c
   ; state = s
   ; environment = e
-  ; warnings = _
-  ; payments = _
-  } with ℰ⟦ v ⟧ e s ≤? 0ℤ
-... | yes q = let t = PayNonPositive q in step t
-... | no ¬p = let t = PayExternal (ℤ.≰⇒> ¬p) in step t
+  ; warnings = ws
+  ; payments = ps
+  } with ℰ⟦ v ⟧ e s ≤? 0ℤ | (a , t) ∈?-AccountId×Token (accounts s)
+... | yes q | _ = step (PayNonPositive q)
+... | no ¬p | yes q = step (PayExternal (ℤ.≰⇒> ¬p) q)
+... | no ¬p | no ¬q = step (PayNoAccount (ℤ.≰⇒> ¬p) (¬Any⇒All¬ (accounts s) ¬q))
 progress record
   { contract = If o c₁ c₂
   ; state = s
@@ -562,8 +577,8 @@ progress record
   ; warnings = _
   ; payments = _
   } with 𝒪⟦ o ⟧ e s 𝔹.≟ true
-... | yes p = let t = IfTrue p in step t
-... | no ¬p = let t = IfFalse (𝔹.¬-not ¬p) in step t
+... | yes p = step (IfTrue p)
+... | no ¬p = step (IfFalse (𝔹.¬-not ¬p))
 progress record
   { contract = When cs (mkTimeout (mkPosixTime t)) c
   ; state = record
@@ -593,9 +608,9 @@ progress record
   } with i ∈-ValueId? vs
 ... | yes p =
           let vᵢ = proj₂ (lookup p)
-              t = LetShadow {s} {e} {c} {i} {v} {vᵢ} {ws} {ws ++ [ ReduceShadowing i vᵢ (ℰ⟦ v ⟧ e s) ]} {ps} (lookup∈-L' p) refl
+              t = LetShadow {s} {e} {c} {i} {v} {vᵢ} {ws} {ReduceShadowing i vᵢ (ℰ⟦ v ⟧ e s) ∷ ws} {ps} (lookup∈-L' p) refl
           in step t
-... | no ¬p = let t = LetNoShadow (¬Any⇒All¬ vs ¬p) in step t
+... | no ¬p = step (LetNoShadow (¬Any⇒All¬ vs ¬p))
 progress record
   { contract = Assert o c
   ; state = s
@@ -603,8 +618,8 @@ progress record
   ; warnings = _
   ; payments = _
   } with 𝒪⟦ o ⟧ e s 𝔹.≟ true
-... | yes p = let t = AssertTrue p in step t
-... | no ¬p = let t = AssertFalse (𝔹.¬-not ¬p) in step t
+... | yes p = step (AssertTrue p)
+... | no ¬p = step (AssertFalse (𝔹.¬-not ¬p))
 
 data Steps (C : Configuration) : Set where
 
@@ -624,6 +639,7 @@ eval C (suc m) with progress C
 ... | step {D} C⇀D with eval D m
 ...      | steps D⇀⋆E = steps ( C ⇀⟨ C⇀D ⟩ D⇀⋆E )
 ...      | _ = done
+
 
 -- Examples
 
@@ -662,7 +678,7 @@ config₁ = record
     ; minTime = mkPosixTime 0
     }
   ; environment = mkEnvironment (mkInterval (mkPosixTime 0) 5)
-  ; warnings = [ ReduceNoWarning ]
+  ; warnings = []
   ; payments = []
   }
 
@@ -676,7 +692,7 @@ config₂ = record
     ; minTime = mkPosixTime 0
     }
   ; environment = mkEnvironment (mkInterval (mkPosixTime 0) 5)
-  ; warnings =  ReduceNoWarning ∷ ReduceNoWarning ∷ []
+  ; warnings = []
   ; payments = [ mkPayment accountId₁ (mkAccount accountId₁) token₁ 5 ]
   }
 
