@@ -57,16 +57,16 @@ open Configuration
 data _⇀_ : Configuration → Configuration → Set where
 
   CloseRefund :
-    ∀ { e : Environment }
-      { ws : List ReduceWarning }
-      { ps : List Payment }
+    ∀ { a : AccountId }
+      { t : Token }
+      { i : ℕ }
       { as : AssocList (AccountId × Token) ℕ }
       { cs : AssocList ChoiceId Int }
       { vs : AssocList ValueId Int }
+      { ws : List ReduceWarning }
+      { ps : List Payment }
+      { e : Environment }
       { m : PosixTime }
-      { a : AccountId }
-      { t : Token }
-      { i : ℕ }
     --------------------------------------------
     → record {
         contract = Close ;

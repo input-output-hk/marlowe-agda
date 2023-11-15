@@ -12,14 +12,13 @@ open import Function.Base using (case_of_; _∘_)
 
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; cong; sym; subst; trans)
-open Eq.≡-Reasoning using (begin_; _≡⟨⟩_; step-≡; _∎)
 
 open import Marlowe.Language.Contract
 open import Marlowe.Language.Input
 open import Marlowe.Language.State
 open import Marlowe.Language.Transaction
 open import Marlowe.Semantics.Evaluate
-open import Marlowe.Semantics.Reduce hiding (begin_; _∎)
+open import Marlowe.Semantics.Reduce
 
 open import Primitives
 open Decidable _≟-AccountId×Token_ renaming (_↑_ to _↑-AccountId×Token_)
@@ -32,23 +31,10 @@ totalAmount c = accountsTotal (accounts (state c)) ℕ.+ paymentsTotal (payments
 
 -- TODO: by token
 ⇀assetPreservation : ∀ {c₁ c₂} → (t : Token) → (c₁ ⇀ c₂) → totalAmount c₁ ≡ totalAmount c₂
-⇀assetPreservation
-  { c₁ = record { contract = Close
-     ; state =
-         record
-         { accounts = ((a , t₁) , i) ∷ as
-         ; choices = _
-         ; boundValues = _
-         ; minTime = _
-         }
-     ; environment = _
-     ; warnings = _
-     ; payments = _
-     }
-   } _ CloseRefund = arrange { x = i }
+⇀assetPreservation _ (CloseRefund {_} {_} {i}) = rearrange {x = i}
    where
-     arrange : ∀ { x a b : ℕ } → (x ℕ.+ a) ℕ.+ b ≡ a ℕ.+ (x ℕ.+ b)
-     arrange {x} {a} {b} =
+     rearrange : ∀ { x a b : ℕ } → (x ℕ.+ a) ℕ.+ b ≡ a ℕ.+ (x ℕ.+ b)
+     rearrange {x} {a} {b} =
        let p = sym (cong (ℕ._+ b) (+-comm a x))
            q = +-assoc a x b
         in trans p q
