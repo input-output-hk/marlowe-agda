@@ -2,40 +2,33 @@ module Marlowe.Semantics.Reduce where
 
 open import Agda.Builtin.Int using (Int)
 open import Data.Bool using (Bool; if_then_else_; not; _∧_; _∨_; true; false)
-open import Data.Bool.Properties as 𝔹 using ()
-open import Data.Integer using (_<?_; _≤?_; _≟_ ; _⊔_; _⊓_; _+_; _-_; 0ℤ ; _≤_ ; _>_ ; _≥_ ; _<_; ∣_∣; +_)
+open import Data.Bool.Properties using (_≟_; ¬-not)
+open import Data.Integer as ℤ using (0ℤ; _≤_; _>_; ∣_∣; _<?_; _≤?_)
 open import Data.Integer.Properties as ℤ using ()
 open import Data.List using (List; []; _∷_; _++_; foldr; reverse; [_]; null; sum; filter; map)
+open import Data.List.Membership.Propositional using () renaming (_∈_ to _∈-List_)
 open import Data.List.Relation.Unary.Any using (lookup; _─_; _∷=_; here; there)
 open import Data.List.Relation.Unary.All.Properties using (¬Any⇒All¬; All¬⇒¬Any)
 open import Data.Maybe using (Maybe; just; nothing; fromMaybe)
-open import Data.Nat as ℕ using (ℕ; suc; s≤s)
-open import Data.Nat.Properties as ℕ using (1+n≰n; ≤-trans; +-identityʳ; +-comm; +-assoc)
+open import Data.Nat as ℕ using (ℕ; zero; suc; s≤s; _⊓_; _∸_; _+_; _<ᵇ_; _≤ᵇ_)
+open import Data.Nat.Properties using (1+n≰n; ≤-trans; +-identityʳ; +-comm; +-assoc; ≤⇒≯; m≤m+n; ≰⇒>; ≮⇒≥)
 open import Data.Product using (Σ; _,_; ∃; Σ-syntax; ∃-syntax)
 open import Data.Product using (_×_; proj₁; proj₂)
 import Data.String as String
 open import Function.Base using (case_of_; _∘_)
+
+open import Relation.Nullary.Decidable using (⌊_⌋)
+open import Relation.Nullary using (Dec; yes; no; ¬_)
+
+import Relation.Binary.PropositionalEquality as Eq
+open Eq using (_≡_; refl; cong; sym)
+open import Data.Empty using (⊥; ⊥-elim)
+
 open import Marlowe.Language.Contract
 open import Marlowe.Language.Input
 open import Marlowe.Language.State
 open import Marlowe.Language.Transaction
 open import Marlowe.Semantics.Evaluate
-open import Marlowe.Semantics.Operate using (
-  ReduceWarning;
-  ReduceNonPositivePay;
-  ReducePartialPay;
-  ReduceShadowing;
-  ReduceAssertionFailed
-  )
-open import Primitives
-open import Relation.Nullary.Decidable using (⌊_⌋)
-open import Relation.Nullary using (Dec; yes; no; ¬_)
-
-open import Data.List.Membership.Propositional using () renaming (_∈_ to _∈-List_)
-
-import Relation.Binary.PropositionalEquality as Eq
-open Eq using (_≡_; refl; cong; sym)
-open import Data.Empty using (⊥; ⊥-elim)
 
 open import Primitives
 open Decidable _≟-AccountId×Token_  renaming (_↑_ to _↑-AccountId×Token_; _∈?_ to _∈?-AccountId×Token_)
@@ -45,6 +38,12 @@ open Decidable _≟-ValueId_ renaming (_‼_ to _‼-ValueId_; _‼_default_ to 
 open Environment using (timeInterval)
 open State using (accounts; boundValues; choices)
 open TimeInterval using (startTime)
+
+data ReduceWarning : Set where
+  ReduceNonPositivePay : AccountId → Payee → Token → Int → ReduceWarning
+  ReducePartialPay : AccountId → Payee → Token → ℕ → ℕ → ReduceWarning
+  ReduceShadowing : ValueId → Int → Int → ReduceWarning
+  ReduceAssertionFailed : ReduceWarning
 
 record Configuration : Set where
   field contract : Contract
@@ -105,7 +104,7 @@ data _⇀_ : Configuration → Configuration → Set where
       { c : Contract }
       { ws : List ReduceWarning }
       { ps : List Payment }
-    → ℰ⟦ v ⟧ e s ≤ 0ℤ
+    → ℰ⟦ v ⟧ e s ℤ.≤ 0ℤ
     -----------------------------
     → record {
         contract = Pay a y t v c ;
@@ -177,9 +176,9 @@ data _⇀_ : Configuration → Configuration → Set where
       ⇀
       record {
         contract = c ;
-        state = record s { accounts = ((aₜ , t) , (m ℕ.⊓ n)) ↑-AccountId×Token (p ∷= (proj₁ (lookup p) , m ℕ.∸ n)) } ;
+        state = record s { accounts = ((aₜ , t) , (m ⊓ n)) ↑-AccountId×Token (p ∷= (proj₁ (lookup p) , m ∸ n)) } ;
         environment = e ;
-        warnings = if (m ℕ.<ᵇ n) then ReducePartialPay aₛ (mkAccount aₜ) t m n ∷ ws else ws ;
+        warnings = if (m <ᵇ n) then ReducePartialPay aₛ (mkAccount aₜ) t m n ∷ ws else ws ;
         payments = ps
       }
 
@@ -209,10 +208,10 @@ data _⇀_ : Configuration → Configuration → Set where
       ⇀
       record {
         contract = c ;
-        state = record s { accounts = q ∷= (proj₁ (lookup q) , m ℕ.∸ n) } ;
+        state = record s { accounts = q ∷= (proj₁ (lookup q) , m ∸ n) } ;
         environment = e ;
-        warnings = if (m ℕ.<ᵇ n) then ReducePartialPay a (mkParty p) t m n ∷ ws else ws ;
-        payments = mkPayment a (mkParty p) t (m ℕ.⊓ n) ∷ ps
+        warnings = if (m <ᵇ n) then ReducePartialPay a (mkParty p) t m n ∷ ws else ws ;
+        payments = mkPayment a (mkParty p) t (m ⊓ n) ∷ ps
       }
 
   IfTrue :
@@ -452,7 +451,7 @@ data Quiescent : Configuration → Set where
       { c : Contract }
       { ws : List ReduceWarning }
       { ps : List Payment }
-    → let tₑ = tₛ ℕ.+ Δₜ
+    → let tₑ = tₛ + Δₜ
        in tₑ ℕ.< t
     ------------------------------------------
     → Quiescent record {
@@ -477,7 +476,7 @@ Quiescent¬⇀ :
   → ¬ (C₁ ⇀ C₂)
 Quiescent¬⇀ close ()
 Quiescent¬⇀ (waiting {t} {tₛ} {Δₜ} (x)) (WhenTimeout {_} {t} {tₛ} {Δₜ} y) =
-  let ¬p = ℕ.≤⇒≯ (ℕ.≤-trans y (ℕ.m≤m+n tₛ Δₜ)) in ¬p x
+  let ¬p = ≤⇒≯ (≤-trans y (m≤m+n tₛ Δₜ)) in ¬p x
 
 -- If a configuration reduces, it is not quiescent
 ⇀¬Quiescent :
@@ -497,7 +496,7 @@ data AmbiguousTimeInterval : Configuration → Set where
       { ws : List ReduceWarning }
       { ps : List Payment }
     → tₛ ℕ.< t
-    → (tₛ ℕ.+ Δₜ) ℕ.≥ t
+    → (tₛ + Δₜ) ℕ.≥ t
     → AmbiguousTimeInterval record {
            contract = When cs (mkTimeout (mkPosixTime t)) c ;
            state = s ;
@@ -576,9 +575,9 @@ progress record
   ; environment = e
   ; warnings = _
   ; payments = _
-  } with 𝒪⟦ o ⟧ e s 𝔹.≟ true
+  } with 𝒪⟦ o ⟧ e s ≟ true
 ... | yes p = step (IfTrue p)
-... | no ¬p = step (IfFalse (𝔹.¬-not ¬p))
+... | no ¬p = step (IfFalse (¬-not ¬p))
 progress record
   { contract = When cs (mkTimeout (mkPosixTime t)) c
   ; state = record
@@ -590,10 +589,10 @@ progress record
   ; environment = mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ)
   ; warnings = _
   ; payments = _
-  } with (tₛ ℕ.+ Δₜ) ℕ.<? t | t ℕ.≤? tₛ
+  } with (tₛ + Δₜ) ℕ.<? t | t ℕ.≤? tₛ
 ... | yes p | _ = quiescent (waiting p)
 ... | _ | yes q = step (WhenTimeout q)
-... | no ¬p | no ¬q = ambiguousTimeInterval (AmbiguousTimeIntervalError (ℕ.≰⇒> ¬q) (ℕ.≮⇒≥ ¬p))
+... | no ¬p | no ¬q = ambiguousTimeInterval (AmbiguousTimeIntervalError (≰⇒> ¬q) (≮⇒≥ ¬p))
 progress record
   { contract = Let i v c
   ; state = s@(record
@@ -606,10 +605,8 @@ progress record
   ; warnings = ws
   ; payments = ps
   } with i ∈-ValueId? vs
-... | yes p =
-          let vᵢ = proj₂ (lookup p)
-              t = LetShadow {s} {e} {c} {i} {v} {vᵢ} {ws} {ReduceShadowing i vᵢ (ℰ⟦ v ⟧ e s) ∷ ws} {ps} (lookup∈-L' p) refl
-          in step t
+... | yes p = let vᵢ = proj₂ (lookup p)
+              in step (LetShadow {s} {e} {c} {i} {v} {vᵢ} {ws} {ReduceShadowing i vᵢ (ℰ⟦ v ⟧ e s) ∷ ws} {ps} (lookup∈-L p) refl)
 ... | no ¬p = step (LetNoShadow (¬Any⇒All¬ vs ¬p))
 progress record
   { contract = Assert o c
@@ -617,9 +614,9 @@ progress record
   ; environment = e
   ; warnings = _
   ; payments = _
-  } with 𝒪⟦ o ⟧ e s 𝔹.≟ true
+  } with 𝒪⟦ o ⟧ e s ≟ true
 ... | yes p = step (AssertTrue p)
-... | no ¬p = step (AssertFalse (𝔹.¬-not ¬p))
+... | no ¬p = step (AssertFalse (¬-not ¬p))
 
 data Steps (C : Configuration) : Set where
 
@@ -632,7 +629,7 @@ data Steps (C : Configuration) : Set where
 
 -- Evaluator
 eval : ∀ (C : Configuration) → ℕ → Steps C
-eval C ℕ.zero = steps (C ∎)
+eval C zero = steps (C ∎)
 eval C (suc m) with progress C
 ... | quiescent _ = steps (C ∎)
 ... | ambiguousTimeInterval _ = done

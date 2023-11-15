@@ -30,9 +30,9 @@ a ∉ abs = All ((a ≢_) ∘ proj₁) abs
 _∈-L_ : (A × B) → List (A × B) → Set
 a×b ∈-L abs = Any (a×b ≡_) abs
 
-lookup∈-L' : ∀ {a : A} { abs : AssocList A B } → (p : a ∈ abs) → (a , proj₂ (lookup p)) ∈-L abs
-lookup∈-L' (here refl) = here refl
-lookup∈-L' (there p) = there (lookup∈-L' p)
+lookup∈-L : ∀ {a : A} { abs : AssocList A B } → (p : a ∈ abs) → (a , proj₂ (lookup p)) ∈-L abs
+lookup∈-L (here refl) = here refl
+lookup∈-L (there p) = there (lookup∈-L p)
 
 module Decidable {A : Set} (_≟_ : DecidableEquality A) where
 
