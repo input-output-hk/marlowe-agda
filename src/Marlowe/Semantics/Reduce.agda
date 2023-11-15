@@ -605,6 +605,9 @@ data Steps (C : Configuration) : Set where
     → C ⇀⋆ D
     → Steps C
 
+  ambiguousTimeInterval :
+    Steps C
+
   done :
     Steps C
 
@@ -613,7 +616,7 @@ eval : ∀ (C : Configuration) → ℕ → Steps C
 eval C zero = steps (C ∎)
 eval C (suc m) with progress C
 ... | quiescent _ = steps (C ∎)
-... | ambiguousTimeInterval _ = done
+... | ambiguousTimeInterval _ = ambiguousTimeInterval
 ... | step {D} C⇀D with eval D m
 ...      | steps D⇀⋆E = steps ( C ⇀⟨ C⇀D ⟩ D⇀⋆E )
 ...      | _ = done
@@ -630,7 +633,7 @@ accountId₁ = mkAccountId role₁
 accountId₂ = mkAccountId role₂
 
 token₁ : Token
-token₁ =  mkToken (mkByteString "") (mkByteString "")
+token₁ = mkToken (mkByteString "") (mkByteString "")
 
 config₀ : Configuration
 config₀ = record
