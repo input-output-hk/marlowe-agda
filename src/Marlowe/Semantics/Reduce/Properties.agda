@@ -7,7 +7,7 @@ open import Data.Nat as ℕ
 open import Data.Nat.Properties as ℕ
 open import Data.Product using (_×_; proj₁; proj₂)
 open import Function.Base using (_∘_)
-
+open import Relation.Nullary using (Dec; yes; no; ¬_)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; cong; sym; subst; trans)
 
@@ -20,6 +20,24 @@ open import Marlowe.Semantics.Reduce
 open State using (accounts; boundValues; choices)
 open Configuration
 
+-- Quiescent configurations do not reduce
+Quiescent¬⇀ :
+  ∀ { C₁ C₂ : Configuration }
+  → Quiescent C₁
+  ---------------------------
+  → ¬ (C₁ ⇀ C₂)
+Quiescent¬⇀ close ()
+Quiescent¬⇀ (waiting {t} {tₛ} {Δₜ} (x)) (WhenTimeout {_} {t} {tₛ} {Δₜ} y) =
+  let ¬p = ≤⇒≯ (≤-trans y (m≤m+n tₛ Δₜ)) in ¬p x
+
+-- If a configuration reduces, it is not quiescent
+⇀¬Quiescent :
+  ∀ { C₁ C₂ : Configuration }
+  → C₁ ⇀ C₂
+  → ¬ Quiescent C₁
+⇀¬Quiescent C₁⇀C₂ q = Quiescent¬⇀ q C₁⇀C₂
+
+-- A reduction step preseves assets
 totalAmount : Configuration → ℕ
 totalAmount c = accountsTotal (accounts (state c)) + paymentsTotal (payments c)
 

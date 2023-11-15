@@ -468,24 +468,6 @@ data Quiescent : Configuration → Set where
           payments = ps
         }
 
--- Quiescent configurations do not reduce
-Quiescent¬⇀ :
-  ∀ { C₁ C₂ : Configuration }
-  → Quiescent C₁
-  ---------------------------
-  → ¬ (C₁ ⇀ C₂)
-Quiescent¬⇀ close ()
-Quiescent¬⇀ (waiting {t} {tₛ} {Δₜ} (x)) (WhenTimeout {_} {t} {tₛ} {Δₜ} y) =
-  let ¬p = ≤⇒≯ (≤-trans y (m≤m+n tₛ Δₜ)) in ¬p x
-
--- If a configuration reduces, it is not quiescent
-⇀¬Quiescent :
-  ∀ { C₁ C₂ : Configuration }
-  → C₁ ⇀ C₂
-  → ¬ Quiescent C₁
-⇀¬Quiescent C₁⇀C₂ q = Quiescent¬⇀ q C₁⇀C₂
-
-
 data AmbiguousTimeInterval : Configuration → Set where
 
   AmbiguousTimeIntervalError :
@@ -504,7 +486,6 @@ data AmbiguousTimeInterval : Configuration → Set where
            warnings = ws ;
            payments = ps
         }
-
 
 data Reducible (C : Configuration) : Set where
 
