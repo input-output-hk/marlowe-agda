@@ -22,27 +22,32 @@ open Configuration
 
 -- Quiescent configurations do not reduce
 Quiescent¬⇀ :
-  ∀ { C₁ C₂ : Configuration }
-  → Quiescent C₁
+  ∀ {c₁ c₂ : Configuration}
+  → Quiescent c₁
   ---------------------------
-  → ¬ (C₁ ⇀ C₂)
+  → ¬ (c₁ ⇀ c₂)
 Quiescent¬⇀ close ()
 Quiescent¬⇀ (waiting {t} {tₛ} {Δₜ} (x)) (WhenTimeout {_} {t} {tₛ} {Δₜ} y) =
   let ¬p = ≤⇒≯ (≤-trans y (m≤m+n tₛ Δₜ)) in ¬p x
 
 -- If a configuration reduces, it is not quiescent
 ⇀¬Quiescent :
-  ∀ { C₁ C₂ : Configuration }
-  → C₁ ⇀ C₂
-  → ¬ Quiescent C₁
-⇀¬Quiescent C₁⇀C₂ q = Quiescent¬⇀ q C₁⇀C₂
+  ∀ {c₁ c₂ : Configuration}
+  → c₁ ⇀ c₂
+  ----------------
+  → ¬ Quiescent c₁
+⇀¬Quiescent c₁⇀c₂ q = Quiescent¬⇀ q c₁⇀c₂
 
 -- A reduction step preseves assets
 totalAmount : Configuration → ℕ
 totalAmount c = accountsTotal (accounts (state c)) + paymentsTotal (payments c)
 
 -- TODO: per Token
-⇀assetPreservation : ∀ {c₁ c₂} → (c₁ ⇀ c₂) → totalAmount c₁ ≡ totalAmount c₂
+⇀assetPreservation :
+  ∀ {c₁ c₂ : Configuration}
+  → (c₁ ⇀ c₂)
+  --------------------------------
+  → totalAmount c₁ ≡ totalAmount c₂
 ⇀assetPreservation (CloseRefund {_} {_} {i}) = rearrange {x = i}
   where
     rearrange : ∀ { x a b : ℕ } → (x + a) + b ≡ a + (x + b)
