@@ -38,7 +38,7 @@ Quiescent¬⇀ (waiting {t} {tₛ} {Δₜ} (x)) (WhenTimeout {_} {t} {tₛ} {Δ�
   → ¬ Quiescent c₁
 ⇀¬Quiescent c₁⇀c₂ q = Quiescent¬⇀ q c₁⇀c₂
 
--- A reduction step preseves assets
+-- A reduction step preserves assets
 totalAmount : Configuration → ℕ
 totalAmount c = accountsTotal (accounts (state c)) + paymentsTotal (payments c)
 
