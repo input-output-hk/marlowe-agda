@@ -31,7 +31,7 @@ open import Marlowe.Language.Transaction
 open import Marlowe.Semantics.Evaluate
 
 open import Primitives
-open Decidable _≟-AccountId×Token_  renaming (_↑_ to _↑-AccountId×Token_; _∈?_ to _∈?-AccountId×Token_)
+open Decidable _≟-AccountId×Token_ renaming (_↑_ to _↑-AccountId×Token_; _∈?_ to _∈?-AccountId×Token_)
 open Decidable _≟-ChoiceId_ renaming (_‼_default_ to _‼-ChoiceId_default_) using (_∈?_)
 open Decidable _≟-ValueId_ renaming (_‼_ to _‼-ValueId_; _‼_default_ to _‼-ValueId_default_; _∈?_ to _∈-ValueId?_) hiding (_↑_)
 
@@ -176,7 +176,7 @@ data _⇀_ : Configuration → Configuration → Set where
       ⇀
       record {
         contract = c ;
-        state = record s { accounts = ((aₜ , t) , (m ⊓ n)) ↑-AccountId×Token (p ∷= (proj₁ (lookup p) , m ∸ n)) } ;
+        state = record s { accounts = ((aₜ , t) , (m ⊓ n)) ↑-update (p ∷= (proj₁ (lookup p) , m ∸ n)) } ;
         environment = e ;
         warnings = if (m <ᵇ n) then ReducePartialPay aₛ (mkAccount aₜ) t m n ∷ ws else ws ;
         payments = ps
@@ -599,20 +599,20 @@ progress record
 ... | yes p = step (AssertTrue p)
 ... | no ¬p = step (AssertFalse (¬-not ¬p))
 
-data Steps (C : Configuration) : Set where
+data FinishedEvaluation (C : Configuration) : Set where
 
   steps : ∀ {D}
     → C ⇀⋆ D
-    → Steps C
+    → FinishedEvaluation C
 
   ambiguousTimeInterval :
-    Steps C
+    FinishedEvaluation C
 
   done :
-    Steps C
+    FinishedEvaluation C
 
 -- Evaluator
-eval : ∀ (C : Configuration) → ℕ → Steps C
+eval : ∀ (C : Configuration) → ℕ → FinishedEvaluation C
 eval C zero = steps (C ∎)
 eval C (suc m) with progress C
 ... | quiescent _ = steps (C ∎)

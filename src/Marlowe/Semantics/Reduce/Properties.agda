@@ -2,10 +2,10 @@ module Marlowe.Semantics.Reduce.Properties where
 
 open import Data.Integer using (∣_∣; +_)
 open import Data.List using (List; _∷_)
-open import Data.List.Relation.Unary.Any using (lookup)
+open import Data.List.Relation.Unary.Any using (lookup; _∷=_)
 open import Data.Nat as ℕ
 open import Data.Nat.Properties as ℕ
-open import Data.Product using (_×_; proj₁; proj₂)
+open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Function.Base using (_∘_)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 import Relation.Binary.PropositionalEquality as Eq
@@ -16,6 +16,9 @@ open import Marlowe.Language.State
 open import Marlowe.Language.Transaction
 open import Marlowe.Semantics.Evaluate
 open import Marlowe.Semantics.Reduce
+
+open import Primitives
+open Decidable _≟-AccountId×Token_ renaming (_∈?_ to _∈?-AccountId×Token_)
 
 open State using (accounts; boundValues; choices)
 open Configuration
@@ -40,7 +43,7 @@ Quiescent¬⇀ (waiting {t} {tₛ} {Δₜ} (x)) (WhenTimeout {_} {t} {tₛ} {Δ�
 
 -- A reduction step preserves assets
 totalAmount : Configuration → ℕ
-totalAmount c = accountsTotal (accounts (state c)) + paymentsTotal (payments c)
+totalAmount c = accountsΣ (accounts (state c)) + paymentsΣ (payments c)
 
 -- TODO: per Token
 ⇀assetPreservation :
@@ -48,24 +51,42 @@ totalAmount c = accountsTotal (accounts (state c)) + paymentsTotal (payments c)
   → (c₁ ⇀ c₂)
   --------------------------------
   → totalAmount c₁ ≡ totalAmount c₂
-⇀assetPreservation (CloseRefund {_} {_} {i}) = rearrange {x = i}
-  where
-    rearrange : ∀ { x a b : ℕ } → (x + a) + b ≡ a + (x + b)
-    rearrange {x} {a} {b} =
-      let s₁ = sym (cong (_+ b) (+-comm a x))
-          s₂ = +-assoc a x b
-      in trans s₁ s₂
+⇀assetPreservation (CloseRefund {_} {_} {i = m}) = m+n+o≡n+[m+o] {m}
 ⇀assetPreservation (PayNonPositive _) = refl
 ⇀assetPreservation (PayNoAccount _ _) = refl
-⇀assetPreservation (PayInternalTransfer {s} {e} {v} {aₛ} {aₜ} {t} {ps = ps} _ p) =
-  cong (_+ (paymentsTotal ps)) (constValue {a₁ = aₛ} {a₂ = aₜ} {abs = accounts s} {n = ∣ ℰ⟦ v ⟧ e s ∣})
+⇀assetPreservation (PayInternalTransfer {s} {e} {v} {aₛ} {aₜ} {t} {ps = ps} _ p) = go
+  where
+    aₛ×t = proj₁ (lookup p)
+    m = proj₂ (lookup p)
+    n = ∣ ℰ⟦ v ⟧ e s ∣
+    a₁ = accountsΣ-↓ {aₛ} {t} {accounts s} {n} p
+    ≤-cond = ≤-trans
+            (accountsΣ-≤ {(aₛ , t)} {accounts s} {m ⊓ n} p)
+            (accountsΣ-↓≤ {(aₛ , t)} {accounts s} {n} p)
+    pay-internal-transfer : accountsΣ (accounts s)
+         ≡ accountsΣ (((aₜ , t) , m ⊓ n) ↑-update (p ∷= (proj₁ (lookup p) , m ∸ n)))
+    pay-internal-transfer with (aₜ , t) ∈?-AccountId×Token (p ∷= (aₛ×t , m ∸ n))
+    ... | yes q =
+           let s₁ = trans (+-comm (m ⊓ n) (accountsΣ (p ∷= (aₛ×t , m ∸ n)))) (cong (_+ m ⊓ n) a₁)
+               a₂ = accountsΣ-↑ {(aₜ , t)} {p ∷= (aₛ×t , m ∸ n)} {m ⊓ n} q
+           in sym (trans (trans a₂ s₁)
+                      (m∸n+n≡m {m = accountsΣ (accounts s)} {n = m ⊓ n} ≤-cond))
+    ... | no ¬q =
+           let a₂ = accountsΣ-∷ {m ⊓ n} {(aₜ , t)} {p ∷= (aₛ×t , m ∸ n)}
+               s₁ = trans (trans a₂ (+-comm (m ⊓ n) (accountsΣ (p ∷= (aₛ×t , m ∸ n))))) (cong (_+ m ⊓ n) a₁)
+           in sym (trans s₁
+                      (m∸n+n≡m {m = accountsΣ (accounts s)} {n = m ⊓ n} ≤-cond))
+    go = cong (_+ paymentsΣ ps) pay-internal-transfer
 ⇀assetPreservation (PayExternal {s} {e} {v} {a} {t} {c} {ws} {ps} {p} _ q) =
   let n = ∣ ℰ⟦ v ⟧ e s ∣ 
       m = proj₂ (lookup q)
-      s₁ = cong (_+  paymentsTotal ((mkPayment a (mkParty p) t (m ⊓ n)) ∷ ps))
-             (decreaseValue {a} {t} {abs = accounts s} {n = n} {p = q})
-      s₂ = monusElim {a = accountsTotal (accounts s)} {b = paymentsTotal ps} {x = m ⊓ n}
-  in sym (trans s₁ s₂)
+      p₁ = paymentsΣ ((mkPayment a (mkParty p) t (m ⊓ n)) ∷ ps)
+      a₁ = accountsΣ-↓ {a} {t} {accounts s} {n} q
+      s₁ = o≤m⇛m∸o+[o+n]≡m+n {accountsΣ (accounts s)} {paymentsΣ ps} {m ⊓ n}
+             (≤-trans
+               (accountsΣ-≤ {(a , t)} {accounts s} {m ⊓ n} q)
+               (accountsΣ-↓≤ {(a , t)} {accounts s} {n} q))
+  in sym (trans (cong (_+ p₁) a₁) s₁)
 ⇀assetPreservation (IfTrue _) = refl
 ⇀assetPreservation (IfFalse _) = refl
 ⇀assetPreservation (WhenTimeout _) = refl
