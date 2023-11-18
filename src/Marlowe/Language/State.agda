@@ -44,11 +44,11 @@ record Environment : Set where
   field
     timeInterval : TimeInterval
 
-accountsΣ : AssocList (AccountId × Token) ℕ → ℕ
-accountsΣ = sum ∘ map proj₂
+Σ-accounts : AssocList (AccountId × Token) ℕ → ℕ
+Σ-accounts = sum ∘ map proj₂
 
 totalₜ : Token → AssocList (AccountId × Token) ℕ → ℕ
-totalₜ t = accountsΣ ∘ filter ((t ≟-Token_) ∘ proj₂ ∘ proj₁)
+totalₜ t = Σ-accounts ∘ filter ((t ≟-Token_) ∘ proj₂ ∘ proj₁)
 
 _↑-update_ : (p : (AccountId × Token) × ℕ) (abs : AssocList (AccountId × Token) ℕ) → AssocList (AccountId × Token) ℕ
 (a , b) ↑-update abs with a ∈? abs
@@ -86,100 +86,100 @@ o≤m⇛m∸o+[o+n]≡m+n {m} {n} {zero} z≤n = refl
 o≤m⇛m∸o+[o+n]≡m+n {suc m} {n} {suc o} (s≤s p) =
   trans (+-suc (m ∸ o) (o + n)) (cong suc (o≤m⇛m∸o+[o+n]≡m+n {m} {n} {o} p))
 
-accountsΣ-∷ :
+Σ-accounts-∷ :
   ∀ {n : ℕ}
     {a×t : AccountId × Token}
     {abs : AssocList (AccountId × Token) ℕ}
   ---------------------------------------------------------------------------
-  → accountsΣ ((a×t , n) ∷ abs) ≡ n + accountsΣ abs
-accountsΣ-∷ {zero} = refl
-accountsΣ-∷ {suc n} {a×t} {abs} rewrite accountsΣ-∷ {n} {a×t} {abs} = refl
+  → Σ-accounts ((a×t , n) ∷ abs) ≡ n + Σ-accounts abs
+Σ-accounts-∷ {zero} = refl
+Σ-accounts-∷ {suc n} {a×t} {abs} rewrite Σ-accounts-∷ {n} {a×t} {abs} = refl
 
-accountsΣ-∷′ :
+Σ-accounts-∷′ :
   ∀ {m n : ℕ}
     {a×t : AccountId × Token}
     {abs : AssocList (AccountId × Token) ℕ}
   ---------------------------------------------------------------------------
-  → accountsΣ ((a×t , m + n) ∷ abs) ≡ n + accountsΣ ((a×t , m) ∷ abs)
-accountsΣ-∷′ {m} {zero} {a×t} {abs} rewrite +-identityʳ m = refl
-accountsΣ-∷′ {m} {suc n} {a×t} {abs} rewrite accountsΣ-∷′ {m} {n} {a×t} {abs} =
+  → Σ-accounts ((a×t , m + n) ∷ abs) ≡ n + Σ-accounts ((a×t , m) ∷ abs)
+Σ-accounts-∷′ {m} {zero} {a×t} {abs} rewrite +-identityʳ m = refl
+Σ-accounts-∷′ {m} {suc n} {a×t} {abs} rewrite Σ-accounts-∷′ {m} {n} {a×t} {abs} =
  trans
-   (cong (_+ accountsΣ abs) (+-comm m (suc n)))
-   (cong suc (+-assoc n m (accountsΣ abs)))
+   (cong (_+ Σ-accounts abs) (+-comm m (suc n)))
+   (cong suc (+-assoc n m (Σ-accounts abs)))
 
-accountsΣ-↑ :
+Σ-accounts-↑ :
   ∀ {a×t : AccountId × Token}
     {abs : AssocList (AccountId × Token) ℕ}
     {n : ℕ}
   → (p : a×t ∈ abs)
   ----------------------------------------------------------------------------------------
-  → accountsΣ (p ∷= (a×t , proj₂ (lookup p) + n)) ≡ n + accountsΣ abs
-accountsΣ-↑ {a×t} {x ∷ xs} {n} (here refl) = accountsΣ-∷′ {proj₂ x} {n} {a×t} {xs}
-accountsΣ-↑ {a×t} {x ∷ xs} {n} (there p) rewrite accountsΣ-↑ {a×t} {xs} {n} p
-  = sym (m+[n+o]≡n+[m+o] n (proj₂ x) (accountsΣ xs))
+  → Σ-accounts (p ∷= (a×t , proj₂ (lookup p) + n)) ≡ n + Σ-accounts abs
+Σ-accounts-↑ {a×t} {x ∷ xs} {n} (here refl) = Σ-accounts-∷′ {proj₂ x} {n} {a×t} {xs}
+Σ-accounts-↑ {a×t} {x ∷ xs} {n} (there p) rewrite Σ-accounts-↑ {a×t} {xs} {n} p
+  = sym (m+[n+o]≡n+[m+o] n (proj₂ x) (Σ-accounts xs))
 
-accountsΣ-─ :
+Σ-accounts-─ :
   ∀ {a×t : AccountId × Token}
     {abs : AssocList (AccountId × Token) ℕ}
     {n : ℕ}
   → (p : a×t ∈ abs)
   ---------------------------------------------------------------------------
-  → accountsΣ (p ∷= (proj₁ (lookup p) , n)) ≡ n + accountsΣ (abs ─ p)
-accountsΣ-─ {a×t} {abs = x ∷ xs} {n} (here refl) = refl
-accountsΣ-─ {a×t} {abs = x ∷ xs} {n} (there p)
-  rewrite accountsΣ-─ {a×t} {xs} {n} p =
-    m+[n+o]≡n+[m+o] (proj₂ x) n (accountsΣ (xs ─ p))
+  → Σ-accounts (p ∷= (proj₁ (lookup p) , n)) ≡ n + Σ-accounts (abs ─ p)
+Σ-accounts-─ {a×t} {abs = x ∷ xs} {n} (here refl) = refl
+Σ-accounts-─ {a×t} {abs = x ∷ xs} {n} (there p)
+  rewrite Σ-accounts-─ {a×t} {xs} {n} p =
+    m+[n+o]≡n+[m+o] (proj₂ x) n (Σ-accounts (xs ─ p))
 
-accountsΣ-↓↑ :
+Σ-accounts-↓↑ :
   ∀ {a×t : AccountId × Token}
     {abs : AssocList (AccountId × Token) ℕ}
   → (p : a×t ∈ abs)
   --------------------------------------------------------------------------------
-  → accountsΣ abs ≡ accountsΣ (p ∷= (proj₁ (lookup p) , proj₂ (lookup p)))
-accountsΣ-↓↑ (here refl) = refl
-accountsΣ-↓↑ {a×t} {abs = x ∷ xs} (there p) rewrite accountsΣ-↓↑ {a×t} {xs} p = refl
+  → Σ-accounts abs ≡ Σ-accounts (p ∷= (proj₁ (lookup p) , proj₂ (lookup p)))
+Σ-accounts-↓↑ (here refl) = refl
+Σ-accounts-↓↑ {a×t} {abs = x ∷ xs} (there p) rewrite Σ-accounts-↓↑ {a×t} {xs} p = refl
 
-accountsΣ-≤ :
+Σ-accounts-≤ :
   ∀ {a×t : AccountId × Token}
     {abs : AssocList (AccountId × Token) ℕ}
     {n : ℕ}
   → (p : a×t ∈ abs)
   -------------------------------------------------
-  → n ≤ accountsΣ (p ∷= (proj₁ (lookup p) , n))
-accountsΣ-≤ {a×t} {abs} {n} p =
-  let s₁ = m≤m+n n (accountsΣ (abs ─ p))
-      s₂ = ≤-reflexive (sym (accountsΣ-─ {a×t} {abs} {n} p))
+  → n ≤ Σ-accounts (p ∷= (proj₁ (lookup p) , n))
+Σ-accounts-≤ {a×t} {abs} {n} p =
+  let s₁ = m≤m+n n (Σ-accounts (abs ─ p))
+      s₂ = ≤-reflexive (sym (Σ-accounts-─ {a×t} {abs} {n} p))
   in ≤-trans s₁ s₂
 
-accountsΣ-↓≤ :
+Σ-accounts-↓≤ :
   ∀ {a×t : AccountId × Token}
     {abs : AssocList (AccountId × Token) ℕ}
     {n : ℕ}
   → (p : a×t ∈ abs)
   ------------------------------------------------------------------------------------
-  → accountsΣ (p ∷= (proj₁ (lookup p) , proj₂ (lookup p) ⊓ n)) ≤ accountsΣ abs
-accountsΣ-↓≤ {a×t} {abs} {n} p =
-  let s₁ = ≤-reflexive (accountsΣ-─ {a×t} {abs} {n = proj₂ (lookup p) ⊓ n} p)
-      s₂ = ≤-reflexive (sym (accountsΣ-─ {a×t} {abs} {n = proj₂ (lookup p)} p))
+  → Σ-accounts (p ∷= (proj₁ (lookup p) , proj₂ (lookup p) ⊓ n)) ≤ Σ-accounts abs
+Σ-accounts-↓≤ {a×t} {abs} {n} p =
+  let s₁ = ≤-reflexive (Σ-accounts-─ {a×t} {abs} {n = proj₂ (lookup p) ⊓ n} p)
+      s₂ = ≤-reflexive (sym (Σ-accounts-─ {a×t} {abs} {n = proj₂ (lookup p)} p))
       s₃ = m⊓n≤m (proj₂ (lookup p)) n
-      s₄ = m≤n⇒m+o≤n+o (accountsΣ (abs ─ p)) s₃
-      s₅ = ≤-reflexive (sym (accountsΣ-↓↑ {a×t} {abs} p))
+      s₄ = m≤n⇒m+o≤n+o (Σ-accounts (abs ─ p)) s₃
+      s₅ = ≤-reflexive (sym (Σ-accounts-↓↑ {a×t} {abs} p))
   in ≤-trans (≤-trans s₁ s₄) (≤-trans s₂ s₅)
 
-accountsΣ-↓ :
+Σ-accounts-↓ :
   ∀ {a : AccountId}
     {t : Token}
     {abs : AssocList (AccountId × Token) ℕ}
     {n : ℕ}
   → (p : (a , t) ∈ abs)
   -------------------------------------------------------------------------------------------------------------
-  → accountsΣ (p ∷= (proj₁ (lookup p) , proj₂ (lookup p) ∸ n)) ≡ accountsΣ abs ∸ (proj₂ (lookup p) ⊓ n)
-accountsΣ-↓ {a} {t} {((_ , m) ∷ xs)} {n} (here refl) =
-  let s₁ = cong (_+ accountsΣ xs) (m∸n≡m∸[m⊓n] {m} {n})
-      s₂ = +-∸-comm {m} (accountsΣ xs) {m ⊓ n} (m⊓n≤m m n)
+  → Σ-accounts (p ∷= (proj₁ (lookup p) , proj₂ (lookup p) ∸ n)) ≡ Σ-accounts abs ∸ (proj₂ (lookup p) ⊓ n)
+Σ-accounts-↓ {a} {t} {((_ , m) ∷ xs)} {n} (here refl) =
+  let s₁ = cong (_+ Σ-accounts xs) (m∸n≡m∸[m⊓n] {m} {n})
+      s₂ = +-∸-comm {m} (Σ-accounts xs) {m ⊓ n} (m⊓n≤m m n)
    in trans s₁ (sym s₂)
-accountsΣ-↓ {a} {t} {x ∷ xs} {n} (there p) rewrite accountsΣ-↓ {a} {t} {abs = xs} {n} p =
+Σ-accounts-↓ {a} {t} {x ∷ xs} {n} (there p) rewrite Σ-accounts-↓ {a} {t} {abs = xs} {n} p =
   let m = proj₂ (lookup p)
-      s₁ = accountsΣ-≤ {(a , t)} {xs} {m ⊓ n} p
-      s₂ = accountsΣ-↓≤ {(a , t)} {xs} {n} p
-  in sym (+-∸-assoc (proj₂ x) {accountsΣ xs} {m ⊓ n} (≤-trans s₁ s₂))
+      s₁ = Σ-accounts-≤ {(a , t)} {xs} {m ⊓ n} p
+      s₂ = Σ-accounts-↓≤ {(a , t)} {xs} {n} p
+  in sym (+-∸-assoc (proj₂ x) {Σ-accounts xs} {m ⊓ n} (≤-trans s₁ s₂))

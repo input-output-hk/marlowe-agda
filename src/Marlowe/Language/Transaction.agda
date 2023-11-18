@@ -49,5 +49,5 @@ data TransactionOutput : Set where
   mkTransactionOutput : List TransactionWarning → List Payment → State → Contract → TransactionOutput
   mkError : TransactionError → TransactionOutput
 
-paymentsΣ : List Payment → ℕ
-paymentsΣ = sum ∘ map (λ {(mkPayment _ _ _ n) → n })
+Σ-payments : List Payment → ℕ
+Σ-payments = sum ∘ map (λ {(mkPayment _ _ _ n) → n })
