@@ -1,5 +1,6 @@
 module Marlowe.Semantics.Reduce.Properties where
 
+open import Contrib.Data.Nat.Properties
 open import Data.Integer using (∣_∣; +_)
 open import Data.List using (List; _∷_)
 open import Data.List.Relation.Unary.Any using (lookup; _∷=_)
@@ -13,11 +14,12 @@ open Eq using (_≡_; refl; cong; sym; subst; trans)
 
 open import Marlowe.Language.Contract
 open import Marlowe.Language.State
+open import Marlowe.Language.State.Properties
 open import Marlowe.Language.Transaction
 open import Marlowe.Semantics.Evaluate
 open import Marlowe.Semantics.Reduce
 
-open import Primitives
+open import Contrib.Data.List.AssocList
 open Decidable _≟-AccountId×Token_ renaming (_∈?_ to _∈?-AccountId×Token_)
 
 open State using (accounts; boundValues; choices)

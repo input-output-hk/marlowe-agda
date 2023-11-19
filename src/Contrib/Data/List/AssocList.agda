@@ -1,10 +1,9 @@
-module Primitives where
+module Contrib.Data.List.AssocList where
 
 open import Agda.Builtin.List using (List; []; _∷_)
 open import Agda.Builtin.Bool using (Bool; true; false)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Maybe using (Maybe; just; nothing; fromMaybe)
-open import Data.List.Membership.Propositional using () renaming (_∈_ to _∈-List_)
 open import Data.List.Relation.Unary.Any using (Any; any?; lookup; _∷=_; here; there; _─_)
 open import Data.List.Relation.Unary.Any.Properties using (lookup-result; lookup-index)
 open import Data.List.Relation.Unary.All using (All)
@@ -26,13 +25,6 @@ a ∈ abs = Any ((a ≡_) ∘ proj₁) abs
 
 _∉_ : A → AssocList A B → Set
 a ∉ abs = All ((a ≢_) ∘ proj₁) abs
-
-_∈-L_ : (A × B) → List (A × B) → Set
-a×b ∈-L abs = Any (a×b ≡_) abs
-
-lookup∈-L : ∀ {a : A} { abs : AssocList A B } → (p : a ∈ abs) → (a , proj₂ (lookup p)) ∈-L abs
-lookup∈-L (here refl) = here refl
-lookup∈-L (there p) = there (lookup∈-L p)
 
 module Decidable {A : Set} (_≟_ : DecidableEquality A) where
 

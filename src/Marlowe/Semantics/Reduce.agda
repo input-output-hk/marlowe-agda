@@ -7,7 +7,7 @@ open import Data.Integer as ℤ using (0ℤ; _≤_; _>_; ∣_∣; _<?_; _≤?_)
 open import Data.Integer.Properties as ℤ using ()
 open import Data.List using (List; []; _∷_; _++_; foldr; reverse; [_]; null; sum; filter; map)
 open import Data.List.Membership.Propositional using () renaming (_∈_ to _∈-List_)
-open import Data.List.Relation.Unary.Any using (lookup; _─_; _∷=_; here; there)
+open import Data.List.Relation.Unary.Any using (Any; lookup; _─_; _∷=_; here; there)
 open import Data.List.Relation.Unary.All.Properties using (¬Any⇒All¬; All¬⇒¬Any)
 open import Data.Maybe using (Maybe; just; nothing; fromMaybe)
 open import Data.Nat as ℕ using (ℕ; zero; suc; s≤s; _⊓_; _∸_; _+_; _<ᵇ_; _≤ᵇ_)
@@ -30,7 +30,7 @@ open import Marlowe.Language.State
 open import Marlowe.Language.Transaction
 open import Marlowe.Semantics.Evaluate
 
-open import Primitives
+open import Contrib.Data.List.AssocList
 open Decidable _≟-AccountId×Token_ renaming (_↑_ to _↑-AccountId×Token_; _∈?_ to _∈?-AccountId×Token_)
 open Decidable _≟-ChoiceId_ renaming (_‼_default_ to _‼-ChoiceId_default_) using (_∈?_)
 open Decidable _≟-ValueId_ renaming (_‼_ to _‼-ValueId_; _‼_default_ to _‼-ValueId_default_; _∈?_ to _∈-ValueId?_) hiding (_↑_)
@@ -298,7 +298,7 @@ data _⇀_ : Configuration → Configuration → Set where
       { vᵢ : Int }
       { ws ws' : List ReduceWarning }
       { ps : List Payment }
-    → (i , vᵢ) ∈-L boundValues s
+    → (i , vᵢ) ∈-List boundValues s
     → ws' ≡  ReduceShadowing i vᵢ (ℰ⟦ v ⟧ e s) ∷ ws
     ----------------------------------------------------
     → record {
@@ -586,8 +586,13 @@ progress record
   ; warnings = ws
   ; payments = ps
   } with i ∈-ValueId? vs
-... | yes p = let vᵢ = proj₂ (lookup p)
-              in step (LetShadow {s} {e} {c} {i} {v} {vᵢ} {ws} {ReduceShadowing i vᵢ (ℰ⟦ v ⟧ e s) ∷ ws} {ps} (lookup∈-L p) refl)
+... | yes p =
+  let vᵢ = proj₂ (lookup p)
+  in step (LetShadow {s} {e} {c} {i} {v} {vᵢ} {ws} {ReduceShadowing i vᵢ (ℰ⟦ v ⟧ e s) ∷ ws} {ps} (lookup∈-L p) refl)
+  where
+    lookup∈-L : ∀ {A B : Set} {a : A} {abs : AssocList A B} → (p : a ∈ abs) → (a , proj₂ (lookup p)) ∈-List abs
+    lookup∈-L (here refl) = here refl
+    lookup∈-L (there p) = there (lookup∈-L p)
 ... | no ¬p = step (LetNoShadow (¬Any⇒All¬ vs ¬p))
 progress record
   { contract = Assert o c

@@ -7,7 +7,6 @@ open import Data.Nat as ℕ using (ℕ)
 open import Data.Product using (_×_; _,_)
 open import Data.Product.Properties using (≡-dec)
 open import Data.String as String using (String)
-open import Primitives
 open import Relation.Binary using (DecidableEquality)
 open import Relation.Binary.PropositionalEquality using (cong; cong₂; _≡_; _≢_)
 open import Relation.Nullary using (yes; no)
