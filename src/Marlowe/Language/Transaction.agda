@@ -9,7 +9,6 @@ open import Function.Base using (_∘_)
 open import Marlowe.Language.Contract
 open import Marlowe.Language.Input
 open import Marlowe.Language.State
-open import Primitives
 
 data IntervalError : Set where
   InvalidInterval : TimeInterval → IntervalError

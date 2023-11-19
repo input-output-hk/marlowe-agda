@@ -19,7 +19,7 @@ open import Marlowe.Language.Transaction
 open import Marlowe.Semantics.Evaluate
 open import Marlowe.Semantics.Reduce
 
-open import Primitives hiding (_∈_)
+open import Contrib.Data.List.AssocList hiding (_∈_)
 open Decidable _≟-AccountId×Token_  renaming (_‼_default_ to _‼-AccountId×Token_default_; _↑_ to _↑-AccountId×Token_) hiding (_∈?_)
 open Decidable _≟-ChoiceId_ renaming (_‼_default_ to _‼-ChoiceId_default_;  _↑_ to _↑-ChoiceId_) using (_∈?_)
 open Decidable _≟-ValueId_ renaming (_‼_ to _‼_ValueId_; _‼_default_ to _‼-ValueId_default_; _∈?_ to _∈-ValueId?_; _↑_ to _↑-ValueId_)
@@ -58,7 +58,7 @@ reduceContractUntilQuiescent e s c =
   in reductionSteps (eval c 100) -- TODO: how many steps...?
     where
       open Configuration
-      reductionSteps : ∀ {c : Configuration} → Steps c → ReduceResult
+      reductionSteps : ∀ {c : Configuration} → FinishedEvaluation c → ReduceResult
       reductionSteps (steps {d} x) = ContractQuiescent true (warnings d) (payments d) (state d) (contract d)
       reductionSteps ambiguousTimeInterval = RRAmbiguousTimeIntervalError
       reductionSteps {c} done = ContractQuiescent false (warnings c) (payments c) (state c) (contract c)

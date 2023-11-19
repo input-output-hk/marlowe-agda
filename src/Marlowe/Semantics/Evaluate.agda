@@ -19,7 +19,7 @@ open Environment using (timeInterval)
 open TimeInterval using (startTime; offset)
 open State using (accounts; boundValues; choices)
 
-open import Primitives
+open import Contrib.Data.List.AssocList
 open Decidable _≟-AccountId×Token_  renaming (_‼_default_ to _‼ᵃ_default_) hiding (_∈?_)
 open Decidable _≟-ChoiceId_ renaming (_‼_default_ to _‼ᶜ_default_) using (_∈?_)
 open Decidable _≟-ValueId_ renaming (_‼_default_ to _‼ᵛ_default_) hiding (_∈?_)
