@@ -56,7 +56,8 @@ totalAmount c = Σ-accounts (accounts (state c)) + Σ-payments (payments c)
 ⇀assetPreservation (CloseRefund {_} {_} {i = m}) = m+n+o≡n+[m+o] {m}
 ⇀assetPreservation (PayNonPositive _) = refl
 ⇀assetPreservation (PayNoAccount _ _) = refl
-⇀assetPreservation (PayInternalTransfer {s} {e} {v} {aₛ} {aₜ} {t} {ps = ps} _ p) = go
+⇀assetPreservation (PayInternalTransfer {s} {e} {v} {aₛ} {aₜ} {t} {ps = ps} _ p) =
+  cong (_+ Σ-payments ps) pay-internal-transfer
   where
     aₛ×t = proj₁ (lookup p)
     m = proj₂ (lookup p)
@@ -78,7 +79,6 @@ totalAmount c = Σ-accounts (accounts (state c)) + Σ-payments (payments c)
                s₁ = trans (trans a₂ (+-comm (m ⊓ n) (Σ-accounts (p ∷= (aₛ×t , m ∸ n))))) (cong (_+ m ⊓ n) a₁)
            in sym (trans s₁
                       (m∸n+n≡m {m = Σ-accounts (accounts s)} {n = m ⊓ n} ≤-cond))
-    go = cong (_+ Σ-payments ps) pay-internal-transfer
 ⇀assetPreservation (PayExternal {s} {e} {v} {a} {t} {c} {ws} {ps} {p} _ q) =
   let n = ∣ ℰ⟦ v ⟧ e s ∣ 
       m = proj₂ (lookup q)
