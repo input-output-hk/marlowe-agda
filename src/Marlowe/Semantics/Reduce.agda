@@ -605,20 +605,30 @@ progress record
 ... | no ¬p = step (AssertFalse (¬-not ¬p))
 
 -- Evaluator
-data ReducibleOrError (C : Configuration) : Set where
+data EvalError (C : Configuration) : Set where
 
-  reducible :
-      Reducible C
-    → ReducibleOrError C
+  ambiguousTimeInterval :
+      AmbiguousTimeInterval C
+    → EvalError C
 
   execution-costs-exceeded :
-    ReducibleOrError C
+      EvalError C
 
-eval : ∀ (C : Configuration) → ℕ → Σ[ D ∈ Configuration ] ((C ⇀⋆ D) × ReducibleOrError D)
-eval C zero = C , ((C ∎) , execution-costs-exceeded)
+data QuiescentOrError (C : Configuration) : Set where
+
+  quiescent :
+      Quiescent C
+    → QuiescentOrError C
+
+  error :
+      EvalError C
+    → QuiescentOrError C
+
+eval : ∀ (C : Configuration) → ℕ → Σ[ D ∈ Configuration ] ((C ⇀⋆ D) × QuiescentOrError D)
+eval C zero = C , ((C ∎) , error execution-costs-exceeded)
 eval C (suc m) with progress C
-... | quiescent q = C , ((C ∎) , reducible (quiescent q))
-... | ambiguousTimeInterval q = C , ((C ∎) , reducible (ambiguousTimeInterval q))
+... | quiescent q = C , ((C ∎) , quiescent q)
+... | ambiguousTimeInterval q = C , ((C ∎) , error (ambiguousTimeInterval q))
 ... | step {D} C⇀D with eval D m
 ...      | E , (D⇀⋆E , s) = E , (( C ⇀⟨ C⇀D ⟩ D⇀⋆E ) , s)
 
@@ -677,4 +687,4 @@ config₀ = record
   ; payments = [ mkPayment accountId₁ (mkAccount accountId₁) token₁ 5 ]
   }
 
-_ = eval config₂ 100 ≡ (config₀ , ((config₂ ⇀⟨ IfTrue refl ⟩ config₁ ⇀⟨ CloseRefund ⟩ config₀ ∎) , reducible (quiescent close)))
+_ = eval config₂ 100 ≡ (config₀ , ((config₂ ⇀⟨ IfTrue refl ⟩ config₁ ⇀⟨ CloseRefund ⟩ config₀ ∎) , quiescent close))
