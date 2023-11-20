@@ -604,28 +604,23 @@ progress record
 ... | yes p = step (AssertTrue p)
 ... | no ¬p = step (AssertFalse (¬-not ¬p))
 
-data FinishedEvaluation (C : Configuration) : Set where
-
-  steps : ∀ {D}
-    → C ⇀⋆ D
-    → FinishedEvaluation C
-
-  ambiguousTimeInterval :
-    FinishedEvaluation C
-
-  done :
-    FinishedEvaluation C
-
 -- Evaluator
-eval : ∀ (C : Configuration) → ℕ → FinishedEvaluation C
-eval C zero = steps (C ∎)
-eval C (suc m) with progress C
-... | quiescent _ = steps (C ∎)
-... | ambiguousTimeInterval _ = ambiguousTimeInterval
-... | step {D} C⇀D with eval D m
-...      | steps D⇀⋆E = steps ( C ⇀⟨ C⇀D ⟩ D⇀⋆E )
-...      | _ = done
+data ReducibleOrError (C : Configuration) : Set where
 
+  reducible :
+      Reducible C
+    → ReducibleOrError C
+
+  execution-costs-exceeded :
+    ReducibleOrError C
+
+eval : ∀ (C : Configuration) → ℕ → Σ[ D ∈ Configuration ] ((C ⇀⋆ D) × ReducibleOrError D)
+eval C zero = C , ((C ∎) , execution-costs-exceeded)
+eval C (suc m) with progress C
+... | quiescent q = C , ((C ∎) , reducible (quiescent q))
+... | ambiguousTimeInterval q = C , ((C ∎) , reducible (ambiguousTimeInterval q))
+... | step {D} C⇀D with eval D m
+...      | E , (D⇀⋆E , s) = E , (( C ⇀⟨ C⇀D ⟩ D⇀⋆E ) , s)
 
 -- Examples
 
@@ -640,8 +635,8 @@ accountId₂ = mkAccountId role₂
 token₁ : Token
 token₁ = mkToken (mkByteString "") (mkByteString "")
 
-config₀ : Configuration
-config₀ = record
+config₂ : Configuration
+config₂ = record
   { contract = If TrueObs Close Close
   ; state = record
     { accounts = [ (accountId₁ , token₁ ) , 5 ]
@@ -668,8 +663,8 @@ config₁ = record
   ; payments = []
   }
 
-config₂ : Configuration
-config₂ = record
+config₀ : Configuration
+config₀ = record
   { contract = Close
   ; state = record
     { accounts = []
@@ -682,4 +677,4 @@ config₂ = record
   ; payments = [ mkPayment accountId₁ (mkAccount accountId₁) token₁ 5 ]
   }
 
-_ = eval config₀ 100 ≡ steps (config₀ ⇀⟨ IfTrue refl ⟩ config₁ ⇀⟨ CloseRefund ⟩ config₂ ∎)
+_ = eval config₂ 100 ≡ (config₀ , ((config₂ ⇀⟨ IfTrue refl ⟩ config₁ ⇀⟨ CloseRefund ⟩ config₀ ∎) , reducible (quiescent close)))
