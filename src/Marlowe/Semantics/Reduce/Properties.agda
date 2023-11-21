@@ -55,35 +55,35 @@ totalAmount c = Σ-accounts (accounts (state c)) + Σ-payments (payments c)
 ⇀assetPreservation (CloseRefund {i = m}) = m+n+o≡n+[m+o] {m}
 ⇀assetPreservation (PayNonPositive _) = refl
 ⇀assetPreservation (PayNoAccount _ _) = refl
-⇀assetPreservation (PayInternalTransfer {s} {e} {v} {_} {aₜ} {t} {ps = ps} _ p) =
+⇀assetPreservation (PayInternalTransfer {s} {e} {v} {_} {aₜ} {t} {ps = ps} _ aₛ×t∈as) =
   cong (_+ Σ-payments ps) (sym pay-internal-transfer)
   where
-    m = proj₂ (lookup p)
+    m = proj₂ (lookup aₛ×t∈as)
     n = ∣ ℰ⟦ v ⟧ e s ∣
 
     pay-internal-transfer :
-      Σ-accounts (((aₜ , t) , m ⊓ n) ↑-update (p ∷= (proj₁ (lookup p) , m ∸ n))) ≡ Σ-accounts (accounts s)
-    pay-internal-transfer with (aₜ , t) ∈?-AccountId×Token (p ∷= (proj₁ (lookup p) , m ∸ n))
-    ... | yes q =
+      Σ-accounts (((aₜ , t) , m ⊓ n) ↑-update (aₛ×t∈as ∷= (proj₁ (lookup aₛ×t∈as) , m ∸ n))) ≡ Σ-accounts (accounts s)
+    pay-internal-transfer with (aₜ , t) ∈?-AccountId×Token (aₛ×t∈as ∷= (proj₁ (lookup aₛ×t∈as) , m ∸ n))
+    ... | yes aₜ×t∈as′ =
               trans
                 (trans
-                  (Σ-accounts-↑ (m ⊓ n) q)
+                  (Σ-accounts-↑ (m ⊓ n) aₜ×t∈as′)
                   (trans (+-comm (m ⊓ n)
-                    (Σ-accounts (p ∷= (proj₁ (lookup p) , m ∸ n))))
-                    (cong (_+ m ⊓ n) (Σ-accounts-↓ n p))))
-                (m∸n+n≡m (Σ-accounts-↓≤⊓ n p))
-    ... | no ¬q =
+                    (Σ-accounts (aₛ×t∈as ∷= (proj₁ (lookup aₛ×t∈as) , m ∸ n))))
+                    (cong (_+ m ⊓ n) (Σ-accounts-↓ n aₛ×t∈as))))
+                (m∸n+n≡m (Σ-accounts-↓≤⊓ n aₛ×t∈as))
+    ... | no aₜ×t∉as′ =
               trans
                 (trans
-                  (+-comm (m ⊓ n) (Σ-accounts (p ∷= (proj₁ (lookup p) , m ∸ n))))
-                  (cong (_+ m ⊓ n) (Σ-accounts-↓ n p)))
-                (m∸n+n≡m (Σ-accounts-↓≤⊓ n p))
-⇀assetPreservation (PayExternal {s} {e} {v} {a} {t} {ps = ps} {p = y} _ p) = sym $
+                  (+-comm (m ⊓ n) (Σ-accounts (aₛ×t∈as ∷= (proj₁ (lookup aₛ×t∈as) , m ∸ n))))
+                  (cong (_+ m ⊓ n) (Σ-accounts-↓ n aₛ×t∈as)))
+                (m∸n+n≡m (Σ-accounts-↓≤⊓ n aₛ×t∈as))
+⇀assetPreservation (PayExternal {s} {e} {v} {a} {t} {ps = ps} {p} _ a×t∈as) = sym $
   trans
-    (cong (_+ (Σ-payments ((mkPayment a (mkParty y) t (m ⊓ n)) ∷ ps))) (Σ-accounts-↓ n p))
-    (o≤m⇛m∸o+[o+n]≡m+n (Σ-accounts-↓≤⊓ n p))
+    (cong (_+ (Σ-payments ((mkPayment a (mkParty p) t (m ⊓ n)) ∷ ps))) (Σ-accounts-↓ n a×t∈as))
+    (o≤m⇛m∸o+[o+n]≡m+n (Σ-accounts-↓≤⊓ n a×t∈as))
   where
-    m = proj₂ (lookup p)
+    m = proj₂ (lookup a×t∈as)
     n = ∣ ℰ⟦ v ⟧ e s ∣
 ⇀assetPreservation (IfTrue _) = refl
 ⇀assetPreservation (IfFalse _) = refl
