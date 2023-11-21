@@ -21,27 +21,6 @@ open PosixTime using (getPosixTime)
 open import Contrib.Data.List.AssocList
 open Decidable _≟-AccountId×Token_ renaming (_↑_ to _↑-AccountId×Token_)
 
-Σ-accounts-∷ :
-  ∀ (n : ℕ)
-    (a×t : AccountId × Token)
-    (abs : AssocList (AccountId × Token) ℕ)
-  ---------------------------------------------------
-  → Σ-accounts ((a×t , n) ∷ abs) ≡ n + Σ-accounts abs
-Σ-accounts-∷ zero _ _ = refl
-Σ-accounts-∷ (suc n) a×t abs rewrite Σ-accounts-∷ n a×t abs = refl
-
-Σ-accounts-∷′ :
-  ∀ {m n : ℕ}
-    {a×t : AccountId × Token}
-    {abs : AssocList (AccountId × Token) ℕ}
-  ---------------------------------------------------------------------
-  → Σ-accounts ((a×t , m + n) ∷ abs) ≡ n + Σ-accounts ((a×t , m) ∷ abs)
-Σ-accounts-∷′ {m} {zero} {a×t} {abs} rewrite +-identityʳ m = refl
-Σ-accounts-∷′ {m} {suc n} {a×t} {abs} rewrite Σ-accounts-∷′ {m} {n} {a×t} {abs} =
- trans
-   (cong (_+ Σ-accounts abs) (+-comm m (suc n)))
-   (cong suc (+-assoc n m (Σ-accounts abs)))
-
 Σ-accounts-─ :
   ∀ {a×t : AccountId × Token}
     {abs : AssocList (AccountId × Token) ℕ}
@@ -77,8 +56,14 @@ open Decidable _≟-AccountId×Token_ renaming (_↑_ to _↑-AccountId×Token_)
   → (p : a×t ∈ abs)
   ---------------------------------------------------------------------
   → Σ-accounts (p ∷= (a×t , proj₂ (lookup p) + n)) ≡ n + Σ-accounts abs
-Σ-accounts-↑ {a×t} {x ∷ xs} n (here refl) = Σ-accounts-∷′ {proj₂ x} {n} {a×t} {xs}
-Σ-accounts-↑ {a×t} {x ∷ xs} n (there p) rewrite Σ-accounts-↑ {a×t} {xs} n p
+Σ-accounts-↑ {a×t} {x ∷ xs} n (here refl) = Σ-accounts-∷ (proj₂ x) n {a×t} {xs}
+  where
+    Σ-accounts-∷ : ∀ (m n : ℕ) {a×t : AccountId × Token} {abs : AssocList (AccountId × Token) ℕ}
+                    → Σ-accounts ((a×t , m + n) ∷ abs) ≡ n + Σ-accounts ((a×t , m) ∷ abs)
+    Σ-accounts-∷ m zero rewrite +-identityʳ m = refl
+    Σ-accounts-∷ m (suc n) {a×t} {abs} rewrite Σ-accounts-∷ m n {a×t} {abs} =
+      trans (cong (_+ Σ-accounts abs) (+-comm m (suc n))) (cong suc (+-assoc n m (Σ-accounts abs)))
+Σ-accounts-↑ {abs = x ∷ xs} n (there p) rewrite Σ-accounts-↑ {abs = xs} n p
   = sym (m+[n+o]≡n+[m+o] n (proj₂ x) (Σ-accounts xs))
 
 Σ-accounts-↓ :
@@ -89,7 +74,7 @@ open Decidable _≟-AccountId×Token_ renaming (_↑_ to _↑-AccountId×Token_)
   → (p : (a , t) ∈ abs)
   -------------------------------------------------------------------------------------------------------
   → Σ-accounts (p ∷= (proj₁ (lookup p) , proj₂ (lookup p) ∸ n)) ≡ Σ-accounts abs ∸ (proj₂ (lookup p) ⊓ n)
-Σ-accounts-↓ {a} {t} {((_ , m) ∷ xs)} n (here refl) =
+Σ-accounts-↓ {abs = ((_ , m) ∷ xs)} n (here refl) =
   trans (cong (_+ Σ-accounts xs) (m∸n≡m∸[m⊓n] {m} {n})) (sym (+-∸-comm (Σ-accounts xs) (m⊓n≤m m n)))
-Σ-accounts-↓ {a} {t} {x ∷ xs} n (there p) rewrite Σ-accounts-↓ {a} {t} {abs = xs} n p =
+Σ-accounts-↓ {abs = x ∷ xs} n (there p) rewrite Σ-accounts-↓ {abs = xs} n p =
   sym (+-∸-assoc (proj₂ x) (Σ-accounts-↓≤⊓ n p))

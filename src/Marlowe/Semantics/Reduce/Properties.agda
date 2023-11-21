@@ -71,8 +71,7 @@ totalAmount c = Σ-accounts (accounts (state c)) + Σ-payments (payments c)
            in sym (trans (trans accounts↑ (trans (+-comm (m ⊓ n) (Σ-accounts (p ∷= (aₛ×t , m ∸ n)))) (cong (_+ m ⊓ n) accounts↓)))
                 (m∸n+n≡m (Σ-accounts-↓≤⊓ n p)))
     ... | no ¬q =
-           let accounts↑ = Σ-accounts-∷ (m ⊓ n) (aₜ , t) (p ∷= (aₛ×t , m ∸ n))
-           in sym (trans (trans (trans accounts↑ (+-comm (m ⊓ n) (Σ-accounts (p ∷= (aₛ×t , m ∸ n))))) (cong (_+ m ⊓ n) accounts↓))
+              sym (trans (trans ((+-comm (m ⊓ n) (Σ-accounts (p ∷= (aₛ×t , m ∸ n))))) (cong (_+ m ⊓ n) accounts↓))
                 (m∸n+n≡m (Σ-accounts-↓≤⊓ n p)))
 ⇀assetPreservation (PayExternal {s} {e} {v} {a} {t} {ps = ps} {p = y} _ p) =
   let accounts↓ = Σ-accounts-↓ n p
