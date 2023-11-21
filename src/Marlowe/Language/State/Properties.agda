@@ -49,8 +49,8 @@ open Decidable _≟-AccountId×Token_ renaming (_↑_ to _↑-AccountId×Token_)
   -----------------------------------------------------------
   → Σ-accounts abs ≡ (proj₂ (lookup p)) + Σ-accounts (abs ─ p)
 Σ-accounts-─ {a×t} {abs = x ∷ xs} (here refl) = refl
-Σ-accounts-─ {a×t} {abs = x ∷ xs} (there p)
-  rewrite Σ-accounts-─ {a×t} {xs} p = m+[n+o]≡n+[m+o] (proj₂ x) (proj₂ (lookup p)) (Σ-accounts (xs ─ p))
+Σ-accounts-─ {a×t} {abs = x ∷ xs} (there p) rewrite Σ-accounts-─ {a×t} {xs} p =
+  m+[n+o]≡n+[m+o] (proj₂ x) (proj₂ (lookup p)) (Σ-accounts (xs ─ p))
 
 Σ-accounts-↓≤ :
   ∀ {a×t : AccountId × Token}
@@ -59,9 +59,7 @@ open Decidable _≟-AccountId×Token_ renaming (_↑_ to _↑-AccountId×Token_)
   -----------------------------------------
   → (proj₂ (lookup p)) ≤ Σ-accounts abs
 Σ-accounts-↓≤ {a×t} {abs} p =
-  let s₁ = m≤m+n (proj₂ (lookup p)) (Σ-accounts (abs ─ p))
-      s₂ = sym (Σ-accounts-─ p)
-  in ≤-trans s₁ (≤-reflexive s₂)
+  ≤-trans (m≤m+n (proj₂ (lookup p)) (Σ-accounts (abs ─ p))) (≤-reflexive (sym (Σ-accounts-─ p)))
 
 Σ-accounts-↓≤⊓ :
   ∀ {a×t : AccountId × Token}
@@ -92,9 +90,6 @@ open Decidable _≟-AccountId×Token_ renaming (_↑_ to _↑-AccountId×Token_)
   -------------------------------------------------------------------------------------------------------
   → Σ-accounts (p ∷= (proj₁ (lookup p) , proj₂ (lookup p) ∸ n)) ≡ Σ-accounts abs ∸ (proj₂ (lookup p) ⊓ n)
 Σ-accounts-↓ {a} {t} {((_ , m) ∷ xs)} n (here refl) =
-  let s₁ = cong (_+ Σ-accounts xs) (m∸n≡m∸[m⊓n] {m} {n})
-      s₂ = +-∸-comm {m} (Σ-accounts xs) {m ⊓ n} (m⊓n≤m m n)
-   in trans s₁ (sym s₂)
+  trans (cong (_+ Σ-accounts xs) (m∸n≡m∸[m⊓n] {m} {n})) (sym (+-∸-comm (Σ-accounts xs) (m⊓n≤m m n)))
 Σ-accounts-↓ {a} {t} {x ∷ xs} n (there p) rewrite Σ-accounts-↓ {a} {t} {abs = xs} n p =
-  let s = Σ-accounts-↓≤⊓ {(a , t)} {xs} n p
-  in sym (+-∸-assoc (proj₂ x) {Σ-accounts xs} {proj₂ (lookup p) ⊓ n} s)
+  sym (+-∸-assoc (proj₂ x) (Σ-accounts-↓≤⊓ n p))
