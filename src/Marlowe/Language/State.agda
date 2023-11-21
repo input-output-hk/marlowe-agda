@@ -48,8 +48,11 @@ record Environment : Set where
 Σ-accounts : AssocList (AccountId × Token) ℕ → ℕ
 Σ-accounts = sum ∘ map proj₂
 
-totalₜ : Token → AssocList (AccountId × Token) ℕ → ℕ
-totalₜ t = Σ-accounts ∘ filter ((t ≟-Token_) ∘ proj₂ ∘ proj₁)
+filter-accounts : Token → AssocList (AccountId × Token) ℕ → AssocList (AccountId × Token) ℕ
+filter-accounts t = filter ((t ≟-Token_) ∘ proj₂ ∘ proj₁)
+
+Σ-accountsₜ : Token → AssocList (AccountId × Token) ℕ → ℕ
+Σ-accountsₜ t = Σ-accounts ∘ filter-accounts t
 
 _↑-update_ : (p : (AccountId × Token) × ℕ) (abs : AssocList (AccountId × Token) ℕ) → AssocList (AccountId × Token) ℕ
 (a , b) ↑-update abs with a ∈? abs

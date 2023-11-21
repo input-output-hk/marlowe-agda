@@ -50,3 +50,6 @@ data TransactionOutput : Set where
 
 Σ-payments : List Payment → ℕ
 Σ-payments = sum ∘ map (λ {(mkPayment _ _ _ n) → n })
+
+filter-payments : Token → List Payment → List Payment
+filter-payments t = filter (λ {(mkPayment _ _ t′ _) → (t ≟-Token t′)})

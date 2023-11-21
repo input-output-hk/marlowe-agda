@@ -62,33 +62,25 @@ totalAmount c = Σ-accounts (accounts (state c)) + Σ-payments (payments c)
     aₛ×t = proj₁ (lookup p)
     m = proj₂ (lookup p)
     n = ∣ ℰ⟦ v ⟧ e s ∣
-    a₁ = Σ-accounts-↓ {aₛ} {t} {accounts s} {n} p
-    ≤-cond = ≤-trans
-            (Σ-accounts-≤ {(aₛ , t)} {accounts s} {m ⊓ n} p)
-            (Σ-accounts-↓≤ {(aₛ , t)} {accounts s} {n} p)
-    pay-internal-transfer : Σ-accounts (accounts s)
-         ≡ Σ-accounts (((aₜ , t) , m ⊓ n) ↑-update (p ∷= (proj₁ (lookup p) , m ∸ n)))
+    accounts↓ = Σ-accounts-↓ n p
+
+    pay-internal-transfer : Σ-accounts (accounts s) ≡ Σ-accounts (((aₜ , t) , m ⊓ n) ↑-update (p ∷= (proj₁ (lookup p) , m ∸ n)))
     pay-internal-transfer with (aₜ , t) ∈?-AccountId×Token (p ∷= (aₛ×t , m ∸ n))
     ... | yes q =
-           let s₁ = trans (+-comm (m ⊓ n) (Σ-accounts (p ∷= (aₛ×t , m ∸ n)))) (cong (_+ m ⊓ n) a₁)
-               a₂ = Σ-accounts-↑ {(aₜ , t)} {p ∷= (aₛ×t , m ∸ n)} {m ⊓ n} q
-           in sym (trans (trans a₂ s₁)
-                      (m∸n+n≡m {m = Σ-accounts (accounts s)} {n = m ⊓ n} ≤-cond))
+           let accounts↑ = Σ-accounts-↑ (m ⊓ n) q
+           in sym (trans (trans accounts↑ (trans (+-comm (m ⊓ n) (Σ-accounts (p ∷= (aₛ×t , m ∸ n)))) (cong (_+ m ⊓ n) accounts↓)))
+                (m∸n+n≡m (Σ-accounts-↓≤⊓ n p)))
     ... | no ¬q =
-           let a₂ = Σ-accounts-∷ {m ⊓ n} {(aₜ , t)} {p ∷= (aₛ×t , m ∸ n)}
-               s₁ = trans (trans a₂ (+-comm (m ⊓ n) (Σ-accounts (p ∷= (aₛ×t , m ∸ n))))) (cong (_+ m ⊓ n) a₁)
-           in sym (trans s₁
-                      (m∸n+n≡m {m = Σ-accounts (accounts s)} {n = m ⊓ n} ≤-cond))
-⇀assetPreservation (PayExternal {s} {e} {v} {a} {t} {c} {ws} {ps} {p} _ q) =
-  let n = ∣ ℰ⟦ v ⟧ e s ∣ 
-      m = proj₂ (lookup q)
-      p₁ = Σ-payments ((mkPayment a (mkParty p) t (m ⊓ n)) ∷ ps)
-      a₁ = Σ-accounts-↓ {a} {t} {accounts s} {n} q
-      s₁ = o≤m⇛m∸o+[o+n]≡m+n {Σ-accounts (accounts s)} {Σ-payments ps} {m ⊓ n}
-             (≤-trans
-               (Σ-accounts-≤ {(a , t)} {accounts s} {m ⊓ n} q)
-               (Σ-accounts-↓≤ {(a , t)} {accounts s} {n} q))
-  in sym (trans (cong (_+ p₁) a₁) s₁)
+           let accounts↑ = Σ-accounts-∷ (m ⊓ n) (aₜ , t) (p ∷= (aₛ×t , m ∸ n))
+           in sym (trans (trans (trans accounts↑ (+-comm (m ⊓ n) (Σ-accounts (p ∷= (aₛ×t , m ∸ n))))) (cong (_+ m ⊓ n) accounts↓))
+                (m∸n+n≡m (Σ-accounts-↓≤⊓ n p)))
+⇀assetPreservation (PayExternal {s} {e} {v} {a} {t} {ps = ps} {p = y} _ p) =
+  let accounts↓ = Σ-accounts-↓ n p
+      payments-∷ = Σ-payments ((mkPayment a (mkParty y) t (m ⊓ n)) ∷ ps)
+  in sym (trans (cong (_+ payments-∷) accounts↓) (o≤m⇛m∸o+[o+n]≡m+n (Σ-accounts-↓≤⊓ n p)))
+  where
+    n = ∣ ℰ⟦ v ⟧ e s ∣
+    m = proj₂ (lookup p)
 ⇀assetPreservation (IfTrue _) = refl
 ⇀assetPreservation (IfFalse _) = refl
 ⇀assetPreservation (WhenTimeout _) = refl
