@@ -19,9 +19,6 @@ m+n+o≡n+[m+o] {m} {n} {o} =
       s₂ = +-assoc n m o
   in trans s₁ s₂
 
-m<n⇒m⊓n≡m : ∀ {m n} → m < n → m ⊓ n ≡ m
-m<n⇒m⊓n≡m m<n = m≤n⇒m⊓n≡m (<⇒≤ m<n)
-
 m≤n⇒m+o≤n+o : ∀ {m n} o → m ≤ n → m + o ≤ n + o
 m≤n⇒m+o≤n+o {n = n} o z≤n = m≤n+m o n
 m≤n⇒m+o≤n+o o (s≤s r) = s≤s (m≤n⇒m+o≤n+o o r)
