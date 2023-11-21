@@ -161,9 +161,9 @@ data _⇀_ : Configuration → Configuration → Set where
       { ws : List ReduceWarning }
       { ps : List Payment }
     → ℰ⟦ v ⟧ e s > 0ℤ
-    → (p : (aₛ , t) ∈ accounts s)
-    -----------------------------
-    → let m = proj₂ (lookup p)
+    → (aₛ×t∈as : (aₛ , t) ∈ accounts s)
+    -----------------------------------
+    → let m = proj₂ (lookup aₛ×t∈as)
           n = ∣ ℰ⟦ v ⟧ e s ∣
       in
       record {
@@ -176,7 +176,7 @@ data _⇀_ : Configuration → Configuration → Set where
       ⇀
       record {
         contract = c ;
-        state = record s { accounts = ((aₜ , t) , (m ⊓ n)) ↑-update (p ∷= (proj₁ (lookup p) , m ∸ n)) } ;
+        state = record s { accounts = ((aₜ , t) , (m ⊓ n)) ↑-update (aₛ×t∈as ∷= (proj₁ (lookup aₛ×t∈as) , m ∸ n)) } ;
         environment = e ;
         warnings = if (m <ᵇ n) then ReducePartialPay aₛ (mkAccount aₜ) t m n ∷ ws else ws ;
         payments = ps
@@ -193,9 +193,9 @@ data _⇀_ : Configuration → Configuration → Set where
       { ps : List Payment }
       { p : Party }
     → ℰ⟦ v ⟧ e s > 0ℤ
-    → (q : (a , t) ∈ accounts s)
-    -----------------------------
-    → let m = proj₂ (lookup q)
+    → (a×t∈as : (a , t) ∈ accounts s)
+    ----------------------------------
+    → let m = proj₂ (lookup a×t∈as)
           n = ∣ ℰ⟦ v ⟧ e s ∣
       in
       record {
@@ -208,7 +208,7 @@ data _⇀_ : Configuration → Configuration → Set where
       ⇀
       record {
         contract = c ;
-        state = record s { accounts = q ∷= (proj₁ (lookup q) , m ∸ n) } ;
+        state = record s { accounts = a×t∈as ∷= (proj₁ (lookup a×t∈as) , m ∸ n) } ;
         environment = e ;
         warnings = if (m <ᵇ n) then ReducePartialPay a (mkParty p) t m n ∷ ws else ws ;
         payments = mkPayment a (mkParty p) t (m ⊓ n) ∷ ps
@@ -300,7 +300,7 @@ data _⇀_ : Configuration → Configuration → Set where
       { ps : List Payment }
     → (i , vᵢ) ∈-List boundValues s
     → ws' ≡  ReduceShadowing i vᵢ (ℰ⟦ v ⟧ e s) ∷ ws
-    ----------------------------------------------------
+    ----------------------------------------------
     → record {
         contract = Let i v c ;
         state = s ;
