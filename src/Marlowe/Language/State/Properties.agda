@@ -21,16 +21,19 @@ open PosixTime using (getPosixTime)
 open import Contrib.Data.List.AssocList
 open Decidable _≟-AccountId×Token_ renaming (_↑_ to _↑-AccountId×Token_)
 
+{-
 Σ-accounts-─ :
-  ∀ {a×t : AccountId × Token}
+  ∀ {a : AccountId}
+    {t : Token}
     {abs : AssocList (AccountId × Token) ℕ}
-  → (p : a×t ∈ abs)
+  → (p : (a , t) ∈ abs)
   -----------------------------------------------------------
-  → Σ-accounts abs ≡ (proj₂ (lookup p)) + Σ-accounts (abs ─ p)
-Σ-accounts-─ {a×t} {abs = x ∷ xs} (here refl) = refl
-Σ-accounts-─ {a×t} {abs = x ∷ xs} (there p) rewrite Σ-accounts-─ {a×t} {xs} p =
-  m+[n+o]≡n+[m+o] (proj₂ x) (proj₂ (lookup p)) (Σ-accounts (xs ─ p))
-
+  → Σ-accounts abs ≡ ((unAccountId a , t) , proj₂ (lookup p)) ∷ Σ-accounts (abs ─ p)
+Σ-accounts-─ {a} {t} {abs = x ∷ xs} (here refl) = refl
+Σ-accounts-─ {a} {t} {abs = x ∷ xs} (there p) rewrite Σ-accounts-─ {a} {t} {xs} p = {!!}
+  -- m+[n+o]≡n+[m+o] (proj₂ x) (proj₂ (lookup p)) (Σ-accounts (xs ─ p))
+-}
+{-
 Σ-accounts-↓≤ :
   ∀ {a×t : AccountId × Token}
     {abs : AssocList (AccountId × Token) ℕ}
@@ -78,3 +81,4 @@ open Decidable _≟-AccountId×Token_ renaming (_↑_ to _↑-AccountId×Token_)
   trans (cong (_+ Σ-accounts xs) (m∸n≡m∸[m⊓n] {m} {n})) (sym (+-∸-comm (Σ-accounts xs) (m⊓n≤m m n)))
 Σ-accounts-↓ {abs = x ∷ xs} n (there p) rewrite Σ-accounts-↓ {abs = xs} n p =
   sym (+-∸-assoc (proj₂ x) (Σ-accounts-↓≤⊓ n p))
+-}

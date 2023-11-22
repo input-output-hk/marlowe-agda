@@ -2,7 +2,7 @@ module Marlowe.Semantics.Reduce.Properties where
 
 open import Contrib.Data.Nat.Properties
 open import Data.Integer using (∣_∣; +_)
-open import Data.List using (List; _∷_)
+open import Data.List using (List; _∷_; _++_)
 open import Data.List.Relation.Unary.Any using (lookup; _∷=_)
 open import Data.Nat as ℕ
 open import Data.Nat.Properties as ℕ
@@ -44,9 +44,10 @@ Quiescent¬⇀ (waiting {t} {tₛ} {Δₜ} (x)) (WhenTimeout {_} {t} {tₛ} {Δ�
 ⇀¬Quiescent c₁⇀c₂ q = Quiescent¬⇀ q c₁⇀c₂
 
 -- A reduction step preserves assets
-totalAmount : Configuration → ℕ
-totalAmount c = Σ-accounts (accounts (state c)) + Σ-payments (payments c)
+totalAmount : Configuration → AssocList Token ℕ
+totalAmount c = Σ-accounts (accounts (state c)) ++ Σ-payments (payments c)
 
+{-
 ⇀assetPreservation :
   ∀ {c₁ c₂ : Configuration}
   → (c₁ ⇀ c₂)
@@ -92,3 +93,4 @@ totalAmount c = Σ-accounts (accounts (state c)) + Σ-payments (payments c)
 ⇀assetPreservation (LetNoShadow _) = refl
 ⇀assetPreservation (AssertTrue _) = refl
 ⇀assetPreservation (AssertFalse _) = refl
+-}

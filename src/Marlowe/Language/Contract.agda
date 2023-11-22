@@ -108,7 +108,10 @@ mkValueId b₁ ≟-ValueId mkValueId b₂ with b₁ ≟-ByteString b₂
 ... | no ¬p = no λ x → ¬p (cong getValueId x) where open ValueId
 
 _≟-AccountId×Token_ : DecidableEquality (AccountId × Token)
-_≟-AccountId×Token_ = let _eq_ = ≡-dec _≟-AccountId_ _≟-Token_ in λ x y →  x eq y
+_≟-AccountId×Token_ = let _eq_ = ≡-dec _≟-AccountId_ _≟-Token_ in λ x y → x eq y
+
+_≟-Party×Token_ : DecidableEquality (Party × Token)
+_≟-Party×Token_ = let _eq_ = ≡-dec _≟-Party_ _≟-Token_ in λ x y → x eq y
 
 data Observation : Set
 

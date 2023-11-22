@@ -1,6 +1,7 @@
 module Marlowe.Language.State where
 
 open import Agda.Builtin.Int using (Int)
+open import Contrib.Data.List.AssocList
 open import Contrib.Data.Nat.Properties
 open import Data.Bool using (Bool; _∧_)
 open import Data.List using (List; []; _∷_; sum; filter; map)
@@ -17,7 +18,6 @@ open Eq using (_≡_; refl; cong; sym; trans)
 open import Marlowe.Language.Contract
 open PosixTime using (getPosixTime)
 
-open import Contrib.Data.List.AssocList
 open Decidable _≟-AccountId×Token_ renaming (_↑_ to _↑-AccountId×Token_)
 
 record State : Set where
@@ -45,14 +45,11 @@ record Environment : Set where
   field
     timeInterval : TimeInterval
 
-Σ-accounts : AssocList (AccountId × Token) ℕ → ℕ
-Σ-accounts = sum ∘ map proj₂
+Σ-accounts : AssocList (AccountId × Token) ℕ → AssocList Token ℕ
+Σ-accounts = map (λ {((_ , t) , n) → (t , n)})
 
 filter-accounts : Token → AssocList (AccountId × Token) ℕ → AssocList (AccountId × Token) ℕ
 filter-accounts t = filter ((t ≟-Token_) ∘ proj₂ ∘ proj₁)
-
-Σ-accountsₜ : Token → AssocList (AccountId × Token) ℕ → ℕ
-Σ-accountsₜ t = Σ-accounts ∘ filter-accounts t
 
 _↑-update_ : (p : (AccountId × Token) × ℕ) (abs : AssocList (AccountId × Token) ℕ) → AssocList (AccountId × Token) ℕ
 (a , b) ↑-update abs with a ∈? abs
