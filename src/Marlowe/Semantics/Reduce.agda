@@ -91,7 +91,7 @@ data _⇀_ : Configuration → Configuration → Set where
           } ;
         environment = e ;
         warnings = ws ;
-        payments = mkPayment a (mkAccount a) t i ∷ ps
+        payments = mkPayment a (mkParty (unAccountId a)) t i ∷ ps
       }
 
   PayNonPositive :
@@ -684,7 +684,7 @@ config₀ = record
     }
   ; environment = mkEnvironment (mkInterval (mkPosixTime 0) 5)
   ; warnings = []
-  ; payments = [ mkPayment accountId₁ (mkAccount accountId₁) token₁ 5 ]
+  ; payments = [ mkPayment accountId₁ (mkParty (unAccountId accountId₁)) token₁ 5 ]
   }
 
 _ = eval config₂ 100 ≡ (config₀ , ((config₂ ⇀⟨ IfTrue refl ⟩ config₁ ⇀⟨ CloseRefund ⟩ config₀ ∎) , quiescent close))
