@@ -1,8 +1,8 @@
 module Marlowe.Semantics.Reduce.Properties where
 
 open import Contrib.Data.Nat.Properties
-open import Data.Integer using (∣_∣; +_)
-open import Data.List using (List; _∷_)
+open import Data.Integer using (∣_∣)
+open import Data.List using (List; _∷_; _++_; sum; filter; map)
 open import Data.List.Relation.Unary.Any using (lookup; _∷=_)
 open import Data.Nat as ℕ
 open import Data.Nat.Properties as ℕ
@@ -44,51 +44,52 @@ Quiescent¬⇀ (waiting {t} {tₛ} {Δₜ} (x)) (WhenTimeout {_} {t} {tₛ} {Δ�
 ⇀¬Quiescent c₁⇀c₂ q = Quiescent¬⇀ q c₁⇀c₂
 
 -- A reduction step preserves assets
-totalAmount : Configuration → ℕ
-totalAmount c = Σ-accounts (accounts (state c)) + Σ-payments (payments c)
+totalAmount : Token → Configuration → ℕ
+totalAmount t c = Σ-accounts t (accounts (state c)) + Σ-payments t (payments c)
 
 ⇀assetPreservation :
   ∀ {c₁ c₂ : Configuration}
+  → (t : Token)
   → (c₁ ⇀ c₂)
   --------------------------------
-  → totalAmount c₁ ≡ totalAmount c₂
-⇀assetPreservation (CloseRefund {i = m}) = m+n+o≡n+[m+o] {m}
-⇀assetPreservation (PayNonPositive _) = refl
-⇀assetPreservation (PayNoAccount _ _) = refl
-⇀assetPreservation (PayInternalTransfer {s} {e} {v} {_} {aₜ} {t} {ps = ps} _ aₛ×t∈as) =
-  cong (_+ Σ-payments ps) (sym pay-internal-transfer)
+  → totalAmount t c₁ ≡ totalAmount t c₂
+⇀assetPreservation t* (CloseRefund {a} {t} {i}) = m+n+o≡n+[m+o] {m = projₜ t* ((a , t) , i)}
+⇀assetPreservation _ (PayNonPositive _) = refl
+⇀assetPreservation _ (PayNoAccount _ _) = refl
+⇀assetPreservation t* (PayInternalTransfer {s} {e} {v} {aₛ} {aₜ} {t} {ps = ps} _ aₛ×t∈as) =
+  cong (_+ Σ-payments t* ps) (sym pay-internal-transfer)
   where
     m = proj₂ (lookup aₛ×t∈as)
     n = ∣ ℰ⟦ v ⟧ e s ∣
 
     pay-internal-transfer :
-      Σ-accounts (((aₜ , t) , m ⊓ n) ↑-update (aₛ×t∈as ∷= (proj₁ (lookup aₛ×t∈as) , m ∸ n))) ≡ Σ-accounts (accounts s)
-    pay-internal-transfer with (aₜ , t) ∈?-AccountId×Token (aₛ×t∈as ∷= (proj₁ (lookup aₛ×t∈as) , m ∸ n))
+      Σ-accounts t* (((aₜ , t) , m ⊓ n) ↑-update (aₛ×t∈as ∷= ((aₛ , t) , m ∸ n))) ≡ Σ-accounts t* (accounts s)
+    pay-internal-transfer with (aₜ , t) ∈?-AccountId×Token (aₛ×t∈as ∷= ((aₛ , t) , m ∸ n))
     ... | yes aₜ×t∈as′ =
               trans
                 (trans
-                  (Σ-accounts-↑ (m ⊓ n) aₜ×t∈as′)
-                  (trans (+-comm (m ⊓ n)
-                    (Σ-accounts (aₛ×t∈as ∷= (proj₁ (lookup aₛ×t∈as) , m ∸ n))))
-                    (cong (_+ m ⊓ n) (Σ-accounts-↓ n aₛ×t∈as))))
-                (m∸n+n≡m (Σ-accounts-↓≤⊓ n aₛ×t∈as))
+                  (Σ-accounts-↑ (m ⊓ n) t* aₜ×t∈as′)
+                  (trans
+                    (+-comm (projₜ t* ((aₛ , t) , m ⊓ n)) (Σ-accounts t* (aₛ×t∈as ∷= ((aₛ , t) , m ∸ n))))
+                    (cong (_+ (projₜ t* ((aₛ , t) , m ⊓ n))) (Σ-accounts-↓ n t* aₛ×t∈as))))
+                (m∸n+n≡m (Σ-accounts-↓≤⊓ n t* aₛ×t∈as))
     ... | no aₜ×t∉as′ =
               trans
                 (trans
-                  (+-comm (m ⊓ n) (Σ-accounts (aₛ×t∈as ∷= (proj₁ (lookup aₛ×t∈as) , m ∸ n))))
-                  (cong (_+ m ⊓ n) (Σ-accounts-↓ n aₛ×t∈as)))
-                (m∸n+n≡m (Σ-accounts-↓≤⊓ n aₛ×t∈as))
-⇀assetPreservation (PayExternal {s} {e} {v} {a} {t} {ps = ps} {p} _ a×t∈as) = sym $
+                  (+-comm (projₜ t* ((aₜ , t) ,  m ⊓ n)) (Σ-accounts t* (aₛ×t∈as ∷= ((aₛ , t) , m ∸ n))))
+                  (cong (_+ (projₜ t* ((aₛ , t) , m ⊓ n))) (Σ-accounts-↓ n t* aₛ×t∈as)))
+                (m∸n+n≡m (Σ-accounts-↓≤⊓ n t* aₛ×t∈as))
+⇀assetPreservation t* (PayExternal {s} {e} {v} {a} {t} {ps = ps} {p} _ a×t∈as) = sym $
   trans
-    (cong (_+ (Σ-payments ((mkPayment a (mkParty p) t (m ⊓ n)) ∷ ps))) (Σ-accounts-↓ n a×t∈as))
-    (o≤m⇛m∸o+[o+n]≡m+n (Σ-accounts-↓≤⊓ n a×t∈as))
+    (cong (_+ (Σ-payments t* ((mkPayment a (mkParty p) t (m ⊓ n)) ∷ ps))) (Σ-accounts-↓ n t* a×t∈as))
+    (o≤m⇛m∸o+[o+n]≡m+n (Σ-accounts-↓≤⊓ n t* a×t∈as))
   where
     m = proj₂ (lookup a×t∈as)
     n = ∣ ℰ⟦ v ⟧ e s ∣
-⇀assetPreservation (IfTrue _) = refl
-⇀assetPreservation (IfFalse _) = refl
-⇀assetPreservation (WhenTimeout _) = refl
-⇀assetPreservation (LetShadow _ _) = refl
-⇀assetPreservation (LetNoShadow _) = refl
-⇀assetPreservation (AssertTrue _) = refl
-⇀assetPreservation (AssertFalse _) = refl
+⇀assetPreservation _ (IfTrue _) = refl
+⇀assetPreservation _ (IfFalse _) = refl
+⇀assetPreservation _ (WhenTimeout _) = refl
+⇀assetPreservation _ (LetShadow _ _) = refl
+⇀assetPreservation _ (LetNoShadow _) = refl
+⇀assetPreservation _ (AssertTrue _) = refl
+⇀assetPreservation _ (AssertFalse _) = refl

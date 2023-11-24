@@ -1,8 +1,9 @@
 module Marlowe.Language.State where
 
 open import Agda.Builtin.Int using (Int)
+open import Contrib.Data.List.AssocList
 open import Contrib.Data.Nat.Properties
-open import Data.Bool using (Bool; _∧_)
+open import Data.Bool using (Bool; _∧_; true; false; if_then_else_)
 open import Data.List using (List; []; _∷_; sum; filter; map)
 open import Data.List.Relation.Unary.Any using (lookup; _─_; _∷=_; here; there; index)
 open import Data.Nat
@@ -11,13 +12,14 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Function.Base using (case_of_; _∘_)
 
 open import Relation.Nullary using (Dec; yes; no)
+open import Relation.Nullary.Decidable using (⌊_⌋)
+
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; cong; sym; trans)
 
 open import Marlowe.Language.Contract
 open PosixTime using (getPosixTime)
 
-open import Contrib.Data.List.AssocList
 open Decidable _≟-AccountId×Token_ renaming (_↑_ to _↑-AccountId×Token_)
 
 record State : Set where
@@ -45,14 +47,19 @@ record Environment : Set where
   field
     timeInterval : TimeInterval
 
-Σ-accounts : AssocList (AccountId × Token) ℕ → ℕ
-Σ-accounts = sum ∘ map proj₂
+1ₜ : Token → Token × ℕ → ℕ
+1ₜ t₁ (t₂ , n) with ⌊ t₁ ≟-Token t₂ ⌋
+... | true = n
+... | false = 0
+
+projₜ : Token → (AccountId × Token) × ℕ → ℕ
+projₜ t ((_ , t′) , n) = 1ₜ t (t′ , n)
+
+Σ-accounts : Token → AssocList (AccountId × Token) ℕ → ℕ
+Σ-accounts t = sum ∘ map (projₜ t)
 
 filter-accounts : Token → AssocList (AccountId × Token) ℕ → AssocList (AccountId × Token) ℕ
 filter-accounts t = filter ((t ≟-Token_) ∘ proj₂ ∘ proj₁)
-
-Σ-accountsₜ : Token → AssocList (AccountId × Token) ℕ → ℕ
-Σ-accountsₜ t = Σ-accounts ∘ filter-accounts t
 
 _↑-update_ : (p : (AccountId × Token) × ℕ) (abs : AssocList (AccountId × Token) ℕ) → AssocList (AccountId × Token) ℕ
 (a , b) ↑-update abs with a ∈? abs

@@ -176,7 +176,7 @@ data _⇀_ : Configuration → Configuration → Set where
       ⇀
       record {
         contract = c ;
-        state = record s { accounts = ((aₜ , t) , (m ⊓ n)) ↑-update (aₛ×t∈as ∷= (proj₁ (lookup aₛ×t∈as) , m ∸ n)) } ;
+        state = record s { accounts = ((aₜ , t) , (m ⊓ n)) ↑-update (aₛ×t∈as ∷= ((aₛ , t) , m ∸ n)) } ;
         environment = e ;
         warnings = if (m <ᵇ n) then ReducePartialPay aₛ (mkAccount aₜ) t m n ∷ ws else ws ;
         payments = ps
@@ -208,7 +208,7 @@ data _⇀_ : Configuration → Configuration → Set where
       ⇀
       record {
         contract = c ;
-        state = record s { accounts = a×t∈as ∷= (proj₁ (lookup a×t∈as) , m ∸ n) } ;
+        state = record s { accounts = a×t∈as ∷= ((a , t) , m ∸ n) } ;
         environment = e ;
         warnings = if (m <ᵇ n) then ReducePartialPay a (mkParty p) t m n ∷ ws else ws ;
         payments = mkPayment a (mkParty p) t (m ⊓ n) ∷ ps

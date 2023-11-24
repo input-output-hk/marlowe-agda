@@ -2,8 +2,10 @@ module Marlowe.Language.Transaction where
 
 open import Agda.Builtin.Int using (Int)
 open import Agda.Builtin.List using (List)
+open import Contrib.Data.List.AssocList
 open import Data.List using (List; []; _∷_; sum; filter; map)
 open import Data.Nat
+open import Data.Product using (_×_; _,_)
 open import Function.Base using (_∘_)
 
 open import Marlowe.Language.Contract
@@ -48,8 +50,11 @@ data TransactionOutput : Set where
   mkTransactionOutput : List TransactionWarning → List Payment → State → Contract → TransactionOutput
   mkError : TransactionError → TransactionOutput
 
-Σ-payments : List Payment → ℕ
-Σ-payments = sum ∘ map (λ {(mkPayment _ _ _ n) → n })
+projₚ : Token → Payment → ℕ
+projₚ t (mkPayment a _ t′ n) = 1ₜ t (t′ , n)
+
+Σ-payments : Token → List Payment → ℕ
+Σ-payments t = sum ∘ map (projₚ t)
 
 filter-payments : Token → List Payment → List Payment
 filter-payments t = filter (λ {(mkPayment _ _ t′ _) → (t ≟-Token t′)})
