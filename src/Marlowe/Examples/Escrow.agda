@@ -11,15 +11,14 @@ open import Data.List using (List; []; _∷_)
 open import Data.Product using (_×_) renaming (_,_ to ⟨_,_⟩ )
 open import Marlowe.Language.Contract
 open import Marlowe.Language.Input
+open import Marlowe.Language.State
 open import Marlowe.Language.Transaction
-open import Primitives
-
 
 pattern [_] z = z ∷ []
 pattern [_,_] y z = y ∷ z ∷ []
 
 
-escrow : Party → Party → Party → Token → Int → Timeout → Timeout → Timeout → Timeout → Contract
+escrow : Party → Party → Party → Token → ℕ → Timeout → Timeout → Timeout → Timeout → Contract
 escrow seller buyer mediator token price paymentDeadline complaintDeadline responseDeadline mediationDeadline =
   When
     [
@@ -66,7 +65,7 @@ escrow seller buyer mediator token price paymentDeadline complaintDeadline respo
     Close
   where
     price' : Value
-    price' = Constant price
+    price' = Constant (+ price)
     makeChoice : String → Party → Int → Action
     makeChoice name party value = Choice (mkChoiceId (mkChoiceName (mkByteString name)) party) [(mkBound value value)]
 
@@ -78,8 +77,8 @@ escrowExample =
     buyer = Role (mkByteString "Buyer")
     mediator = Role (mkByteString "Mediator")
     token = mkToken (mkByteString "") (mkByteString"")
-    price = + 1000
-    interval = ⟨ (mkPosixTime 0) , (mkPosixTime 5) ⟩
+    price = 1000
+    interval = mkInterval (mkPosixTime 0) 5
   in
     ⟨ (mkPosixTime 0)
     , ⟨ escrow seller buyer mediator token price

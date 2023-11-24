@@ -13,7 +13,6 @@ open import Marlowe.Language.Contract
 open import Marlowe.Serialization.Json
 open import Marlowe.Examples.Escrow
 open import Marlowe.Semantics.Operate
-open import Primitives
 
 -- open Json {{...}} public
 
@@ -25,7 +24,8 @@ main : Main
 main =
   let
     ⟨ minTime , ⟨ contract , inputs ⟩ ⟩ = escrowExample
-    output = playTrace minTime contract inputs
+-- FIXME: implement big-step semantics
+--    output = playTrace minTime contract inputs
   in
     run
       (
@@ -41,3 +41,4 @@ main =
               ]
           -}
       )
+
