@@ -3,7 +3,7 @@ module Marlowe.Semantics.Operate where
 open import Agda.Builtin.Int using (Int)
 open import Data.Bool using (Bool; if_then_else_; not; _∧_; _∨_; true; false)
 open import Data.Integer using (_<?_; _≤?_; _≟_ ; _⊔_; _⊓_; _+_; _-_; +_; 0ℤ ; _≤_ ; _>_ ; _≥_ ; _<_; ∣_∣)
-open import Data.List using (List; []; _∷_; _++_; foldr; reverse; [_]; null)
+open import Data.List using (List; []; _∷_; _++_; foldr; reverse; [_]; null; map)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Maybe using (Maybe; just; nothing; fromMaybe)
 open import Data.Nat as ℕ using (ℕ)
@@ -23,6 +23,82 @@ open import Contrib.Data.List.AssocList hiding (_∈_)
 open Decidable _≟-AccountId×Token_  renaming (_‼_default_ to _‼-AccountId×Token_default_; _↑_ to _↑-AccountId×Token_) hiding (_∈?_)
 open Decidable _≟-ChoiceId_ renaming (_‼_default_ to _‼-ChoiceId_default_;  _↑_ to _↑-ChoiceId_) using (_∈?_)
 open Decidable _≟-ValueId_ renaming (_‼_ to _‼_ValueId_; _‼_default_ to _‼-ValueId_default_; _∈?_ to _∈-ValueId?_; _↑_ to _↑-ValueId_)
+
+open import Relation.Nullary.Decidable using (⌊_⌋)
+open import Relation.Nullary using (Dec; yes; no; ¬_)
+
+import Relation.Binary.PropositionalEquality as Eq
+open Eq using (_≡_; refl; cong; sym)
+
+open Configuration
+open State
+open TransactionInput
+
+record Result : Set where
+  constructor mkResult
+  field
+    warnings : List TransactionWarning
+    payments : List Payment
+    state : State
+
+data _⇓_ : Contract × TransactionInput × State → Result → Set where
+
+  Deposit :
+    ∀ {a} {p} {t} {v} {c} {cont} {is} {n} {s} {r} {e} {cases} {timeout}
+    → (mkCase (Deposit a p t v) c) ∈ cases
+    → ∣ ℰ⟦ v ⟧ e s ∣ ≡ n
+    → ( c
+      , is
+      , record s { accounts = ((a , t) , n ) ↑-update (accounts s) }
+      ) ⇓ r
+    -------------------------------------
+    → ( When cases timeout cont
+      , record is { inputs = NormalInput (IDeposit a p t n) ∷ inputs is }
+      , s
+      ) ⇓ r
+
+  Choice :
+    ∀ {c} {cont} {i} {n} {s} {r} {is} {cs} {bs} {cases} {timeout}
+    → (mkCase (Choice i bs) c) ∈ cases
+    → n inBounds bs ≡ true
+    → ( c
+      , is
+      , record s { choices = (i , unChosenNum n) ↑-ChoiceId cs }
+      ) ⇓ r
+    -------------------------------------
+    → ( When cases timeout cont
+      , record is { inputs = NormalInput (IChoice i n) ∷ inputs is }
+      , s
+      ) ⇓ r
+
+  Notify :
+    ∀ {c} {cont} {is} {s} {r} {o} {e} {cases} {timeout}
+    → (mkCase (Notify o) c) ∈ cases
+    → 𝒪⟦ o ⟧ e s ≡ true
+    → ( c
+      , is
+      , s
+      ) ⇓ r
+    -------------------------------------
+    → ( When cases timeout cont
+      , record is { inputs = NormalInput INotify ∷ inputs is }
+      , s
+      ) ⇓ r
+
+  SmallSteps :
+    ∀ {c₁ c₂} {i} {r}
+    → c₁ ⇀⋆ c₂
+    → ( contract c₂
+      , i
+      , state c₂
+      ) ⇓ r
+    -----------------
+    → ( contract c₁
+      , i
+      , state c₁
+      ) ⇓ r
+
+{-
 
 fixInterval : TimeInterval → State → IntervalResult
 fixInterval interval state =
@@ -58,8 +134,8 @@ reduceContractUntilQuiescent e s c =
   in reductionSteps (eval c 100) -- TODO: how many steps...?
     where
       open Configuration
-      reductionSteps : ∀ {c : Configuration} → FinishedEvaluation c → ReduceResult
-      reductionSteps (steps {d} x) = ContractQuiescent true (warnings d) (payments d) (state d) (contract d)
+      reductionSteps : ∀ {c : Configuration} → QuiescentOrError c → ReduceResult
+      -- reductionSteps (steps {d} x) = ContractQuiescent true (warnings d) (payments d) (state d) (contract d)
       reductionSteps ambiguousTimeInterval = RRAmbiguousTimeIntervalError
       reductionSteps {c} done = ContractQuiescent false (warnings c) (payments c) (state c) (contract c)
 
@@ -181,3 +257,5 @@ playTraceAux (mkError error) _ = mkError error
 
 playTrace : PosixTime → Contract → List TransactionInput → TransactionOutput
 playTrace minTime c = playTraceAux (mkTransactionOutput [] [] (emptyState minTime) c)
+
+-}

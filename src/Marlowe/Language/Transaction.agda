@@ -42,9 +42,11 @@ data TransactionError : Set where
   TEUselessTransaction : TransactionError
   TEHashMismatch : TransactionError
 
-data TransactionInput : Set where
-  mkTransactionInput : TimeInterval → List Input → TransactionInput
-
+record TransactionInput : Set where
+  constructor mkTransactionInput
+  field
+    timeInterval : TimeInterval
+    inputs : List Input
 
 data TransactionOutput : Set where
   mkTransactionOutput : List TransactionWarning → List Payment → State → Contract → TransactionOutput
