@@ -142,8 +142,7 @@ data _⇀_ : Configuration → Configuration → Set where
       , e
       , ws
       , ps
-      ⟫
-      ⇀
+      ⟫ ⇀
       ⟪ c
       , record s { accounts = a×t∈as ∷= ((a , t) , m ∸ n) }
       , e
