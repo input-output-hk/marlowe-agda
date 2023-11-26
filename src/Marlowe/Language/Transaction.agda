@@ -21,12 +21,12 @@ data IntervalResult : Set where
   mkIntervalError : IntervalError → IntervalResult
 
 record Payment : Set where
-  constructor mkPayment
+  constructor _[_,_]↦_
   field
     accountId : AccountId
-    payee : Payee
     token : Token
     amount : ℕ
+    payee : Payee
 
 data TransactionWarning : Set where
   TransactionNonPositiveDeposit : Party → AccountId → Token → Int → TransactionWarning
@@ -53,10 +53,10 @@ data TransactionOutput : Set where
   mkError : TransactionError → TransactionOutput
 
 projₚ : Token → Payment → ℕ
-projₚ t (mkPayment a _ t′ n) = 1ₜ t (t′ , n)
+projₚ t (a [ t′ , n ]↦ _) = 1ₜ t (t′ , n)
 
 Σ-payments : Token → List Payment → ℕ
 Σ-payments t = sum ∘ map (projₚ t)
 
 filter-payments : Token → List Payment → List Payment
-filter-payments t = filter (λ {(mkPayment _ _ t′ _) → (t ≟-Token t′)})
+filter-payments t = filter (λ {(_ [ t′ , _ ]↦ _) → (t ≟-Token t′)})

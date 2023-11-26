@@ -23,7 +23,7 @@ open PosixTime using (getPosixTime)
 open Decidable _≟-AccountId×Token_ renaming (_↑_ to _↑-AccountId×Token_)
 
 record State : Set where
-  constructor mkState
+  constructor ⟨_,_,_,_⟩
   field
     accounts : AssocList (AccountId × Token) ℕ
     choices : AssocList ChoiceId Int
@@ -31,7 +31,7 @@ record State : Set where
     minTime : PosixTime
 
 emptyState : PosixTime → State
-emptyState = mkState [] [] []
+emptyState m = ⟨ [] , [] , [] , m ⟩
 
 record TimeInterval : Set where
   constructor mkInterval

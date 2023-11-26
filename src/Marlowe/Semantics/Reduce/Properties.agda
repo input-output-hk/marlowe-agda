@@ -81,7 +81,7 @@ totalAmount t c = Σ-accounts t (accounts (state c)) + Σ-payments t (payments c
                 (m∸n+n≡m (Σ-accounts-↓≤⊓ n t* aₛ×t∈as))
 ⇀assetPreservation t* (PayExternal {s} {e} {v} {a} {t} {ps = ps} {p} _ a×t∈as) = sym $
   trans
-    (cong (_+ (Σ-payments t* ((mkPayment a (mkParty p) t (m ⊓ n)) ∷ ps))) (Σ-accounts-↓ n t* a×t∈as))
+    (cong (_+ (Σ-payments t* (a [ t , m ⊓ n ]↦ mkParty p ∷ ps))) (Σ-accounts-↓ n t* a×t∈as))
     (o≤m⇛m∸o+[o+n]≡m+n (Σ-accounts-↓≤⊓ n t* a×t∈as))
   where
     m = proj₂ (lookup a×t∈as)

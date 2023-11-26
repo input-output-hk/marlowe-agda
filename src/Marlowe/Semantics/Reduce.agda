@@ -46,6 +46,7 @@ data ReduceWarning : Set where
   ReduceAssertionFailed : ReduceWarning
 
 record Configuration : Set where
+  constructor ⟪_,_,_,_,_⟫
   field contract : Contract
         state : State
         environment : Environment
@@ -57,341 +58,218 @@ open Configuration
 data _⇀_ : Configuration → Configuration → Set where
 
   CloseRefund :
-    ∀ { a : AccountId }
-      { t : Token }
-      { i : ℕ }
-      { as : AssocList (AccountId × Token) ℕ }
-      { cs : AssocList ChoiceId Int }
-      { vs : AssocList ValueId Int }
-      { ws : List ReduceWarning }
-      { ps : List Payment }
-      { e : Environment }
-      { m : PosixTime }
-    --------------------------------------------
-    → record {
-        contract = Close ;
-        state = record {
-          accounts = ((a , t) , i) ∷ as ;
-          choices = cs ;
-          boundValues = vs ;
-          minTime = m
-          } ;
-        environment = e ;
-        warnings = ws ;
-        payments = ps
-      }
-      ⇀
-      record {
-        contract = Close ;
-        state = record {
-          accounts = as ;
-          choices = cs ;
-          boundValues = vs ;
-          minTime = m
-          } ;
-        environment = e ;
-        warnings = ws ;
-        payments = mkPayment a (mkParty (unAccountId a)) t i ∷ ps
-      }
+    ∀ { a } { t } { n } { as } { cs } { vs } { ws } { ps } { e } { m }
+    ------------------------------------------------------------------
+    → ⟪ Close
+      , ⟨ ((a , t) , n) ∷ as , cs , vs , m ⟩
+      , e
+      , ws
+      , ps
+      ⟫ ⇀
+      ⟪ Close
+      , ⟨ as , cs , vs , m ⟩
+      , e
+      , ws
+      , a [ t , n ]↦ mkParty (unAccountId a) ∷ ps
+      ⟫
 
   PayNonPositive :
-    ∀ { s : State }
-      { e : Environment }
-      { v : Value }
-      { a : AccountId }
-      { y : Payee }
-      { t : Token }
-      { c : Contract }
-      { ws : List ReduceWarning }
-      { ps : List Payment }
+    ∀ { s } { e } { v } { a } { p } { t } { c } { ws } { ps }
     → ℰ⟦ v ⟧ e s ℤ.≤ 0ℤ
-    -----------------------------
-    → record {
-        contract = Pay a y t v c ;
-        state = s ;
-        environment = e ;
-        warnings = ws ;
-        payments = ps
-      }
-      ⇀
-      record {
-        contract = c ;
-        state = s ;
-        environment = e ;
-        warnings = ReduceNonPositivePay a y t (ℰ⟦ v ⟧ e s) ∷ ws ;
-        payments = ps
-      }
+    ---------------------------------------------------------
+    → ⟪ Pay a p t v c
+      , s
+      , e
+      , ws
+      , ps
+      ⟫ ⇀
+      ⟪ c
+      , s
+      , e
+      , ReduceNonPositivePay a p t (ℰ⟦ v ⟧ e s) ∷ ws
+      , ps
+      ⟫
 
   PayNoAccount :
-    ∀ { s : State }
-      { e : Environment }
-      { v : Value }
-      { a : AccountId }
-      { y : Payee }
-      { t : Token }
-      { c : Contract }
-      { ws : List ReduceWarning }
-      { ps : List Payment }
+    ∀ { s } { e } { v } { a } { p } { t } { c } { ws } { ps }
     → ℰ⟦ v ⟧ e s > 0ℤ
     → (a , t) ∉ accounts s
-    -----------------------------
-    → record {
-        contract = Pay a y t v c ;
-        state = s ;
-        environment = e ;
-        warnings = ws ;
-        payments = ps
-      }
-      ⇀
-      record {
-        contract = c ;
-        state = s ;
-        environment = e ;
-        warnings = ReducePartialPay a y t 0 ∣ ℰ⟦ v ⟧ e s ∣ ∷ ws ; -- TODO: proper warning?
-        payments = ps
-      }
+    ---------------------------------------------------------
+    → ⟪ Pay a p t v c
+      , s
+      , e
+      , ws
+      , ps
+      ⟫ ⇀
+      ⟪ c
+      , s
+      , e
+      , ReducePartialPay a p t 0 ∣ ℰ⟦ v ⟧ e s ∣ ∷ ws -- TODO: proper warning?
+      , ps
+      ⟫
 
   PayInternalTransfer :
-    ∀ { s : State }
-      { e : Environment }
-      { v : Value }
-      { aₛ aₜ : AccountId }
-      { t : Token }
-      { c : Contract }
-      { ws : List ReduceWarning }
-      { ps : List Payment }
+    ∀ { s } { e } { v } { aₛ aₜ } { t } { c } { ws } { ps }
     → ℰ⟦ v ⟧ e s > 0ℤ
     → (aₛ×t∈as : (aₛ , t) ∈ accounts s)
-    -----------------------------------
+    ------------------------------------------------------
     → let m = proj₂ (lookup aₛ×t∈as)
           n = ∣ ℰ⟦ v ⟧ e s ∣
       in
-      record {
-        contract = Pay aₛ (mkAccount aₜ) t v c ;
-        state = s ;
-        environment = e ;
-        warnings = ws ;
-        payments = ps
-      }
-      ⇀
-      record {
-        contract = c ;
-        state = record s { accounts = ((aₜ , t) , (m ⊓ n)) ↑-update (aₛ×t∈as ∷= ((aₛ , t) , m ∸ n)) } ;
-        environment = e ;
-        warnings = if (m <ᵇ n) then ReducePartialPay aₛ (mkAccount aₜ) t m n ∷ ws else ws ;
-        payments = ps
-      }
+      ⟪ Pay aₛ (mkAccount aₜ) t v c
+      , s
+      , e
+      , ws
+      , ps
+      ⟫ ⇀
+      ⟪ c
+      , record s { accounts = ((aₜ , t) , (m ⊓ n)) ↑-update (aₛ×t∈as ∷= ((aₛ , t) , m ∸ n)) }
+      , e
+      , if (m <ᵇ n) then ReducePartialPay aₛ (mkAccount aₜ) t m n ∷ ws else ws
+      , ps
+      ⟫
 
   PayExternal :
-    ∀ { s : State }
-      { e : Environment }
-      { v : Value }
-      { a : AccountId }
-      { t : Token }
-      { c : Contract }
-      { ws : List ReduceWarning }
-      { ps : List Payment }
-      { p : Party }
+    ∀ { s } { e } { v } { a } { t } { c } { ws } { ps } { p }
     → ℰ⟦ v ⟧ e s > 0ℤ
     → (a×t∈as : (a , t) ∈ accounts s)
-    ----------------------------------
+    ---------------------------------------------------------
     → let m = proj₂ (lookup a×t∈as)
           n = ∣ ℰ⟦ v ⟧ e s ∣
       in
-      record {
-        contract = Pay a (mkParty p) t v c ;
-        state = s ;
-        environment = e ;
-        warnings = ws ;
-        payments = ps
-      }
+      ⟪ Pay a (mkParty p) t v c
+      , s
+      , e
+      , ws
+      , ps
+      ⟫
       ⇀
-      record {
-        contract = c ;
-        state = record s { accounts = a×t∈as ∷= ((a , t) , m ∸ n) } ;
-        environment = e ;
-        warnings = if (m <ᵇ n) then ReducePartialPay a (mkParty p) t m n ∷ ws else ws ;
-        payments = mkPayment a (mkParty p) t (m ⊓ n) ∷ ps
-      }
+      ⟪ c
+      , record s { accounts = a×t∈as ∷= ((a , t) , m ∸ n) }
+      , e
+      , if (m <ᵇ n) then ReducePartialPay a (mkParty p) t m n ∷ ws else ws
+      , a [ t , m ⊓ n ]↦ mkParty p ∷ ps
+      ⟫
 
   IfTrue :
-    ∀ { s : State }
-      { e : Environment }
-      { o : Observation }
-      { c₁ c₂ : Contract }
-      { ws : List ReduceWarning }
-      { ps : List Payment }
+    ∀ { s } { e } { o } { c₁ c₂ } { ws } { ps }
     → 𝒪⟦ o ⟧ e s ≡ true
-    -----------------------------
-    → record {
-        contract = If o c₁ c₂ ;
-        state = s ;
-        environment = e ;
-        warnings = ws ;
-        payments = ps
-      }
-      ⇀
-      record {
-        contract = c₁ ;
-        state = s ;
-        environment = e ;
-        warnings = ws ;
-        payments = ps
-      }
+    -------------------------------------------
+    → ⟪ If o c₁ c₂
+      , s
+      , e
+      , ws
+      , ps
+      ⟫ ⇀
+      ⟪ c₁
+      , s
+      , e
+      , ws
+      , ps
+      ⟫
 
   IfFalse :
-    ∀ { s : State }
-      { e : Environment }
-      { o : Observation }
-      { c₁ c₂ : Contract }
-      { ws : List ReduceWarning }
-      { ps : List Payment }
+    ∀ { s } { e } { o } { c₁ c₂ } { ws } { ps }
     → 𝒪⟦ o ⟧ e s ≡ false
-    -----------------------------
-    → record {
-        contract = If o c₁ c₂ ;
-        state = s ;
-        environment = e ;
-        warnings = ws ;
-        payments = ps
-      }
-      ⇀
-      record {
-        contract = c₂ ;
-        state = s ;
-        environment = e ;
-        warnings = ws ;
-        payments = ps
-      }
+    -------------------------------------------
+    → ⟪ If o c₁ c₂
+      , s
+      , e
+      , ws
+      , ps
+      ⟫ ⇀
+      ⟪ c₂
+      , s
+      , e
+      , ws
+      , ps
+      ⟫
 
   WhenTimeout :
-    ∀ { s : State }
-      { t tₛ Δₜ : ℕ }
-      { c : Contract }
-      { ws : List ReduceWarning }
-      { ps : List Payment }
-      { cs : List Case }
+    ∀ { s } { t tₛ Δₜ } { c } { ws } { ps } { cs }
     → t ℕ.≤ tₛ
-    -----------------------------
-    → record {
-        contract = When cs (mkTimeout (mkPosixTime t)) c ;
-        state = s;
-        environment = mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ) ;
-        warnings = ws ;
-        payments = ps
-      }
-      ⇀
-      record {
-        contract = c ;
-        state = s ;
-        environment = mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ) ;
-        warnings = ws ;
-        payments = ps
-      }
+    ---------------------------------------------
+    → ⟪ When cs (mkTimeout (mkPosixTime t)) c
+      , s
+      , mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ)
+      , ws
+      , ps
+      ⟫ ⇀
+      ⟪ c
+      , s
+      , mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ)
+      , ws
+      , ps
+      ⟫
 
   LetShadow :
-    ∀ { s : State }
-      { e : Environment }
-      { c : Contract }
-      { i : ValueId }
-      { v : Value }
-      { vᵢ : Int }
-      { ws ws' : List ReduceWarning }
-      { ps : List Payment }
+    ∀ { s } { e } { c } { i } { v } { vᵢ } { ws ws'} { ps }
     → (i , vᵢ) ∈-List boundValues s
-    → ws' ≡  ReduceShadowing i vᵢ (ℰ⟦ v ⟧ e s) ∷ ws
+    → ws' ≡ ReduceShadowing i vᵢ (ℰ⟦ v ⟧ e s) ∷ ws
     ----------------------------------------------
-    → record {
-        contract = Let i v c ;
-        state = s ;
-        environment = e ;
-        warnings = ws ;
-        payments = ps
-      }
-      ⇀
-      record {
-        contract = c ;
-        state = s ;
-        environment = e ;
-        warnings = ws' ;
-        payments = ps
-      }
+    → ⟪ Let i v c
+      , s
+      , e
+      , ws
+      , ps
+      ⟫ ⇀
+      ⟪ c
+      , s
+      , e
+      , ws'
+      , ps
+      ⟫
 
   LetNoShadow :
-    ∀ { s : State }
-      { e : Environment }
-      { c : Contract }
-      { i : ValueId }
-      { v : Value }
-      { ws : List ReduceWarning }
-      { ps : List Payment }
+    ∀ { s } { e } { c } { i } { v } { ws } { ps }
     → i ∉ boundValues s
-    -----------------------------
-    → record {
-        contract = Let i v c ;
-        state = s ;
-        environment = e ;
-        warnings = ws ;
-        payments = ps
-      }
-      ⇀
-      record {
-        contract = c ;
-        state = record s { boundValues = (i , ℰ⟦ v ⟧ e s) ∷ boundValues s } ;
-        environment = e ;
-        warnings = ws ;
-        payments = ps
-      }
+    ---------------------------------------------
+    → ⟪ Let i v c
+      , s
+      , e
+      , ws
+      , ps
+      ⟫ ⇀
+      ⟪ c
+      , record s { boundValues = (i , ℰ⟦ v ⟧ e s) ∷ boundValues s }
+      , e
+      , ws
+      , ps
+      ⟫
 
   AssertTrue :
-    ∀ { s : State }
-      { e : Environment }
-      { o : Observation }
-      { c : Contract }
-      { ws : List ReduceWarning }
-      { ps : List Payment }
+    ∀ { s } { e } { o } { c } { ws } { ps }
     → 𝒪⟦ o ⟧ e s ≡ true
-    -----------------------------
-    → record {
-        contract = Assert o c ;
-        state = s ;
-        environment = e ;
-        warnings = ws ;
-        payments = ps
-      }
-      ⇀
-      record {
-        contract = c ;
-        state = s ;
-        environment = e ;
-        warnings = ws ;
-        payments = ps
-      }
+    ---------------------------------------
+    → ⟪ Assert o c
+      , s
+      , e
+      , ws
+      , ps
+      ⟫ ⇀
+      ⟪ c
+      , s
+      , e
+      , ws
+      , ps
+      ⟫
 
   AssertFalse :
-    ∀ { s : State }
-      { e : Environment }
-      { o : Observation }
-      { c : Contract }
-      { ws : List ReduceWarning }
-      { ps : List Payment }
+    ∀ { s } { e } { o } { c } { ws } { ps }
     → 𝒪⟦ o ⟧ e s ≡ false
-    -----------------------------
-    → record {
-        contract = Assert o c ;
-        state = s ;
-        environment = e ;
-        warnings = ws;
-        payments = ps
-      }
-      ⇀
-      record {
-        contract = c ;
-        state = s ;
-        environment = e ;
-        warnings = ReduceAssertionFailed ∷ ws ;
-        payments = ps
-      }
+    ---------------------------------------
+    → ⟪ Assert o c
+      , s
+      , e
+      , ws
+      , ps
+      ⟫ ⇀
+      ⟪ c
+      , s
+      , e
+      , ReduceAssertionFailed ∷ ws
+      , ps
+      ⟫
 
 
 -- reflexive and transitive closure
@@ -427,19 +305,13 @@ data Quiescent : Configuration → Set where
       { m : PosixTime }
       { ps : List Payment }
     ---------------------------------
-    → Quiescent record {
-          contract = Close ;
-          state =
-            record
-              { accounts = [] ;
-                choices = cs ;
-                boundValues = vs ;
-                minTime = m
-              } ;
-            environment = e ;
-            warnings = ws ;
-            payments = ps
-        }
+    → Quiescent
+        ⟪ Close
+        , ⟨ [] , cs , vs , m ⟩
+        , e
+        , ws
+        , ps
+        ⟫
 
   waiting :
     ∀ { t tₛ Δₜ : ℕ }
@@ -454,19 +326,13 @@ data Quiescent : Configuration → Set where
     → let tₑ = tₛ + Δₜ
        in tₑ ℕ.< t
     ------------------------------------------
-    → Quiescent record {
-          contract = When cases (mkTimeout (mkPosixTime t)) c ;
-          state =
-            record
-              { accounts = as ;
-                choices = cs ;
-                boundValues = vs ;
-                minTime = m
-              } ;
-          environment = mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ) ;
-          warnings = ws ;
-          payments = ps
-        }
+    → Quiescent
+        ⟪ When cases (mkTimeout (mkPosixTime t)) c
+        , ⟨ as , cs , vs , m ⟩
+        , mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ)
+        , ws
+        , ps
+        ⟫
 
 data AmbiguousTimeInterval : Configuration → Set where
 
@@ -479,13 +345,13 @@ data AmbiguousTimeInterval : Configuration → Set where
       { ps : List Payment }
     → tₛ ℕ.< t
     → (tₛ + Δₜ) ℕ.≥ t
-    → AmbiguousTimeInterval record {
-           contract = When cs (mkTimeout (mkPosixTime t)) c ;
-           state = s ;
-           environment = mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ) ;
-           warnings = ws ;
-           payments = ps
-        }
+    → AmbiguousTimeInterval
+        ⟪ When cs (mkTimeout (mkPosixTime t)) c
+        , s
+        , mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ)
+        , ws
+        , ps
+        ⟫
 
 data Reducible (C : Configuration) : Set where
 
@@ -506,103 +372,35 @@ data Reducible (C : Configuration) : Set where
 
 
 progress : ∀ (C : Configuration) → Reducible C
-progress record
-  { contract = Close
-  ; state = record
-    { accounts = [] ;
-      choices = _ ;
-      boundValues = _ ;
-      minTime = _
-    }
-  ; environment = _
-  ; warnings = _
-  ; payments = _
-  } = quiescent close
-progress record
-  { contract = Close
-  ; state = record
-    { accounts = a ∷ as ;
-      choices = _ ;
-      boundValues = _ ;
-      minTime = _
-    }
-  ; environment = _
-  ; warnings = _
-  ; payments = _
-  } = step CloseRefund
-progress record
-  { contract = Pay a (mkAccount p) t v c
-  ; state = s
-  ; environment = e
-  ; warnings = _
-  ; payments = _
-  } with ℰ⟦ v ⟧ e s ≤? 0ℤ | (a , t) ∈?-AccountId×Token (accounts s)
-... | yes q | _ = step (PayNonPositive q)
-... | no ¬p | yes q = step (PayInternalTransfer (ℤ.≰⇒> ¬p) q)
-... | no ¬p | no ¬q = step (PayNoAccount (ℤ.≰⇒> ¬p) (¬Any⇒All¬ (accounts s) ¬q))
-progress record
-  { contract = Pay a (mkParty p) t v c
-  ; state = s
-  ; environment = e
-  ; warnings = ws
-  ; payments = ps
-  } with ℰ⟦ v ⟧ e s ≤? 0ℤ | (a , t) ∈?-AccountId×Token (accounts s)
-... | yes q | _ = step (PayNonPositive q)
-... | no ¬p | yes q = step (PayExternal (ℤ.≰⇒> ¬p) q)
-... | no ¬p | no ¬q = step (PayNoAccount (ℤ.≰⇒> ¬p) (¬Any⇒All¬ (accounts s) ¬q))
-progress record
-  { contract = If o c₁ c₂
-  ; state = s
-  ; environment = e
-  ; warnings = _
-  ; payments = _
-  } with 𝒪⟦ o ⟧ e s ≟ true
-... | yes p = step (IfTrue p)
-... | no ¬p = step (IfFalse (¬-not ¬p))
-progress record
-  { contract = When cs (mkTimeout (mkPosixTime t)) c
-  ; state = record
-    { accounts = _ ;
-      choices = _ ;
-      boundValues = _ ;
-      minTime = _
-    }
-  ; environment = mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ)
-  ; warnings = _
-  ; payments = _
-  } with (tₛ + Δₜ) ℕ.<? t | t ℕ.≤? tₛ
-... | yes p | _ = quiescent (waiting p)
-... | _ | yes q = step (WhenTimeout q)
-... | no ¬p | no ¬q = ambiguousTimeInterval (AmbiguousTimeIntervalError (≰⇒> ¬q) (≮⇒≥ ¬p))
-progress record
-  { contract = Let i v c
-  ; state = s@(record
-    { accounts = _ ;
-      choices = _ ;
-      boundValues = vs ;
-      minTime = _
-    })
-  ; environment = e
-  ; warnings = ws
-  ; payments = ps
-  } with i ∈-ValueId? vs
-... | yes p =
-  let vᵢ = proj₂ (lookup p)
-  in step (LetShadow {s} {e} {c} {i} {v} {vᵢ} {ws} {ReduceShadowing i vᵢ (ℰ⟦ v ⟧ e s) ∷ ws} {ps} (lookup∈-L p) refl)
+progress ⟪ Close , ⟨ [] , _ , _ , _ ⟩ , _ , _ , _ ⟫ = quiescent close
+progress ⟪ Close , ⟨ _ ∷ _ , _ , _ , _ ⟩ , _ , _ , _ ⟫ = step CloseRefund
+progress ⟪ Pay a (mkAccount p) t v c , s@(⟨ as , _ , _ , _ ⟩) , e , _ , _ ⟫  with ℰ⟦ v ⟧ e s ≤? 0ℤ | (a , t) ∈?-AccountId×Token as
+... | yes v≤0 | _ = step (PayNonPositive v≤0)
+... | no v≰0 | yes a×t∈as = step (PayInternalTransfer (ℤ.≰⇒> v≰0) a×t∈as)
+... | no v≰0 | no ¬a×t∈as = step (PayNoAccount (ℤ.≰⇒> v≰0) (¬Any⇒All¬ as ¬a×t∈as))
+progress ⟪ Pay a (mkParty p) t v _ , s@(⟨ as , _ , _ , _ ⟩) , e , _ , _ ⟫ with ℰ⟦ v ⟧ e s ≤? 0ℤ | (a , t) ∈?-AccountId×Token as
+... | yes v≤0 | _ = step (PayNonPositive v≤0)
+... | no v≰0 | yes a×t∈as = step (PayExternal (ℤ.≰⇒> v≰0) a×t∈as)
+... | no v≰0 | no ¬a×t∈as = step (PayNoAccount (ℤ.≰⇒> v≰0) (¬Any⇒All¬ as ¬a×t∈as))
+progress ⟪ If o c₁ c₂ , s , e , _ , _ ⟫ with 𝒪⟦ o ⟧ e s ≟ true
+... | yes o≡true = step (IfTrue o≡true)
+... | no ¬o≡true = step (IfFalse (¬-not ¬o≡true))
+progress ⟪ When cs (mkTimeout (mkPosixTime t)) c , _ , mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ), _ , _ ⟫ with (tₛ + Δₜ) ℕ.<? t | t ℕ.≤? tₛ
+... | yes tₑ<t | _ = quiescent (waiting tₑ<t)
+... | _ | yes t≤tₛ = step (WhenTimeout t≤tₛ)
+... | no ¬tₑ<t | no ¬t≤tₛ = ambiguousTimeInterval (AmbiguousTimeIntervalError (≰⇒> ¬t≤tₛ) (≮⇒≥ ¬tₑ<t))
+progress ⟪ Let i v c , s@(⟨ _ , _ , vs , _ ⟩) , e , ws , ps ⟫ with i ∈-ValueId? vs
+... | yes i∈vs =
+  let vᵢ = proj₂ (lookup i∈vs)
+  in step (LetShadow {s} {e} {c} {i} {v} {vᵢ} {ws} {ReduceShadowing i vᵢ (ℰ⟦ v ⟧ e s) ∷ ws} {ps} (lookup∈-L i∈vs) refl)
   where
-    lookup∈-L : ∀ {A B : Set} {a : A} {abs : AssocList A B} → (p : a ∈ abs) → (a , proj₂ (lookup p)) ∈-List abs
+    lookup∈-L : ∀ {A B : Set} {a : A} {abs : AssocList A B} → (a∈abs : a ∈ abs) → (a , proj₂ (lookup a∈abs)) ∈-List abs
     lookup∈-L (here refl) = here refl
-    lookup∈-L (there p) = there (lookup∈-L p)
-... | no ¬p = step (LetNoShadow (¬Any⇒All¬ vs ¬p))
-progress record
-  { contract = Assert o c
-  ; state = s
-  ; environment = e
-  ; warnings = _
-  ; payments = _
-  } with 𝒪⟦ o ⟧ e s ≟ true
-... | yes p = step (AssertTrue p)
-... | no ¬p = step (AssertFalse (¬-not ¬p))
+    lookup∈-L (there a∈abs) = there (lookup∈-L a∈abs)
+... | no ¬a∈abs = step (LetNoShadow (¬Any⇒All¬ vs ¬a∈abs))
+progress ⟪ Assert o c , s , e , _ , _ ⟫ with 𝒪⟦ o ⟧ e s ≟ true
+... | yes o≡true = step (AssertTrue o≡true)
+... | no ¬o≡true = step (AssertFalse (¬-not ¬o≡true))
 
 -- Evaluator
 data EvalError (C : Configuration) : Set where
@@ -634,57 +432,43 @@ eval C (suc m) with progress C
 
 -- Examples
 
-role₁ role₂ : Party
-role₁ = Role (mkByteString "foo")
-role₂ = Role (mkByteString "bar")
+private
+  role₁ role₂ : Party
+  role₁ = Role (mkByteString "foo")
+  role₂ = Role (mkByteString "bar")
 
-accountId₁ accountId₂ : AccountId
-accountId₁ = mkAccountId role₁
-accountId₂ = mkAccountId role₂
+  accountId₁ accountId₂ : AccountId
+  accountId₁ = mkAccountId role₁
+  accountId₂ = mkAccountId role₂
 
-token₁ : Token
-token₁ = mkToken (mkByteString "") (mkByteString "")
+  token₁ : Token
+  token₁ = mkToken (mkByteString "") (mkByteString "")
 
-config₂ : Configuration
-config₂ = record
-  { contract = If TrueObs Close Close
-  ; state = record
-    { accounts = [ (accountId₁ , token₁ ) , 5 ]
-    ; choices = []
-    ; boundValues = []
-    ; minTime = mkPosixTime 0
-    }
-  ; environment = mkEnvironment (mkInterval (mkPosixTime 0) 5)
-  ; warnings = []
-  ; payments = []
-  }
+  config₂ : Configuration
+  config₂ =
+    ⟪ If TrueObs Close Close
+    , ⟨ [ (accountId₁ , token₁ ) , 5 ] , [] , [] , mkPosixTime 0 ⟩
+    , mkEnvironment (mkInterval (mkPosixTime 0) 5)
+    , []
+    , []
+    ⟫
 
-config₁ : Configuration
-config₁ = record
-  { contract = Close
-  ; state = record
-    { accounts = [ ( accountId₁ , token₁ ) , 5 ]
-    ; choices = []
-    ; boundValues = []
-    ; minTime = mkPosixTime 0
-    }
-  ; environment = mkEnvironment (mkInterval (mkPosixTime 0) 5)
-  ; warnings = []
-  ; payments = []
-  }
+  config₁ : Configuration
+  config₁ =
+    ⟪ Close
+    , ⟨ [ ( accountId₁ , token₁ ) , 5 ] , [] , [] , mkPosixTime 0 ⟩
+    , mkEnvironment (mkInterval (mkPosixTime 0) 5)
+    , []
+    , []
+    ⟫
 
-config₀ : Configuration
-config₀ = record
-  { contract = Close
-  ; state = record
-    { accounts = []
-    ; choices = []
-    ; boundValues = []
-    ; minTime = mkPosixTime 0
-    }
-  ; environment = mkEnvironment (mkInterval (mkPosixTime 0) 5)
-  ; warnings = []
-  ; payments = [ mkPayment accountId₁ (mkParty (unAccountId accountId₁)) token₁ 5 ]
-  }
+  config₀ : Configuration
+  config₀ =
+    ⟪ Close
+    , ⟨ [] , [] , [] , mkPosixTime 0 ⟩
+    , mkEnvironment (mkInterval (mkPosixTime 0) 5)
+    , []
+    , [ accountId₁ [ token₁ , 5 ]↦ mkParty (unAccountId accountId₁) ]
+    ⟫
 
-_ = eval config₂ 100 ≡ (config₀ , ((config₂ ⇀⟨ IfTrue refl ⟩ config₁ ⇀⟨ CloseRefund ⟩ config₀ ∎) , quiescent close))
+  _ = eval config₂ 100 ≡ (config₀ , ((config₂ ⇀⟨ IfTrue refl ⟩ config₁ ⇀⟨ CloseRefund ⟩ config₀ ∎) , quiescent close))
