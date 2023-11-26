@@ -114,8 +114,7 @@ data _⇀_ : Configuration → Configuration → Set where
     → (aₛ×t∈as : (aₛ , t) ∈ accounts s)
     ------------------------------------------------------
     → let m = proj₂ (lookup aₛ×t∈as)
-          n = ∣ ℰ⟦ v ⟧ e s ∣
-      in
+          n = ∣ ℰ⟦ v ⟧ e s ∣ in
       ⟪ Pay aₛ (mkAccount aₜ) t v c
       , s
       , e
@@ -135,8 +134,7 @@ data _⇀_ : Configuration → Configuration → Set where
     → (a×t∈as : (a , t) ∈ accounts s)
     ---------------------------------------------------------
     → let m = proj₂ (lookup a×t∈as)
-          n = ∣ ℰ⟦ v ⟧ e s ∣
-      in
+          n = ∣ ℰ⟦ v ⟧ e s ∣ in
       ⟪ Pay a (mkParty p) t v c
       , s
       , e
@@ -297,13 +295,8 @@ begin M⇀⋆N = M⇀⋆N
 data Quiescent : Configuration → Set where
 
   close :
-    ∀ { e : Environment }
-      { cs : AssocList ChoiceId Int }
-      { vs : AssocList ValueId Int }
-      { ws : List ReduceWarning }
-      { m : PosixTime }
-      { ps : List Payment }
-    ---------------------------------
+    ∀ { e } { cs } { vs } { ws } { m } { ps }
+    -----------------------------------------
     → Quiescent
         ⟪ Close
         , ⟨ [] , cs , vs , m ⟩
@@ -313,18 +306,9 @@ data Quiescent : Configuration → Set where
         ⟫
 
   waiting :
-    ∀ { t tₛ Δₜ : ℕ }
-      { m : PosixTime }
-      { cases : List Case }
-      { as : AssocList (AccountId × Token) ℕ }
-      { cs : AssocList ChoiceId Int }
-      { vs : AssocList ValueId Int }
-      { c : Contract }
-      { ws : List ReduceWarning }
-      { ps : List Payment }
-    → let tₑ = tₛ + Δₜ
-       in tₑ ℕ.< t
-    ------------------------------------------
+    ∀ { t tₛ Δₜ } { m } { cases } { as } { cs } { vs } { c } { ws } { ps }
+    → let tₑ = tₛ + Δₜ in tₑ ℕ.< t
+    ---------------------------------------------------------------------
     → Quiescent
         ⟪ When cases (mkTimeout (mkPosixTime t)) c
         , ⟨ as , cs , vs , m ⟩
@@ -336,14 +320,10 @@ data Quiescent : Configuration → Set where
 data AmbiguousTimeInterval : Configuration → Set where
 
   AmbiguousTimeIntervalError :
-    ∀ {t tₛ Δₜ : ℕ}
-      { cs : List Case }
-      { c : Contract }
-      { s : State }
-      { ws : List ReduceWarning }
-      { ps : List Payment }
+    ∀ {t tₛ Δₜ } { cs } { c } { s } { ws } { ps }
     → tₛ ℕ.< t
     → (tₛ + Δₜ) ℕ.≥ t
+    --------------------------------------------
     → AmbiguousTimeInterval
         ⟪ When cs (mkTimeout (mkPosixTime t)) c
         , s
