@@ -102,27 +102,26 @@ data _⊢_⇓_ : Environment → Contract × TransactionInput × State → Resul
     → e ⊢
       (Close , i , s) ⇓
         ⟦ []
-        , map (λ {((a , t), n) → a [ t , n ]↦ mkParty (unAccountId a)}) (accounts s)
+        , []
         , record s { accounts = [] }
         ⟧
 
-{-
   ⇓-Reduce-until-quiescent :
-    ∀ {c₁ c₂} {i} {ws₁ ws₂} {ps₁ ps₂} {s₁ s₂}
-    → c₁ ⇀⋆ c₂
-    → Quiescent c₂
+    ∀ {c₁ c₂} {i} {ws₁ ws₂} {s} {ps₁ ps₂}
+    → c₁ ⇒ c₂
     → environment c₂ ⊢
       ( contract c₂
       , i
       , state c₂
-      ) ⇓ ⟦ ws₂ ++ ws₁ , ps₂ ++ ps₁ , s₂ ⟧
+      ) ⇓ ⟦ ws₂ , ps₂ , s ⟧
     -----------------
     → environment c₁ ⊢
       ( contract c₁
       , i
       , state c₁
-      ) ⇓ ⟦ ws₁ , ps₁ , s₁ ⟧
--}
+      ) ⇓ ⟦ ws₁ , ps₁ , s ⟧
+
+
 
 private
 
@@ -147,8 +146,11 @@ private
   v : Value
   v = Constant (+ 1)
 
+  d : Contract
+  d = When ([ mkCase (Deposit a₁ p₂ t v) Close ]) (mkTimeout timeout) Close
+
   c : Contract
-  c = When ([ mkCase (Deposit a₁ p₂ t v) Close ]) (mkTimeout timeout) Close
+  c = Assert TrueObs d
 
   s : State
   s = emptyState (mkPosixTime 0)
@@ -166,9 +168,10 @@ private
       , s
       ⟧
   reduction-steps =
-    ⇓-Deposit (here refl) refl (ℕ.s≤s (ℕ.s≤s (ℕ.s≤s ℕ.z≤n)))
-      (⇓-Close refl)
-
+    ⇓-Reduce-until-quiescent
+      (reduce-until-quiescent ((⟪ c , s , e , [] , [] ⟫) ⇀⟨ AssertTrue refl ⟩ (⟪ d , s , e , [] , [] ⟫) ∎) (waiting (ℕ.s≤s (ℕ.s≤s (ℕ.s≤s ℕ.z≤n)))))
+      (⇓-Deposit (here refl) refl (ℕ.s≤s (ℕ.s≤s (ℕ.s≤s ℕ.z≤n)))
+        (⇓-Close refl))
 
 
 {-
