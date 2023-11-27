@@ -308,7 +308,7 @@ data Quiescent : Configuration → Set where
 
   waiting :
     ∀ { t tₛ Δₜ } { m } { cases } { as } { cs } { vs } { c } { ws } { ps }
-    → let tₑ = tₛ + Δₜ in tₑ ℕ.< t
+    → (tₛ + Δₜ) ℕ.< t
     ---------------------------------------------------------------------
     → Quiescent
         ⟪ When cases (mkTimeout (mkPosixTime t)) c
@@ -321,10 +321,10 @@ data Quiescent : Configuration → Set where
 data AmbiguousTimeInterval : Configuration → Set where
 
   AmbiguousTimeIntervalError :
-    ∀ {t tₛ Δₜ } { cs } { c } { s } { ws } { ps }
+    ∀ { t tₛ Δₜ } { cs } { c } { s } { ws } { ps }
     → tₛ ℕ.< t
     → (tₛ + Δₜ) ℕ.≥ t
-    --------------------------------------------
+    ---------------------------------------------
     → AmbiguousTimeInterval
         ⟪ When cs (mkTimeout (mkPosixTime t)) c
         , s
@@ -352,33 +352,82 @@ data Reducible (C : Configuration) : Set where
 
 
 progress : ∀ (C : Configuration) → Reducible C
-progress ⟪ Close , ⟨ [] , _ , _ , _ ⟩ , _ , _ , _ ⟫ = quiescent close
-progress ⟪ Close , ⟨ _ ∷ _ , _ , _ , _ ⟩ , _ , _ , _ ⟫ = step CloseRefund
-progress ⟪ Pay a (mkAccount p) t v c , s@(⟨ as , _ , _ , _ ⟩) , e , _ , _ ⟫  with ℰ⟦ v ⟧ e s ≤? 0ℤ | (a , t) ∈?-AccountId×Token as
-... | yes v≤0 | _ = step (PayNonPositive v≤0)
-... | no v≰0 | yes a×t∈as = step (PayInternalTransfer (ℤ.≰⇒> v≰0) a×t∈as)
-... | no v≰0 | no ¬a×t∈as = step (PayNoAccount (ℤ.≰⇒> v≰0) (¬Any⇒All¬ as ¬a×t∈as))
-progress ⟪ Pay a (mkParty p) t v _ , s@(⟨ as , _ , _ , _ ⟩) , e , _ , _ ⟫ with ℰ⟦ v ⟧ e s ≤? 0ℤ | (a , t) ∈?-AccountId×Token as
-... | yes v≤0 | _ = step (PayNonPositive v≤0)
-... | no v≰0 | yes a×t∈as = step (PayExternal (ℤ.≰⇒> v≰0) a×t∈as)
-... | no v≰0 | no ¬a×t∈as = step (PayNoAccount (ℤ.≰⇒> v≰0) (¬Any⇒All¬ as ¬a×t∈as))
-progress ⟪ If o c₁ c₂ , s , e , _ , _ ⟫ with 𝒪⟦ o ⟧ e s ≟ true
+progress
+  ⟪ Close
+  , ⟨ [] , _ , _ , _ ⟩
+  , _
+  , _
+  , _
+  ⟫ = quiescent close
+progress
+  ⟪ Close
+  , ⟨ _ ∷ _ , _ , _ , _ ⟩
+  , _
+  , _
+  , _
+  ⟫ = step CloseRefund
+progress
+  ⟪ Pay a (mkAccount p) t v c
+  , s@(⟨ as , _ , _ , _ ⟩)
+  , e
+  , _
+  , _
+  ⟫ with ℰ⟦ v ⟧ e s ≤? 0ℤ | (a , t) ∈?-AccountId×Token as
+... | yes v≤0 | _           = step (PayNonPositive v≤0)
+... | no  v≰0 | yes a×t∈as = step (PayInternalTransfer (ℤ.≰⇒> v≰0) a×t∈as)
+... | no  v≰0 | no ¬a×t∈as = step (PayNoAccount (ℤ.≰⇒> v≰0) (¬Any⇒All¬ as ¬a×t∈as))
+progress
+  ⟪ Pay a (mkParty p) t v _
+  , s@(⟨ as , _ , _ , _ ⟩)
+  , e
+  , _
+  , _
+  ⟫ with ℰ⟦ v ⟧ e s ≤? 0ℤ | (a , t) ∈?-AccountId×Token as
+... | yes v≤0 | _           = step (PayNonPositive v≤0)
+... | no  v≰0 | yes a×t∈as = step (PayExternal (ℤ.≰⇒> v≰0) a×t∈as)
+... | no  v≰0 | no ¬a×t∈as = step (PayNoAccount (ℤ.≰⇒> v≰0) (¬Any⇒All¬ as ¬a×t∈as))
+progress
+  ⟪ If o c₁ c₂
+  , s
+  , e
+  , _
+  , _
+  ⟫ with 𝒪⟦ o ⟧ e s ≟ true
 ... | yes o≡true = step (IfTrue o≡true)
 ... | no ¬o≡true = step (IfFalse (¬-not ¬o≡true))
-progress ⟪ When cs (mkTimeout (mkPosixTime t)) c , _ , mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ), _ , _ ⟫ with (tₛ + Δₜ) ℕ.<? t | t ℕ.≤? tₛ
-... | yes tₑ<t | _ = quiescent (waiting tₑ<t)
-... | _ | yes t≤tₛ = step (WhenTimeout t≤tₛ)
-... | no ¬tₑ<t | no ¬t≤tₛ = ambiguousTimeInterval (AmbiguousTimeIntervalError (≰⇒> ¬t≤tₛ) (≮⇒≥ ¬tₑ<t))
-progress ⟪ Let i v c , s@(⟨ _ , _ , vs , _ ⟩) , e , ws , ps ⟫ with i ∈-ValueId? vs
+progress
+  ⟪ When cs (mkTimeout (mkPosixTime t)) c
+  , _
+  , mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ)
+  , _
+  , _
+  ⟫ with (tₛ + Δₜ) ℕ.<? t | t ℕ.≤? tₛ
+... | yes tₑ<t | _        = quiescent (waiting tₑ<t)
+... | _        | yes t≤tₛ = step (WhenTimeout t≤tₛ)
+... | no ¬tₑ<t | no ¬t≤tₛ  = ambiguousTimeInterval (AmbiguousTimeIntervalError (≰⇒> ¬t≤tₛ) (≮⇒≥ ¬tₑ<t))
+progress
+  ⟪ Let i v c , s@(⟨ _ , _ , vs , _ ⟩)
+  , e
+  , ws
+  , ps
+  ⟫ with i ∈-ValueId? vs
 ... | yes i∈vs =
   let vᵢ = proj₂ (lookup i∈vs)
   in step (LetShadow {s} {e} {c} {i} {v} {vᵢ} {ws} {ReduceShadowing i vᵢ (ℰ⟦ v ⟧ e s) ∷ ws} {ps} (lookup∈-L i∈vs) refl)
   where
-    lookup∈-L : ∀ {A B : Set} {a : A} {abs : AssocList A B} → (a∈abs : a ∈ abs) → (a , proj₂ (lookup a∈abs)) ∈-List abs
+    lookup∈-L : ∀ {A B : Set} {a : A} {abs : AssocList A B}
+      → (a∈abs : a ∈ abs)
+      → (a , proj₂ (lookup a∈abs)) ∈-List abs
     lookup∈-L (here refl) = here refl
     lookup∈-L (there a∈abs) = there (lookup∈-L a∈abs)
 ... | no ¬a∈abs = step (LetNoShadow (¬Any⇒All¬ vs ¬a∈abs))
-progress ⟪ Assert o c , s , e , _ , _ ⟫ with 𝒪⟦ o ⟧ e s ≟ true
+progress
+  ⟪ Assert o c
+  , s
+  , e
+  , _
+  , _
+  ⟫ with 𝒪⟦ o ⟧ e s ≟ true
 ... | yes o≡true = step (AssertTrue o≡true)
 ... | no ¬o≡true = step (AssertFalse (¬-not ¬o≡true))
 
