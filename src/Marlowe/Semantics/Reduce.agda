@@ -15,6 +15,7 @@ open import Data.Nat.Properties using (1+n≰n; ≤-trans; +-identityʳ; +-comm;
 open import Data.Product using (Σ; _,_; ∃; Σ-syntax; ∃-syntax)
 open import Data.Product using (_×_; proj₁; proj₂)
 import Data.String as String
+open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Function.Base using (case_of_; _∘_)
 
 open import Relation.Nullary.Decidable using (⌊_⌋)
@@ -391,21 +392,14 @@ data EvalError (C : Configuration) : Set where
   execution-costs-exceeded :
       EvalError C
 
-data QuiescentOrError (C : Configuration) : Set where
-
-  quiescent :
-      Quiescent C
-    → QuiescentOrError C
-
-  error :
-      EvalError C
-    → QuiescentOrError C
-
-eval : ∀ (C : Configuration) → ℕ → Σ[ D ∈ Configuration ] ((C ⇀⋆ D) × QuiescentOrError D)
-eval C zero = C , ((C ∎) , error execution-costs-exceeded)
+eval :
+  ∀ (C : Configuration)
+  → ℕ
+  → Σ[ D ∈ Configuration ] ((C ⇀⋆ D) × (Quiescent D ⊎ EvalError D))
+eval C zero = C , ((C ∎) , inj₂ execution-costs-exceeded)
 eval C (suc m) with progress C
-... | quiescent q = C , ((C ∎) , quiescent q)
-... | ambiguousTimeInterval q = C , ((C ∎) , error (ambiguousTimeInterval q))
+... | quiescent q = C , ((C ∎) , inj₁ q)
+... | ambiguousTimeInterval q = C , ((C ∎) , inj₂ (ambiguousTimeInterval q))
 ... | step {D} C⇀D with eval D m
 ...      | E , (D⇀⋆E , s) = E , (( C ⇀⟨ C⇀D ⟩ D⇀⋆E ) , s)
 
@@ -450,4 +444,4 @@ private
     , [ accountId₁ [ token₁ , 5 ]↦ mkParty (unAccountId accountId₁) ]
     ⟫
 
-  _ = eval config₂ 100 ≡ (config₀ , ((config₂ ⇀⟨ IfTrue refl ⟩ config₁ ⇀⟨ CloseRefund ⟩ config₀ ∎) , quiescent close))
+  _ = eval config₂ 100 ≡ (config₀ , ((config₂ ⇀⟨ IfTrue refl ⟩ config₁ ⇀⟨ CloseRefund ⟩ config₀ ∎) , inj₁ close))
