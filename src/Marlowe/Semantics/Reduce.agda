@@ -307,12 +307,12 @@ data Quiescent : Configuration → Set where
         ⟫
 
   waiting :
-    ∀ { t tₛ Δₜ } { m } { cases } { as } { cs } { vs } { c } { ws } { ps }
+    ∀ { t tₛ Δₜ } { cases } { s } { c } { ws } { ps }
     → (tₛ + Δₜ) ℕ.< t
-    ---------------------------------------------------------------------
+    -------------------------------------------------
     → Quiescent
         ⟪ When cases (mkTimeout (mkPosixTime t)) c
-        , ⟨ as , cs , vs , m ⟩
+        , s
         , mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ)
         , ws
         , ps
@@ -324,7 +324,7 @@ data AmbiguousTimeInterval : Configuration → Set where
     ∀ { t tₛ Δₜ } { cs } { c } { s } { ws } { ps }
     → tₛ ℕ.< t
     → (tₛ + Δₜ) ℕ.≥ t
-    ---------------------------------------------
+    ----------------------------------------------
     → AmbiguousTimeInterval
         ⟪ When cs (mkTimeout (mkPosixTime t)) c
         , s
@@ -451,6 +451,24 @@ eval C (suc m) with progress C
 ... | ambiguousTimeInterval q = C , ((C ∎) , inj₂ (ambiguousTimeInterval q))
 ... | step {D} C⇀D with eval D m
 ...      | E , (D⇀⋆E , s) = E , (( C ⇀⟨ C⇀D ⟩ D⇀⋆E ) , s)
+
+
+data _⇒_ : Configuration → Configuration → Set where
+
+ reduce-until-quiescent :
+   ∀ {C D}
+   → C ⇀⋆ D
+   → Quiescent D
+   -------------
+   → C ⇒ D
+
+ closure :
+   ∀ {C D E}
+   → C ⇀⋆ D
+   → D ⇒ E
+   ---------
+   → C ⇒ E
+
 
 -- Examples
 

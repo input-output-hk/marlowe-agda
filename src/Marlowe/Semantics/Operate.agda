@@ -5,6 +5,7 @@ open import Data.Bool using (Bool; if_then_else_; not; _∧_; _∨_; true; false
 open import Data.Integer using (_<?_; _≤?_; _≟_ ; _⊔_; _⊓_; _+_; _-_; +_; 0ℤ ; _≤_ ; _>_ ; _≥_ ; _<_; ∣_∣)
 open import Data.List using (List; []; _∷_; _++_; foldr; reverse; [_]; null; map)
 open import Data.List.Membership.Propositional using (_∈_)
+open import Data.List.Relation.Unary.Any using (here)
 open import Data.Maybe using (Maybe; just; nothing; fromMaybe)
 open import Data.Nat as ℕ using (ℕ)
 open import Data.Product using (Σ; _,_; ∃; Σ-syntax; ∃-syntax)
@@ -32,72 +33,155 @@ open Eq using (_≡_; refl; cong; sym)
 
 open Configuration
 open State
+open PosixTime
 open TransactionInput
 
 record Result : Set where
-  constructor mkResult
+  constructor ⟦_,_,_⟧
   field
     warnings : List TransactionWarning
     payments : List Payment
     state : State
 
-data _⇓_ : Contract × TransactionInput × State → Result → Set where
 
-  Deposit :
-    ∀ {a} {p} {t} {v} {c} {cont} {is} {n} {s} {r} {e} {cases} {timeout}
+data _⊢_⇓_ : Environment → Contract × TransactionInput × State → Result → Set where
+
+  ⇓-Deposit :
+    ∀ {a} {p} {t} {tₛ Δₜ} {v} {n} {c} {cont} {is} {s} {r} {cases} {timeout}
     → (mkCase (Deposit a p t v) c) ∈ cases
-    → ∣ ℰ⟦ v ⟧ e s ∣ ≡ n
-    → ( c
+    → ∣ ℰ⟦ v ⟧ (mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ)) s ∣ ≡ n
+    → (tₛ ℕ.+ Δₜ) ℕ.< timeout
+    → mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ) ⊢
+      ( c
       , is
-      , record s { accounts = ((a , t) , n ) ↑-update (accounts s) }
+      , record s { accounts = ((a , t) , n) ↑-update (accounts s) }
       ) ⇓ r
-    -------------------------------------
-    → ( When cases timeout cont
+    -------------------------------------------------------------------
+    → mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ) ⊢
+      ( When cases (mkTimeout (mkPosixTime timeout)) cont
       , record is { inputs = NormalInput (IDeposit a p t n) ∷ inputs is }
       , s
       ) ⇓ r
 
-  Choice :
-    ∀ {c} {cont} {i} {n} {s} {r} {is} {cs} {bs} {cases} {timeout}
+  ⇓-Choice :
+    ∀ {c} {cont} {i} {n} {s} {r} {is} {cs} {bs} {cases} {timeout} {e}
     → (mkCase (Choice i bs) c) ∈ cases
     → n inBounds bs ≡ true
-    → ( c
+    → e ⊢
+      ( c
       , is
       , record s { choices = (i , unChosenNum n) ↑-ChoiceId cs }
       ) ⇓ r
-    -------------------------------------
-    → ( When cases timeout cont
+    -----------------------------------------------------------------
+    → e ⊢
+      ( When cases timeout cont
       , record is { inputs = NormalInput (IChoice i n) ∷ inputs is }
       , s
       ) ⇓ r
 
-  Notify :
+  ⇓-Notify :
     ∀ {c} {cont} {is} {s} {r} {o} {e} {cases} {timeout}
     → (mkCase (Notify o) c) ∈ cases
     → 𝒪⟦ o ⟧ e s ≡ true
-    → ( c
+    → e ⊢
+      ( c
       , is
       , s
       ) ⇓ r
-    -------------------------------------
-    → ( When cases timeout cont
+    ---------------------------------------------------
+    → e ⊢
+      ( When cases timeout cont
       , record is { inputs = NormalInput INotify ∷ inputs is }
       , s
       ) ⇓ r
 
-  SmallSteps :
-    ∀ {c₁ c₂} {i} {r}
+  ⇓-Close :
+    ∀ {s} {i} {e}
+    → inputs i ≡ []
+    ------------------------
+    → e ⊢
+      (Close , i , s) ⇓
+        ⟦ []
+        , map (λ {((a , t), n) → a [ t , n ]↦ mkParty (unAccountId a)}) (accounts s)
+        , record s { accounts = [] }
+        ⟧
+
+{-
+  ⇓-Reduce-until-quiescent :
+    ∀ {c₁ c₂} {i} {ws₁ ws₂} {ps₁ ps₂} {s₁ s₂}
     → c₁ ⇀⋆ c₂
-    → ( contract c₂
+    → Quiescent c₂
+    → environment c₂ ⊢
+      ( contract c₂
       , i
       , state c₂
-      ) ⇓ r
+      ) ⇓ ⟦ ws₂ ++ ws₁ , ps₂ ++ ps₁ , s₂ ⟧
     -----------------
-    → ( contract c₁
+    → environment c₁ ⊢
+      ( contract c₁
       , i
       , state c₁
-      ) ⇓ r
+      ) ⇓ ⟦ ws₁ , ps₁ , s₁ ⟧
+-}
 
+private
+
+  timeout : PosixTime
+  timeout = mkPosixTime 100
+
+  p₁ : Party
+  p₁ = Role (mkByteString "role1")
+
+  p₂ : Party
+  p₂ = Role (mkByteString "role2")
+
+  a₁ : AccountId
+  a₁ = mkAccountId p₁
+
+  a₂ : AccountId
+  a₂ = mkAccountId p₂
+
+  t : Token
+  t = mkToken (mkByteString "") (mkByteString "")
+
+  v : Value
+  v = Constant (+ 1)
+
+  c : Contract
+  c = When ([ mkCase (Deposit a₁ p₂ t v) Close ]) (mkTimeout timeout) Close
+
+  s : State
+  s = emptyState (mkPosixTime 0)
+
+  i : TransactionInput
+  i = mkTransactionInput (mkInterval (mkPosixTime 0) 10) [ NormalInput (IDeposit a₁ p₂ t 1) ]
+
+  e : Environment
+  e = mkEnvironment (mkInterval (mkPosixTime 0) 2)
+
+  reduction-steps :
+    e ⊢ (c , i , s)
+    ⇓ ⟦ []
+      , [ a₁ [ t , 1 ]↦ mkParty p₁ ]
+      , s
+      ⟧
+  reduction-steps =
+    ⇓-Deposit (here refl) refl (ℕ.s≤s (ℕ.s≤s (ℕ.s≤s ℕ.z≤n)))
+      (⇓-Close refl)
+
+
+
+{-
+⇓-deterministic :
+  ∀ {C : Contract} {i : TransactionInput} {s : State} {D D′ : Result}
+  → (C , i , s) ⇓ D
+  → (C , i , s) ⇓ D′
+  → D ≡ D′
+⇓-deterministic (⇓-Deposit x x₁ x₂) (⇓-Deposit x₃ x₄ y) = {!!}
+⇓-deterministic (⇓-Choice x x₁ x₂) (⇓-Choice y y₁ y₂) = {!!}
+⇓-deterministic (⇓-Notify x x₁ x₂) (⇓-Notify y y₁ y₂) = {!!}
+⇓-deterministic {C} {i} {s} (⇓-Close {s} {i} x) (⇓-Close {s} {i} y) = refl
+-}
 {-
 
 fixInterval : TimeInterval → State → IntervalResult
