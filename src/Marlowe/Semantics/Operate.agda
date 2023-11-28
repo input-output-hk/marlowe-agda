@@ -36,6 +36,15 @@ open State
 open PosixTime
 open TransactionInput
 
+convertReduceWarnings : List ReduceWarning -> List TransactionWarning
+convertReduceWarnings = map convertReduceWarning
+  where
+    convertReduceWarning : ReduceWarning → TransactionWarning
+    convertReduceWarning (ReduceNonPositivePay a p t v) = TransactionNonPositivePay a p t v
+    convertReduceWarning (ReducePartialPay a p t v e) = TransactionPartialPay a p t v e
+    convertReduceWarning (ReduceShadowing i o n) = TransactionShadowing i o n
+    convertReduceWarning ReduceAssertionFailed = TransactionAssertionFailed
+
 record Result : Set where
   constructor ⟦_,_,_⟧
   field
@@ -47,17 +56,17 @@ record Result : Set where
 data _⊢_⇓_ : Environment → Contract × TransactionInput × State → Result → Set where
 
   ⇓-Deposit :
-    ∀ {a} {p} {t} {tₛ Δₜ} {v} {n} {c} {cont} {is} {s} {r} {cases} {timeout}
+    ∀ {a} {p} {t} {e} {v} {n} {c} {cont} {is} {s} {r} {cases} {timeout}
     → (mkCase (Deposit a p t v) c) ∈ cases
-    → ∣ ℰ⟦ v ⟧ (mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ)) s ∣ ≡ n
-    → (tₛ ℕ.+ Δₜ) ℕ.< timeout
-    → mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ) ⊢
+    → ∣ ℰ⟦ v ⟧ e s ∣ ≡ n
+    → interval-end e ℕ.< timeout
+    → e ⊢
       ( c
       , is
       , record s { accounts = ((a , t) , n) ↑-update (accounts s) }
       ) ⇓ r
     -------------------------------------------------------------------
-    → mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ) ⊢
+    → e ⊢
       ( When cases (mkTimeout (mkPosixTime timeout)) cont
       , record is { inputs = NormalInput (IDeposit a p t n) ∷ inputs is }
       , s
@@ -67,6 +76,7 @@ data _⊢_⇓_ : Environment → Contract × TransactionInput × State → Resul
     ∀ {c} {cont} {i} {n} {s} {r} {is} {cs} {bs} {cases} {timeout} {e}
     → (mkCase (Choice i bs) c) ∈ cases
     → n inBounds bs ≡ true
+    → interval-end e ℕ.< timeout
     → e ⊢
       ( c
       , is
@@ -74,15 +84,16 @@ data _⊢_⇓_ : Environment → Contract × TransactionInput × State → Resul
       ) ⇓ r
     -----------------------------------------------------------------
     → e ⊢
-      ( When cases timeout cont
+      ( When cases (mkTimeout (mkPosixTime timeout)) cont
       , record is { inputs = NormalInput (IChoice i n) ∷ inputs is }
       , s
       ) ⇓ r
 
   ⇓-Notify :
-    ∀ {c} {cont} {is} {s} {r} {o} {e} {cases} {timeout}
+    ∀ {c} {cont} {is} {s} {r} {o} {cases} {timeout} {e}
     → (mkCase (Notify o) c) ∈ cases
     → 𝒪⟦ o ⟧ e s ≡ true
+    → interval-end e ℕ.< timeout
     → e ⊢
       ( c
       , is
@@ -90,38 +101,43 @@ data _⊢_⇓_ : Environment → Contract × TransactionInput × State → Resul
       ) ⇓ r
     ---------------------------------------------------
     → e ⊢
-      ( When cases timeout cont
+      ( When cases (mkTimeout (mkPosixTime timeout)) cont
       , record is { inputs = NormalInput INotify ∷ inputs is }
       , s
       ) ⇓ r
 
+  ⇓-Reduce-until-quiescent :
+    ∀ {c₁ c₂} {s s₁ s₂} {e₁ e₂} {i} {ps ps₁ ps₂} {ws ws₁ ws₂}
+    → ⟪ c₁ , s₁ , e₁ , ws₁ , ps₁ ⟫ ⇒ ⟪ c₂ , s₂ , e₂ , ws₂ ++ ws₁ , ps₂ ++ ps₁ ⟫
+    → e₂ ⊢
+      ( c₂
+      , i
+      , s₂
+      ) ⇓ ⟦ ws
+          , ps
+          , s
+          ⟧
+    ---------------------------------------------------------------------------
+    → e₁ ⊢
+      ( c₁
+      , i
+      , s₁
+      ) ⇓ ⟦ ws ++ convertReduceWarnings ws₂
+          , ps ++ ps₂
+          , s
+          ⟧
+
   ⇓-Close :
     ∀ {s} {i} {e}
     → inputs i ≡ []
-    ------------------------
+    → accounts s ≡ []
+    --------------------
     → e ⊢
-      (Close , i , s) ⇓
+      (Close , i , s ) ⇓
         ⟦ []
         , []
-        , record s { accounts = [] }
+        , s
         ⟧
-
-  ⇓-Reduce-until-quiescent :
-    ∀ {c₁ c₂} {i} {ws₁ ws₂} {s} {ps₁ ps₂}
-    → c₁ ⇒ c₂
-    → environment c₂ ⊢
-      ( contract c₂
-      , i
-      , state c₂
-      ) ⇓ ⟦ ws₂ , ps₂ , s ⟧
-    -----------------
-    → environment c₁ ⊢
-      ( contract c₁
-      , i
-      , state c₁
-      ) ⇓ ⟦ ws₁ , ps₁ , s ⟧
-
-
 
 private
 
@@ -150,7 +166,7 @@ private
   d = When ([ mkCase (Deposit a₁ p₂ t v) Close ]) (mkTimeout timeout) Close
 
   c : Contract
-  c = Assert TrueObs d
+  c = Assert FalseObs d
 
   s : State
   s = emptyState (mkPosixTime 0)
@@ -163,15 +179,20 @@ private
 
   reduction-steps :
     e ⊢ (c , i , s)
-    ⇓ ⟦ []
+    ⇓ ⟦ [ TransactionAssertionFailed ]
       , [ a₁ [ t , 1 ]↦ mkParty p₁ ]
       , s
       ⟧
   reduction-steps =
     ⇓-Reduce-until-quiescent
-      (reduce-until-quiescent ((⟪ c , s , e , [] , [] ⟫) ⇀⟨ AssertTrue refl ⟩ (⟪ d , s , e , [] , [] ⟫) ∎) (waiting (ℕ.s≤s (ℕ.s≤s (ℕ.s≤s ℕ.z≤n)))))
+      (reduce-until-quiescent
+        ((⟪ c , s , e , [] , [] ⟫) ⇀⟨ AssertFalse refl ⟩ (⟪ d , s , e , [ ReduceAssertionFailed ] , [] ⟫) ∎)
+        (waiting (ℕ.s≤s (ℕ.s≤s (ℕ.s≤s ℕ.z≤n)))))
       (⇓-Deposit (here refl) refl (ℕ.s≤s (ℕ.s≤s (ℕ.s≤s ℕ.z≤n)))
-        (⇓-Close refl))
+        (⇓-Reduce-until-quiescent {ws₂ = []}
+          (reduce-until-quiescent (⟪ Close , ⟨ [((a₁ , t) , 1)] , [] , [] , minTime s ⟩ , e , [ ReduceAssertionFailed ]  , [] ⟫
+                 ⇀⟨ CloseRefund ⟩ (⟪ Close , ⟨ [] , [] , [] , (minTime s) ⟩ , e , [ ReduceAssertionFailed ] , [ a₁ [ t , 1 ]↦ mkParty p₁ ] ⟫) ∎) close )
+          (⇓-Close refl refl)))
 
 
 {-
@@ -275,15 +296,7 @@ applyInput : Environment → State → Input → Contract → ApplyResult
 applyInput env state input (When cases _ _) = applyCases env state input cases
 applyInput _ _ _ _ = ApplyNoMatchError
 
-convertReduceWarnings : List ReduceWarning -> List TransactionWarning
-convertReduceWarnings =
-  foldr convertReduceWarning []
-    where
-      convertReduceWarning : ReduceWarning → List TransactionWarning → List TransactionWarning
-      convertReduceWarning (ReduceNonPositivePay accId payee tok amount) acc = TransactionNonPositivePay accId payee tok amount ∷ acc
-      convertReduceWarning (ReducePartialPay accId payee tok paid expected) acc = TransactionPartialPay accId payee tok paid expected ∷ acc
-      convertReduceWarning (ReduceShadowing valId oldVal newVal) acc = TransactionShadowing valId oldVal newVal ∷ acc
-      convertReduceWarning ReduceAssertionFailed acc = TransactionAssertionFailed ∷ acc
+
 
 data ApplyAllResult : Set where
   ApplyAllSuccess : Bool → List TransactionWarning → List Payment → State → Contract → ApplyAllResult
