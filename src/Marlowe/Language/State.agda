@@ -47,6 +47,9 @@ record Environment : Set where
   field
     timeInterval : TimeInterval
 
+interval-end : Environment → ℕ
+interval-end (mkEnvironment (mkInterval (mkPosixTime s) o)) = s + o
+
 1ₜ : Token → Token × ℕ → ℕ
 1ₜ t₁ (t₂ , n) with ⌊ t₁ ≟-Token t₂ ⌋
 ... | true = n
