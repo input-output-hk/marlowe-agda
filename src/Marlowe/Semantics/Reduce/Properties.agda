@@ -93,3 +93,11 @@ totalAmount t c = Σ-accounts t (accounts (state c)) + Σ-payments t (payments c
 ⇀assetPreservation _ (LetNoShadow _) = refl
 ⇀assetPreservation _ (AssertTrue _) = refl
 ⇀assetPreservation _ (AssertFalse _) = refl
+
+-- Reducing a closed contract does not produce any warning
+⇀⋆Close-is-safe :
+  ∀ {c₂} {s s₂} {e e₂} {ws₁ ws₂} {ps₁ ps₂}
+  → ⟪ Close , s , e , ws₁ , ps₁ ⟫ ⇀⋆ ⟪ c₂ , s₂ , e₂ , ws₂ , ps₂ ⟫
+  → ws₁ ≡ ws₂
+⇀⋆Close-is-safe ((⟪ Close , _ , _ , _ , _ ⟫) ∎) = refl
+⇀⋆Close-is-safe ((⟪ Close , _ , _ , _ , _ ⟫) ⇀⟨ CloseRefund ⟩ x) rewrite ⇀⋆Close-is-safe x = refl
