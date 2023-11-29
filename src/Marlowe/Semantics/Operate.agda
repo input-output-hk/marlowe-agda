@@ -107,7 +107,7 @@ data _⊢_⇓_ : Environment → Contract × TransactionInput × State → Resul
       ) ⇓ r
 
   ⇓-Reduce-until-quiescent :
-    ∀ {c₁ c₂} {s₁ s₂} {e₁ e₂} {i} {ps ps₁ ps₂} {ws ws₁ ws₂}
+    ∀ {c₁ c₂} {s s₁ s₂} {e₁ e₂} {i} {ps ps₁ ps₂} {ws ws₁ ws₂}
     → ⟪ c₁ , s₁ , e₁ , ws₁ , ps₁ ⟫ ⇒ ⟪ c₂ , s₂ , e₂ , ws₂ ++ ws₁ , ps₂ ++ ps₁ ⟫
     → e₂ ⊢
       ( c₂
@@ -115,7 +115,7 @@ data _⊢_⇓_ : Environment → Contract × TransactionInput × State → Resul
       , s₂
       ) ⇓ ⟦ ws
           , ps
-          , s₂
+          , s
           ⟧
     ---------------------------------------------------------------------------
     → e₁ ⊢
@@ -124,7 +124,7 @@ data _⊢_⇓_ : Environment → Contract × TransactionInput × State → Resul
       , s₁
       ) ⇓ ⟦ ws ++ convertReduceWarnings ws₂
           , ps ++ ps₂
-          , s₂
+          , s
           ⟧
 
   ⇓-Close :
@@ -194,18 +194,6 @@ private
                  ⇀⟨ CloseRefund ⟩ (⟪ Close , ⟨ [] , [] , [] , (minTime s) ⟩ , e , [ ReduceAssertionFailed ] , [ a₁ [ t , 1 ]↦ mkParty p₁ ] ⟫) ∎) close )
           (⇓-Close refl refl)))
 
-
-{-
-⇓-deterministic :
-  ∀ {C : Contract} {i : TransactionInput} {s : State} {D D′ : Result}
-  → (C , i , s) ⇓ D
-  → (C , i , s) ⇓ D′
-  → D ≡ D′
-⇓-deterministic (⇓-Deposit x x₁ x₂) (⇓-Deposit x₃ x₄ y) = {!!}
-⇓-deterministic (⇓-Choice x x₁ x₂) (⇓-Choice y y₁ y₂) = {!!}
-⇓-deterministic (⇓-Notify x x₁ x₂) (⇓-Notify y y₁ y₂) = {!!}
-⇓-deterministic {C} {i} {s} (⇓-Close {s} {i} x) (⇓-Close {s} {i} y) = refl
--}
 {-
 
 fixInterval : TimeInterval → State → IntervalResult
