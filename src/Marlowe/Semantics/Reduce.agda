@@ -462,14 +462,6 @@ data _⇒_ : Configuration → Configuration → Set where
    -------------
    → C ⇒ D
 
- closure :
-   ∀ {C D E}
-   → C ⇀⋆ D
-   → D ⇒ E
-   ---------
-   → C ⇒ E
-
-
 -- Examples
 
 private

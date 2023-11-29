@@ -107,7 +107,7 @@ data _⊢_⇓_ : Environment → Contract × TransactionInput × State → Resul
       ) ⇓ r
 
   ⇓-Reduce-until-quiescent :
-    ∀ {c₁ c₂} {s s₁ s₂} {e₁ e₂} {i} {ps ps₁ ps₂} {ws ws₁ ws₂}
+    ∀ {c₁ c₂} {s₁ s₂} {e₁ e₂} {i} {ps ps₁ ps₂} {ws ws₁ ws₂}
     → ⟪ c₁ , s₁ , e₁ , ws₁ , ps₁ ⟫ ⇒ ⟪ c₂ , s₂ , e₂ , ws₂ ++ ws₁ , ps₂ ++ ps₁ ⟫
     → e₂ ⊢
       ( c₂
@@ -115,7 +115,7 @@ data _⊢_⇓_ : Environment → Contract × TransactionInput × State → Resul
       , s₂
       ) ⇓ ⟦ ws
           , ps
-          , s
+          , s₂
           ⟧
     ---------------------------------------------------------------------------
     → e₁ ⊢
@@ -124,7 +124,7 @@ data _⊢_⇓_ : Environment → Contract × TransactionInput × State → Resul
       , s₁
       ) ⇓ ⟦ ws ++ convertReduceWarnings ws₂
           , ps ++ ps₂
-          , s
+          , s₂
           ⟧
 
   ⇓-Close :
