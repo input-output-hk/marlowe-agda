@@ -189,9 +189,9 @@ private
         ((⟪ c , s , e , [] , [] ⟫) ⇀⟨ AssertFalse refl ⟩ (⟪ d , s , e , [ ReduceAssertionFailed ] , [] ⟫) ∎)
         (waiting (ℕ.s≤s (ℕ.s≤s (ℕ.s≤s ℕ.z≤n)))))
       (⇓-Deposit (here refl) refl (ℕ.s≤s (ℕ.s≤s (ℕ.s≤s ℕ.z≤n)))
-        (⇓-Reduce-until-quiescent {ws₂ = []}
-          (reduce-until-quiescent (⟪ Close , ⟨ [((a₁ , t) , 1)] , [] , [] , minTime s ⟩ , e , [ ReduceAssertionFailed ]  , [] ⟫
-                 ⇀⟨ CloseRefund ⟩ (⟪ Close , ⟨ [] , [] , [] , (minTime s) ⟩ , e , [ ReduceAssertionFailed ] , [ a₁ [ t , 1 ]↦ mkParty p₁ ] ⟫) ∎) close )
+        (⇓-Reduce-until-quiescent
+          (reduce-until-quiescent (⟪ Close , ⟨ [((a₁ , t) , 1)] , [] , [] , minTime s ⟩ , e , []  , [] ⟫
+                 ⇀⟨ CloseRefund ⟩ (⟪ Close , ⟨ [] , [] , [] , (minTime s) ⟩ , e , [] , [ a₁ [ t , 1 ]↦ mkParty p₁ ] ⟫) ∎) close )
           (⇓-Close refl refl)))
 
 {-
