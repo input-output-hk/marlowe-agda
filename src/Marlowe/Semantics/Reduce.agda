@@ -453,15 +453,6 @@ eval C (suc m) with progress C
 ...      | E , (D⇀⋆E , s) = E , (( C ⇀⟨ C⇀D ⟩ D⇀⋆E ) , s)
 
 
-data _⇒_ : Configuration → Configuration → Set where
-
- reduce-until-quiescent :
-   ∀ {C D}
-   → C ⇀⋆ D
-   → Quiescent D
-   -------------
-   → C ⇒ D
-
 -- Examples
 
 private
