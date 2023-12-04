@@ -16,20 +16,40 @@ open import Marlowe.Semantics.Reduce
 open import Marlowe.Semantics.Reduce.Properties
 open import Marlowe.Semantics.Operate
 
+open Configuration
 open TransactionInput
 
-{-
-⇓-deterministic :
-  ∀ {c : Contract} {e} {i : TransactionInput} {s : State} {r r′}
-  → e ⊢ (c , i , s) ⇓ r
-  → e ⊢ (c , i , s) ⇓ r′
-  → r ≡ r′
--}
+⇒-Quiescent : ∀ {C D i}
+  → (C , i) ⇒ D
+  → Quiescent D
+⇒-Quiescent (Deposit _ _ _ x) = ⇒-Quiescent x
+⇒-Quiescent (Choice _ _ _ x) = ⇒-Quiescent x
+⇒-Quiescent (Notify _ _ _ x) = ⇒-Quiescent x
+⇒-Quiescent (Reduce-until-quiescent _ q) = q
 
 -- A transaction on a closed contract does not produce any warning
+⇒-Close-is-safe :
+  ∀ {C D i}
+  → (C , i) ⇒ D
+  → contract C ≡ Close
+  → warnings C ≡ warnings D
+⇒-Close-is-safe (Reduce-until-quiescent C⇀⋆D _) refl = ⇀⋆Close-is-safe C⇀⋆D
+
+⇒-Close-is-terminal :
+  ∀ {C D i}
+  → (C , i) ⇒ D
+  → contract C ≡ Close
+  → contract D ≡ Close
+⇒-Close-is-terminal (Reduce-until-quiescent C⇀⋆D _) refl = ⇀⋆Close-is-terminal C⇀⋆D
+
+{-
 ⇓-Close-is-safe :
-  ∀ {e} {i} {s} {ws ps c x}
-  → e ⊢ ( Close , i , s ) ⇓ ( c , ⟦ ws , ps , x ⟧ )
-  → ws ≡ []
-⇓-Close-is-safe (⇓-Reduce-until-quiescent {ws = ws} C⇀⋆D _ refl refl)
-   = cong convertReduceWarnings (++-identityˡ-unique ws (⇀⋆Close-is-safe C⇀⋆D))
+  ∀ {e s r}
+  → e ⊢ (Close , s) ⇓ r
+  → (Result.warnings r) ≡ []
+⇓-Close-is-safe (done _) = refl
+⇓-Close-is-safe (apply-input {i} {C} {D} {ws} {ps} {s} x y) rewrite ⇒-Close-is-terminal x refl =
+  let yy = ⇓-Close-is-safe y
+      xx = ⇒-Close-is-safe x refl
+  in {!!}
+-}
