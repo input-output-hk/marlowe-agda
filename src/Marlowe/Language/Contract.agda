@@ -3,7 +3,8 @@ module Marlowe.Language.Contract where
 open import Agda.Builtin.Int using (Int)
 open import Agda.Builtin.List using (List)
 open import Data.Bool using (Bool; false; _∧_)
-open import Data.Nat as ℕ using (ℕ)
+open import Data.List using ([]; _∷_)
+open import Data.Nat as ℕ using (ℕ; _⊔_)
 open import Data.Product using (_×_; _,_)
 open import Data.Product.Properties using (≡-dec)
 open import Data.String as String using (String)
@@ -174,3 +175,12 @@ data Contract where
 
 getAction : Case → Action
 getAction (mkCase action _) = action
+
+expiry : Contract → ℕ
+expiry Close = 0
+expiry (Pay _ _ _ _ c) = expiry c
+expiry (If _ c₁ c₂) = expiry c₁ ⊔ expiry c₂
+expiry (When [] (mkTimeout (mkPosixTime t)) c) = t ⊔ expiry c
+expiry (When ((mkCase _ x) ∷ xs) t c) = expiry x ⊔ expiry (When xs t c)
+expiry (Let x x₁ c) = expiry c
+expiry (Assert x c) = expiry c
