@@ -45,87 +45,177 @@ convertReduceWarnings = map convertReduceWarning
     convertReduceWarning (ReduceShadowing i o n) = TransactionShadowing i o n
     convertReduceWarning ReduceAssertionFailed = TransactionAssertionFailed
 
-record Result (C : Configuration) : Set where
+data _⇒_ : Configuration × TransactionInput → Configuration → Set where
+
+  Deposit :
+    ∀ {a p t v n c e s ws ps cases cont timeout D is}
+    → (mkCase (Deposit a p t v) c) ∈ cases
+    → ∣ ℰ⟦ v ⟧ e s ∣ ≡ n
+    → interval-end e ℕ.< timeout
+    → ( ⟪ c
+        , record s { accounts = ((a , t) , n) ↑-update (accounts s) }
+        , e
+        , ws
+        , ps
+        ⟫
+      , is
+      ) ⇒ D
+    -------------------------------------------------------------------
+    → ( ⟪ When cases (mkTimeout (mkPosixTime timeout)) cont
+        , s
+        , e
+        , ws
+        , ps
+        ⟫
+      , record is { inputs = NormalInput (IDeposit a p t n) ∷ inputs is }
+      ) ⇒ D
+
+  Choice :
+    ∀ {c cont i n s is bs ws ps cases timeout e D}
+    → (mkCase (Choice i bs) c) ∈ cases
+    → n inBounds bs ≡ true
+    → interval-end e ℕ.< timeout
+    → ( ⟪ c
+        , record s { choices = (i , unChosenNum n) ↑-ChoiceId (choices s) }
+        , e
+        , ws
+        , ps
+        ⟫
+      , is
+      ) ⇒ D
+    -----------------------------------------------------------------
+    → ( ⟪ When cases (mkTimeout (mkPosixTime timeout)) cont
+        , s
+        , e
+        , ws
+        , ps
+        ⟫
+      , record is { inputs = NormalInput (IChoice i n) ∷ inputs is }
+      ) ⇒ D
+
+  Notify :
+    ∀ {c cont is s o cases timeout e ws ps D}
+    → (mkCase (Notify o) c) ∈ cases
+    → 𝒪⟦ o ⟧ e s ≡ true
+    → interval-end e ℕ.< timeout
+    → ( ⟪ c
+        , s
+        , e
+        , ws
+        , ps
+        ⟫
+      , is
+      ) ⇒ D
+    ---------------------------------------------------
+    → ( ⟪ When cases (mkTimeout (mkPosixTime timeout)) cont
+        , s
+        , e
+        , ws
+        , ps
+        ⟫
+      , record is { inputs = NormalInput INotify ∷ inputs is }
+     ) ⇒ D
+
+  Reduce-until-quiescent :
+    ∀ {C D} {tₛ Δₜ}
+    → (C⇀⋆D : C ⇀⋆ D)
+    → (q : Quiescent D)
+    → ( C , mkTransactionInput (mkInterval (mkPosixTime tₛ) Δₜ) [] )
+      ⇒ D
+
+
+record Result : Set where
   constructor ⟦_,_,_⟧
   field
     warnings : List TransactionWarning
     payments : List Payment
-    contract : Quiescent C
+    state : State
 
+data _⊢_⇓_ : Environment → Contract × State → Result → Set where
 
-data _⊢_⇓_ : Environment → Contract × TransactionInput × State → ( Σ[ C ∈ Configuration ] ( Result C )) → Set where
-
-  ⇓-Deposit :
-    ∀ {a} {p} {t} {e} {v} {n} {c} {cont} {is} {s} {r} {cases} {timeout}
-    → (mkCase (Deposit a p t v) c) ∈ cases
-    → ∣ ℰ⟦ v ⟧ e s ∣ ≡ n
-    → interval-end e ℕ.< timeout
-    → e ⊢
-      ( c
-      , is
-      , record s { accounts = ((a , t) , n) ↑-update (accounts s) }
-      ) ⇓ r
-    -------------------------------------------------------------------
-    → e ⊢
-      ( When cases (mkTimeout (mkPosixTime timeout)) cont
-      , record is { inputs = NormalInput (IDeposit a p t n) ∷ inputs is }
+  apply-input :
+    ∀ {i C D ws ps s}
+    → (C , i) ⇒ D
+    → environment D ⊢ (contract D , state D) ⇓
+      ⟦ convertReduceWarnings ws
+      , ps
       , s
-      ) ⇓ r
-
-  ⇓-Choice :
-    ∀ {c} {cont} {i} {n} {s} {r} {is} {cs} {bs} {cases} {timeout} {e}
-    → (mkCase (Choice i bs) c) ∈ cases
-    → n inBounds bs ≡ true
-    → interval-end e ℕ.< timeout
-    → e ⊢
-      ( c
-      , is
-      , record s { choices = (i , unChosenNum n) ↑-ChoiceId cs }
-      ) ⇓ r
-    -----------------------------------------------------------------
-    → e ⊢
-      ( When cases (mkTimeout (mkPosixTime timeout)) cont
-      , record is { inputs = NormalInput (IChoice i n) ∷ inputs is }
+      ⟧
+    -------------------------------------------
+    → environment C ⊢ (contract C , state C) ⇓
+      ⟦ convertReduceWarnings (ws ++ warnings D)
+      , ps ++ payments D
       , s
-      ) ⇓ r
+      ⟧
 
-  ⇓-Notify :
-    ∀ {c} {cont} {is} {s} {r} {o} {cases} {timeout} {e}
-    → (mkCase (Notify o) c) ∈ cases
-    → 𝒪⟦ o ⟧ e s ≡ true
-    → interval-end e ℕ.< timeout
-    → e ⊢
-      ( c
-      , is
+  done :
+    ∀ {s e}
+    → accounts s ≡ []
+    --------------------
+    → e ⊢ (Close , s ) ⇓
+      ⟦ []
+      , []
       , s
-      ) ⇓ r
-    ---------------------------------------------------
-    → e ⊢
-      ( When cases (mkTimeout (mkPosixTime timeout)) cont
-      , record is { inputs = NormalInput INotify ∷ inputs is }
+      ⟧
+
+
+private
+
+  timeout : PosixTime
+  timeout = mkPosixTime 100
+
+  p₁ : Party
+  p₁ = Role (mkByteString "role1")
+
+  p₂ : Party
+  p₂ = Role (mkByteString "role2")
+
+  a₁ : AccountId
+  a₁ = mkAccountId p₁
+
+  a₂ : AccountId
+  a₂ = mkAccountId p₂
+
+  t : Token
+  t = mkToken (mkByteString "") (mkByteString "")
+
+  v : Value
+  v = Constant (+ 1)
+
+  d : Contract
+  d = When ([ mkCase (Deposit a₁ p₂ t v) Close ]) (mkTimeout timeout) Close
+
+  c : Contract
+  c = Assert FalseObs d
+
+  s : State
+  s = emptyState (mkPosixTime 0)
+
+  i : TransactionInput
+  i = mkTransactionInput (mkInterval (mkPosixTime 0) 10) [ NormalInput (IDeposit a₁ p₂ t 1) ]
+
+  e : Environment
+  e = mkEnvironment (mkInterval (mkPosixTime 0) 2)
+
+  reduction-steps :
+    e ⊢ (c , s)
+    ⇓ ⟦ [ TransactionAssertionFailed ]
+      , [ a₁ [ t , 1 ]↦ mkParty p₁ ]
       , s
-     ) ⇓ r
-
-  ⇓-Reduce-until-quiescent :
-    ∀ {C D} {tₛ Δₜ} {ws ps}
-    → (C⇀⋆D : C ⇀⋆ D)
-    → (q : Quiescent D)
-    → warnings D ≡ ws ++ warnings C
-    → payments D ≡ ps ++ payments C
-    → (environment C) ⊢
-          ( contract C
-          , mkTransactionInput (mkInterval (mkPosixTime tₛ) Δₜ) []
-          , state C
-          ) ⇓ ( D ,
-              ⟦ convertReduceWarnings ws
-              , ps
-              , q
-              ⟧ )
-
-
+      ⟧
+  reduction-steps =
+    apply-input
+      (Reduce-until-quiescent {tₛ = 0} {Δₜ = 2}
+        ((⟪ c , s , e , [] , [] ⟫) ⇀⟨ AssertFalse refl ⟩ (⟪ d , s , e , [ ReduceAssertionFailed ] , [] ⟫) ∎)
+        (waiting (ℕ.s≤s (ℕ.s≤s (ℕ.s≤s ℕ.z≤n)))))
+      (apply-input (Deposit (here refl) refl (ℕ.s≤s (ℕ.s≤s (ℕ.s≤s ℕ.z≤n)))
+        (Reduce-until-quiescent {tₛ = 0} {Δₜ = 2}
+          (⟪ Close , ⟨ [((a₁ , t) , 1)] , [] , [] , minTime s ⟩ , e , []  , [] ⟫
+                 ⇀⟨ CloseRefund ⟩ (⟪ Close , ⟨ [] , [] , [] , (minTime s) ⟩ , e , [] , [ a₁ [ t , 1 ]↦ mkParty p₁ ] ⟫) ∎)
+          close))
+        (done refl))
 
 {-
-
 fixInterval : TimeInterval → State → IntervalResult
 fixInterval interval state =
   let
