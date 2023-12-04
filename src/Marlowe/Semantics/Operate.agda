@@ -133,7 +133,7 @@ record Result : Set where
 
 data _⊢_⇓_ : Environment → Contract × State → Result → Set where
 
-  apply-input :
+  advance :
     ∀ {i C D ws ps s}
     → warnings C ≡ []
     → payments C ≡ []
@@ -206,11 +206,11 @@ private
       , s
       ⟧
   reduction-steps =
-    apply-input refl refl
+    advance refl refl
       (Reduce-until-quiescent {tₛ = 0} {Δₜ = 2}
         ((⟪ c , s , e , [] , [] ⟫) ⇀⟨ AssertFalse refl ⟩ (⟪ d , s , e , [ ReduceAssertionFailed ] , [] ⟫) ∎)
         (waiting (ℕ.s≤s (ℕ.s≤s (ℕ.s≤s ℕ.z≤n)))))
-      (apply-input refl refl (Deposit (here refl) refl (ℕ.s≤s (ℕ.s≤s (ℕ.s≤s ℕ.z≤n)))
+      (advance refl refl (Deposit (here refl) refl (ℕ.s≤s (ℕ.s≤s (ℕ.s≤s ℕ.z≤n)))
         (Reduce-until-quiescent {tₛ = 0} {Δₜ = 2}
           (⟪ Close , ⟨ [((a₁ , t) , 1)] , [] , [] , minTime s ⟩ , e , []  , [] ⟫
                  ⇀⟨ CloseRefund ⟩ (⟪ Close , ⟨ [] , [] , [] , (minTime s) ⟩ , e , [] , [ a₁ [ t , 1 ]↦ mkParty p₁ ] ⟫) ∎)

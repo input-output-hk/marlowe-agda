@@ -46,7 +46,7 @@ open TransactionInput
   → e ⊢ (Close , s) ⇓ r
   → (Result.warnings r) ≡ []
 ⇓-Close-is-safe (done _) = refl
-⇓-Close-is-safe (apply-input {i} {C} {D} {ws} {ps} {s} refl refl x y)
+⇓-Close-is-safe (advance refl refl x y)
   rewrite ⇒-Close-is-terminal x refl rewrite ⇓-Close-is-safe y =
     trans (cong (convertReduceWarnings) (sym (⇒-Close-is-safe x refl))) refl
 
