@@ -1,12 +1,11 @@
 module Marlowe.Semantics.Operate.Properties where
 
-open import Data.List using ([]; _∷_)
-open import Data.List.Properties using (++-identityʳ; ++-identityˡ-unique)
+open import Data.List using ([]; _∷_; _++_; map)
 open import Data.List.Relation.Unary.Any using (here; there)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Product using (_,_)
 import Relation.Binary.PropositionalEquality as Eq
-open Eq using (_≡_; refl; cong; sym)
+open Eq using (_≡_; refl; cong; sym; trans)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Marlowe.Language.Contract
 open import Marlowe.Language.State
@@ -42,14 +41,12 @@ open TransactionInput
   → contract D ≡ Close
 ⇒-Close-is-terminal (Reduce-until-quiescent C⇀⋆D _) refl = ⇀⋆Close-is-terminal C⇀⋆D
 
-{-
 ⇓-Close-is-safe :
   ∀ {e s r}
   → e ⊢ (Close , s) ⇓ r
   → (Result.warnings r) ≡ []
 ⇓-Close-is-safe (done _) = refl
-⇓-Close-is-safe (apply-input {i} {C} {D} {ws} {ps} {s} x y) rewrite ⇒-Close-is-terminal x refl =
-  let yy = ⇓-Close-is-safe y
-      xx = ⇒-Close-is-safe x refl
-  in {!!}
--}
+⇓-Close-is-safe (apply-input {i} {C} {D} {ws} {ps} {s} refl refl x y)
+  rewrite ⇒-Close-is-terminal x refl rewrite ⇓-Close-is-safe y =
+    trans (cong (convertReduceWarnings) (sym (⇒-Close-is-safe x refl))) refl
+

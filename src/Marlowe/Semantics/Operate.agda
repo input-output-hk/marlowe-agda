@@ -135,15 +135,17 @@ data _⊢_⇓_ : Environment → Contract × State → Result → Set where
 
   apply-input :
     ∀ {i C D ws ps s}
+    → warnings C ≡ []
+    → payments C ≡ []
     → (C , i) ⇒ D
     → environment D ⊢ (contract D , state D) ⇓
-      ⟦ convertReduceWarnings ws
+      ⟦ ws
       , ps
       , s
       ⟧
     -------------------------------------------
     → environment C ⊢ (contract C , state C) ⇓
-      ⟦ convertReduceWarnings (ws ++ warnings D)
+      ⟦ ws ++ convertReduceWarnings (warnings D)
       , ps ++ payments D
       , s
       ⟧
@@ -204,11 +206,11 @@ private
       , s
       ⟧
   reduction-steps =
-    apply-input
+    apply-input refl refl
       (Reduce-until-quiescent {tₛ = 0} {Δₜ = 2}
         ((⟪ c , s , e , [] , [] ⟫) ⇀⟨ AssertFalse refl ⟩ (⟪ d , s , e , [ ReduceAssertionFailed ] , [] ⟫) ∎)
         (waiting (ℕ.s≤s (ℕ.s≤s (ℕ.s≤s ℕ.z≤n)))))
-      (apply-input (Deposit (here refl) refl (ℕ.s≤s (ℕ.s≤s (ℕ.s≤s ℕ.z≤n)))
+      (apply-input refl refl (Deposit (here refl) refl (ℕ.s≤s (ℕ.s≤s (ℕ.s≤s ℕ.z≤n)))
         (Reduce-until-quiescent {tₛ = 0} {Δₜ = 2}
           (⟪ Close , ⟨ [((a₁ , t) , 1)] , [] , [] , minTime s ⟩ , e , []  , [] ⟫
                  ⇀⟨ CloseRefund ⟩ (⟪ Close , ⟨ [] , [] , [] , (minTime s) ⟩ , e , [] , [ a₁ [ t , 1 ]↦ mkParty p₁ ] ⟫) ∎)
