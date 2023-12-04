@@ -445,12 +445,12 @@ eval :
   ∀ (C : Configuration)
   → ℕ
   → Σ[ D ∈ Configuration ] ((C ⇀⋆ D) × (Quiescent D ⊎ EvalError D))
-eval C zero = C , ((C ∎) , inj₂ execution-costs-exceeded)
+eval C zero = C , (C ∎) , inj₂ execution-costs-exceeded
 eval C (suc m) with progress C
-... | quiescent q = C , ((C ∎) , inj₁ q)
-... | ambiguousTimeInterval q = C , ((C ∎) , inj₂ (ambiguousTimeInterval q))
+... | quiescent q = C , (C ∎) , inj₁ q
+... | ambiguousTimeInterval a = C , (C ∎) , inj₂ (ambiguousTimeInterval a)
 ... | step {D} C⇀D with eval D m
-...      | E , (D⇀⋆E , s) = E , (( C ⇀⟨ C⇀D ⟩ D⇀⋆E ) , s)
+...      | E , D⇀⋆E , s = E , (C ⇀⟨ C⇀D ⟩ D⇀⋆E) , s
 
 
 -- Examples

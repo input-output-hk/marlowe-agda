@@ -42,8 +42,8 @@ open TransactionInput
 ⇒-Close-is-terminal (Reduce-until-quiescent C⇀⋆D _) refl = ⇀⋆Close-is-terminal C⇀⋆D
 
 ⇓-Close-is-safe :
-  ∀ {e s r}
-  → e ⊢ (Close , s) ⇓ r
+  ∀ {s r}
+  → (Close , s) ⇓ r
   → (Result.warnings r) ≡ []
 ⇓-Close-is-safe (done _) = refl
 ⇓-Close-is-safe (advance refl refl x y)

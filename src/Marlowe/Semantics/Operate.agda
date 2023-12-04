@@ -11,6 +11,7 @@ open import Data.Nat as ℕ using (ℕ)
 open import Data.Product using (Σ; _,_; ∃; Σ-syntax; ∃-syntax)
 open import Data.Product using (_×_; proj₁; proj₂)
 import Data.String as String
+open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Nullary.Decidable using (⌊_⌋)
 
 open import Marlowe.Language.Contract
@@ -114,14 +115,13 @@ data _⇒_ : Configuration × TransactionInput → Configuration → Set where
         , ps
         ⟫
       , record is { inputs = NormalInput INotify ∷ inputs is }
-     ) ⇒ D
+      ) ⇒ D
 
   Reduce-until-quiescent :
-    ∀ {C D} {tₛ Δₜ}
+    ∀ {C D} {i}
     → (C⇀⋆D : C ⇀⋆ D)
     → (q : Quiescent D)
-    → ( C , mkTransactionInput (mkInterval (mkPosixTime tₛ) Δₜ) [] )
-      ⇒ D
+    → (C , i) ⇒ D
 
 
 record Result : Set where
@@ -131,30 +131,30 @@ record Result : Set where
     payments : List Payment
     state : State
 
-data _⊢_⇓_ : Environment → Contract × State → Result → Set where
+data _⇓_ : Contract × State → Result → Set where
 
   advance :
     ∀ {i C D ws ps s}
     → warnings C ≡ []
     → payments C ≡ []
     → (C , i) ⇒ D
-    → environment D ⊢ (contract D , state D) ⇓
+    → (contract D , state D) ⇓
       ⟦ ws
       , ps
       , s
       ⟧
     -------------------------------------------
-    → environment C ⊢ (contract C , state C) ⇓
+    → (contract C , state C) ⇓
       ⟦ ws ++ convertReduceWarnings (warnings D)
       , ps ++ payments D
       , s
       ⟧
 
   done :
-    ∀ {s e}
+    ∀ {s}
     → accounts s ≡ []
     --------------------
-    → e ⊢ (Close , s ) ⇓
+    → (Close , s) ⇓
       ⟦ []
       , []
       , s
@@ -200,172 +200,33 @@ private
   e = mkEnvironment (mkInterval (mkPosixTime 0) 2)
 
   reduction-steps :
-    e ⊢ (c , s)
+    (c , s)
     ⇓ ⟦ [ TransactionAssertionFailed ]
       , [ a₁ [ t , 1 ]↦ mkParty p₁ ]
       , s
       ⟧
   reduction-steps =
     advance refl refl
-      (Reduce-until-quiescent {tₛ = 0} {Δₜ = 2}
+      (Reduce-until-quiescent {i = mkTransactionInput (mkInterval (mkPosixTime 0) 2) []}
         ((⟪ c , s , e , [] , [] ⟫) ⇀⟨ AssertFalse refl ⟩ (⟪ d , s , e , [ ReduceAssertionFailed ] , [] ⟫) ∎)
         (waiting (ℕ.s≤s (ℕ.s≤s (ℕ.s≤s ℕ.z≤n)))))
       (advance refl refl (Deposit (here refl) refl (ℕ.s≤s (ℕ.s≤s (ℕ.s≤s ℕ.z≤n)))
-        (Reduce-until-quiescent {tₛ = 0} {Δₜ = 2}
+        (Reduce-until-quiescent {i = mkTransactionInput (mkInterval (mkPosixTime 0) 2) []}
           (⟪ Close , ⟨ [((a₁ , t) , 1)] , [] , [] , minTime s ⟩ , e , []  , [] ⟫
                  ⇀⟨ CloseRefund ⟩ (⟪ Close , ⟨ [] , [] , [] , (minTime s) ⟩ , e , [] , [ a₁ [ t , 1 ]↦ mkParty p₁ ] ⟫) ∎)
           close))
         (done refl))
 
-{-
+
 fixInterval : TimeInterval → State → IntervalResult
-fixInterval interval state =
-  let
-    mkInterval (mkPosixTime low) delta = interval
-    high = low ℕ.+ delta
-  in
-    if high ℕ.<ᵇ low
-      then mkIntervalError (InvalidInterval interval)
-      else
-        let
-          curMinTime = State.minTime state
-          newLow = low ℕ.⊔ PosixTime.getPosixTime curMinTime
-          curInterval = record interval {startTime = mkPosixTime newLow}
-          env = record {timeInterval = curInterval}
-          newState = record state {minTime = mkPosixTime newLow}
-        in
-          if high ℕ.<ᵇ PosixTime.getPosixTime curMinTime
-            then mkIntervalError (IntervalInPastError curMinTime interval)
-            else IntervalTrimmed env newState
+fixInterval i s =
+  let mkInterval (mkPosixTime tₛ) Δₜ = i
+      mkPosixTime tₘ = minTime s
+      tₑ = tₛ ℕ.+ Δₜ
+      tₛ′ = tₛ ℕ.⊔ tₘ
+  in if tₑ ℕ.<ᵇ tₘ
+       then mkIntervalError (IntervalInPastError (mkPosixTime tₘ) i)
+       else IntervalTrimmed
+              record { timeInterval = record i { startTime = mkPosixTime tₛ′ } }
+              record s { minTime = mkPosixTime tₛ′ }
 
-data ReduceEffect : Set where
-  ReduceWithPayment : Payment → ReduceEffect
-  ReduceNoPayment : ReduceEffect
-
-data ReduceResult : Set where
-  ContractQuiescent : Bool → List ReduceWarning → List Payment → State → Contract → ReduceResult
-  RRAmbiguousTimeIntervalError : ReduceResult
-
-reduceContractUntilQuiescent : Environment → State → Contract → ReduceResult
-reduceContractUntilQuiescent e s c =
-  let c = record {contract = c; state = s; environment = e; warnings = []; payments = []}
-  in reductionSteps (eval c 100) -- TODO: how many steps...?
-    where
-      open Configuration
-      reductionSteps : ∀ {c : Configuration} → QuiescentOrError c → ReduceResult
-      -- reductionSteps (steps {d} x) = ContractQuiescent true (warnings d) (payments d) (state d) (contract d)
-      reductionSteps ambiguousTimeInterval = RRAmbiguousTimeIntervalError
-      reductionSteps {c} done = ContractQuiescent false (warnings c) (payments c) (state c) (contract c)
-
-data ApplyWarning : Set where
-  ApplyNoWarning : ApplyWarning
-  ApplyNonPositiveDeposit : Party → AccountId → Token → Int → ApplyWarning
-
-data ApplyAction : Set where
-  AppliedAction : ApplyWarning → State → ApplyAction
-  NotAppliedAction : ApplyAction
-
-applyAction : Environment → State → InputContent → Action → ApplyAction
-applyAction env state (IDeposit accId1 party1 tok1 amount) (Deposit accId2 party2 tok2 val) =
-  if ⌊ accId1 ≟-AccountId accId2 ⌋ ∧ ⌊ party1 ≟-Party party2 ⌋ ∧ ⌊ tok1 ≟-Token tok2 ⌋ ∧ ⌊ ((+ amount) ≟ ℰ⟦ val ⟧ env state) ⌋
-    then AppliedAction
-           ApplyNoWarning (
-             record state {
-               accounts =
-                 let i = (accId1 , tok1) ‼-AccountId×Token (State.accounts state) default 0
-                 in ((accId1 , tok1) , i ℕ.+ amount) ↑-AccountId×Token (State.accounts state)
-             })
-    else NotAppliedAction
-applyAction _ state (IChoice choId1 choice) (Choice choId2 bounds) =
-  if ⌊ choId1 ≟-ChoiceId choId2 ⌋ ∧ choice inBounds bounds
-    then AppliedAction ApplyNoWarning (record state {choices = (choId1 , unChosenNum choice) ↑-ChoiceId (State.choices state)})
-    else NotAppliedAction
-applyAction env state INotify (Notify obs) =
-  if 𝒪⟦ obs ⟧ env state
-    then AppliedAction ApplyNoWarning state
-    else NotAppliedAction
-applyAction _ _ _ _ = NotAppliedAction
-
-getContinuation : Input → Case → Maybe Contract
-getContinuation (NormalInput _) (mkCase _ continuation) = just continuation
-
-data ApplyResult : Set where
-  Applied : ApplyWarning → State → Contract → ApplyResult
-  ApplyNoMatchError : ApplyResult
-  ApplyHashMismatch : ApplyResult
-
-applyCases : Environment → State → Input → List Case → ApplyResult
-applyCases env state input (headCase ∷ tailCase)
-  with applyAction env state (getInputContent input) (getAction headCase) | getContinuation input headCase
-... | NotAppliedAction               | _                 = applyCases env state input tailCase
-... | AppliedAction warning newState | just continuation = Applied warning newState continuation
-... | _                              | nothing           = ApplyHashMismatch
-applyCases _ _ _ [] = ApplyNoMatchError
-
-applyInput : Environment → State → Input → Contract → ApplyResult
-applyInput env state input (When cases _ _) = applyCases env state input cases
-applyInput _ _ _ _ = ApplyNoMatchError
-
-
-
-data ApplyAllResult : Set where
-  ApplyAllSuccess : Bool → List TransactionWarning → List Payment → State → Contract → ApplyAllResult
-  ApplyAllNoMatchError : ApplyAllResult
-  ApplyAllAmbiguousTimeIntervalError : ApplyAllResult
-  ApplyAllHashMismatch : ApplyAllResult
-
-applyAllInputs : Environment → State → Contract → List Input → ApplyAllResult
-applyAllInputs env state contract inputs =
-  applyAllLoop false env state contract inputs [] []
-    where
-      convertApplyWarning : ApplyWarning -> List TransactionWarning
-      convertApplyWarning (ApplyNoWarning) = []
-      convertApplyWarning (ApplyNonPositiveDeposit party accId tok amount) =
-        TransactionNonPositiveDeposit party accId tok amount ∷ []
-      applyAllLoop : Bool → Environment → State → Contract → List Input → List TransactionWarning → List Payment → ApplyAllResult
-      applyAllLoop contractChanged env state contract inputs warnings payments
-        with reduceContractUntilQuiescent env state contract | inputs
-      ... | RRAmbiguousTimeIntervalError | _ = ApplyAllAmbiguousTimeIntervalError
-      ... | ContractQuiescent reduced reduceWarns pays curState cont | [] =
-              ApplyAllSuccess (contractChanged ∨ reduced) (warnings ++ convertReduceWarnings reduceWarns) (payments ++ pays) curState cont
-      ... | ContractQuiescent reduced reduceWarns pays curState cont | input  ∷ rest
-              with applyInput env curState input cont
-      ...       | Applied applyWarn newState cont =
-                    applyAllLoop true env newState cont rest (warnings ++ convertReduceWarnings reduceWarns ++ convertApplyWarning applyWarn) (payments ++ pays)
-      ...       | ApplyNoMatchError = ApplyAllNoMatchError
-      ...       | ApplyHashMismatch = ApplyAllHashMismatch
-
-isClose : Contract → Bool
-isClose Close = true
-isClose _     = false
-
-notClose : Contract → Bool
-notClose Close = false
-notClose _     = true
-
-computeTransaction : TransactionInput → State → Contract → TransactionOutput
-computeTransaction (mkTransactionInput txInterval txInput) state contract
-  with fixInterval txInterval state
-... | mkIntervalError error = mkError (TEIntervalError error)
-... | IntervalTrimmed env fixState with applyAllInputs env fixState contract txInput
-... |   ApplyAllNoMatchError = mkError TEApplyNoMatchError
-... |   ApplyAllAmbiguousTimeIntervalError = mkError TEAmbiguousTimeIntervalError
-... |   ApplyAllHashMismatch = mkError TEHashMismatch
-... |   ApplyAllSuccess reduced warnings payments newState cont =
-          if not reduced ∧ (notClose contract ∨ null (State.accounts state))
-            then mkError TEUselessTransaction
-            else mkTransactionOutput warnings payments newState cont
-
-playTraceAux : TransactionOutput → List TransactionInput → TransactionOutput
-playTraceAux res [] = res
-playTraceAux (mkTransactionOutput warnings payments state contract) (h ∷ t)
-  with computeTransaction h state contract
-... | mkTransactionOutput warnings' payments' state' contract' =
-       playTraceAux (mkTransactionOutput (warnings ++ warnings') (payments ++ payments') state' contract') t
-... | mkError error = mkError error
-playTraceAux (mkError error) _ = mkError error
-
-playTrace : PosixTime → Contract → List TransactionInput → TransactionOutput
-playTrace minTime c = playTraceAux (mkTransactionOutput [] [] (emptyState minTime) c)
-
--}
