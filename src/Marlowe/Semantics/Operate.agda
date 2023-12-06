@@ -5,9 +5,10 @@ open import Data.Bool using (Bool; if_then_else_; not; _∧_; _∨_; true; false
 open import Data.Integer using (_<?_; _≤?_; _≟_ ; _⊔_; _⊓_; _+_; _-_; +_; 0ℤ ; _≤_ ; _>_ ; _≥_ ; _<_; ∣_∣)
 open import Data.List using (List; []; _∷_; _++_; foldr; reverse; [_]; null; map)
 open import Data.List.Membership.Propositional using (_∈_)
-open import Data.List.Relation.Unary.Any using (here)
+open import Data.List.Membership.DecSetoid using () renaming (_∈?_ to _∈?-List_)
+open import Data.List.Relation.Unary.Any using (Any; here; there)
 open import Data.Maybe using (Maybe; just; nothing; fromMaybe)
-open import Data.Nat as ℕ using (ℕ)
+open import Data.Nat as ℕ using (ℕ; suc; zero)
 open import Data.Product using (Σ; _,_; ∃; Σ-syntax; ∃-syntax)
 open import Data.Product using (_×_; proj₁; proj₂)
 import Data.String as String
@@ -59,8 +60,7 @@ data _⇒_ : Configuration × TransactionInput → Configuration → Set where
         , ws
         , ps
         ⟫
-      , is
-      ) ⇒ D
+      ) ↠ D
     -------------------------------------------------------------------
     → ( ⟪ When cases (mkTimeout (mkPosixTime timeout)) cont
         , s
@@ -82,8 +82,7 @@ data _⇒_ : Configuration × TransactionInput → Configuration → Set where
         , ws
         , ps
         ⟫
-      , is
-      ) ⇒ D
+      ) ↠ D
     -----------------------------------------------------------------
     → ( ⟪ When cases (mkTimeout (mkPosixTime timeout)) cont
         , s
@@ -105,8 +104,7 @@ data _⇒_ : Configuration × TransactionInput → Configuration → Set where
         , ws
         , ps
         ⟫
-      , is
-      ) ⇒ D
+      ) ↠ D
     ---------------------------------------------------
     → ( ⟪ When cases (mkTimeout (mkPosixTime timeout)) cont
         , s
@@ -116,12 +114,6 @@ data _⇒_ : Configuration × TransactionInput → Configuration → Set where
         ⟫
       , record is { inputs = NormalInput INotify ∷ inputs is }
       ) ⇒ D
-
-  Reduce-until-quiescent :
-    ∀ {C D} {i}
-    → (C⇀⋆D : C ⇀⋆ D)
-    → (q : Quiescent D)
-    → (C , i) ⇒ D
 
 
 record Result : Set where
@@ -133,7 +125,24 @@ record Result : Set where
 
 data _⇓_ : Contract × State → Result → Set where
 
-  advance :
+  reduce-until-quiescent :
+    ∀ {C D ws ps s}
+    → warnings C ≡ []
+    → payments C ≡ []
+    → C ↠ D
+    → (contract D , state D) ⇓
+      ⟦ ws
+      , ps
+      , s
+      ⟧
+    -------------------------------------------
+    → (contract C , state C) ⇓
+      ⟦ ws ++ convertReduceWarnings (warnings D)
+      , ps ++ payments D
+      , s
+      ⟧
+
+  apply-inputs :
     ∀ {i C D ws ps s}
     → warnings C ≡ []
     → payments C ≡ []
@@ -153,13 +162,12 @@ data _⇓_ : Contract × State → Result → Set where
   done :
     ∀ {s}
     → accounts s ≡ []
-    --------------------
+    -----------------
     → (Close , s) ⇓
       ⟦ []
       , []
       , s
       ⟧
-
 
 private
 
@@ -206,17 +214,24 @@ private
       , s
       ⟧
   reduction-steps =
-    advance refl refl
-      (Reduce-until-quiescent {i = mkTransactionInput (mkInterval (mkPosixTime 0) 2) []}
+    reduce-until-quiescent refl refl
+      (Reduce-until-quiescent
         ((⟪ c , s , e , [] , [] ⟫) ⇀⟨ AssertFalse refl ⟩ (⟪ d , s , e , [ ReduceAssertionFailed ] , [] ⟫) ∎)
         (waiting (ℕ.s≤s (ℕ.s≤s (ℕ.s≤s ℕ.z≤n)))))
-      (advance refl refl (Deposit (here refl) refl (ℕ.s≤s (ℕ.s≤s (ℕ.s≤s ℕ.z≤n)))
-        (Reduce-until-quiescent {i = mkTransactionInput (mkInterval (mkPosixTime 0) 2) []}
+      (apply-inputs {i = i} refl refl (Deposit (here refl) refl (ℕ.s≤s (ℕ.s≤s (ℕ.s≤s ℕ.z≤n)))
+        (Reduce-until-quiescent
           (⟪ Close , ⟨ [((a₁ , t) , 1)] , [] , [] , minTime s ⟩ , e , []  , [] ⟫
                  ⇀⟨ CloseRefund ⟩ (⟪ Close , ⟨ [] , [] , [] , (minTime s) ⟩ , e , [] , [ a₁ [ t , 1 ]↦ mkParty p₁ ] ⟫) ∎)
           close))
         (done refl))
-
+{-
+  _ = ⇓-eval c s (i ∷ i ∷ []) ≡
+       inj₁ (
+         ⟦ [ TransactionAssertionFailed ]
+         , [ a₁ [ t , 1 ]↦ mkParty p₁ ]
+         , s
+         ⟧ , reduction-steps)
+-}
 
 fixInterval : TimeInterval → State → IntervalResult
 fixInterval i s =
@@ -229,4 +244,3 @@ fixInterval i s =
        else IntervalTrimmed
               record { timeInterval = record i { startTime = mkPosixTime tₛ′ } }
               record s { minTime = mkPosixTime tₛ′ }
-
