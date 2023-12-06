@@ -109,3 +109,17 @@ totalAmount t c = Σ-accounts t (accounts (state c)) + Σ-payments t (payments c
   → c₂ ≡ Close
 ⇀⋆Close-is-terminal ((⟪ Close , _ , _ , _ , _ ⟫) ∎) = refl
 ⇀⋆Close-is-terminal ((⟪ Close , _ , _ , _ , _ ⟫) ⇀⟨ CloseRefund ⟩ x) rewrite ⇀⋆Close-is-terminal x = refl
+
+↠-Close-is-terminal :
+  ∀ {C D}
+  → C ↠ D
+  → contract C ≡ Close
+  → contract D ≡ Close
+↠-Close-is-terminal (Reduce-until-quiescent C⇀⋆D _) refl = ⇀⋆Close-is-terminal C⇀⋆D
+
+↠-Close-is-safe :
+  ∀ {C D}
+  → C ↠ D
+  → contract C ≡ Close
+  → warnings C ≡ warnings D
+↠-Close-is-safe (Reduce-until-quiescent C⇀⋆D _) refl = ⇀⋆Close-is-safe C⇀⋆D
