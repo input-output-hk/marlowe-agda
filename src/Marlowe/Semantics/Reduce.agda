@@ -456,8 +456,8 @@ data _↠_ : Configuration → Configuration → Set where
 
   Reduce-until-quiescent :
     ∀ {C D}
-    → (C⇀⋆D : C ⇀⋆ D)
-    → (q : Quiescent D)
+    → C ⇀⋆ D
+    → Quiescent D
     → C ↠ D
 
 -- Examples
