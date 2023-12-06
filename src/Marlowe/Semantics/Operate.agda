@@ -180,11 +180,11 @@ case∷-preserves-⇒ (Notify x x₁ x₂ x₃) = Notify (∷-preserves-∈ x) x
   (mkTransactionInput i (NormalInput (IDeposit a₂ p₂ t₂ n) ∷ is))
   (suc m)
   with a₁ ≟-AccountId a₂
-  with p₁ ≟-Party p₂
-  with t₁ ≟-Token t₂
-  with ∣ ℰ⟦ v ⟧ e s ∣ ≟ n
-  with interval-end e <? t
-  with eval
+     | p₁ ≟-Party p₂
+     | t₁ ≟-Token t₂
+     | ∣ ℰ⟦ v ⟧ e s ∣ ≟ n
+     | interval-end e <? t
+     | eval
        ⟪ cₐ
        , record s
          { accounts =
@@ -195,9 +195,20 @@ case∷-preserves-⇒ (Notify x x₁ x₂ x₃) = Notify (∷-preserves-∈ x) x
        , ps
        ⟫
        m
-... | yes refl | yes refl | yes refl | yes refl | yes tₑ<tₒ | (D , C⇀⋆D , inj₁ q) = inj₁ (D , Deposit (here refl) refl tₑ<tₒ (Reduce-until-quiescent C⇀⋆D q) , q)
-... | _ | _ | _ | _ | _ | _
-  with ⇒-eval
+... | yes refl
+    | yes refl
+    | yes refl
+    | yes refl
+    | yes tₑ<tₒ
+    | (D , C⇀⋆D , inj₁ q)
+    = inj₁ (D , Deposit (here refl) refl tₑ<tₒ (Reduce-until-quiescent C⇀⋆D q) , q)
+... | _
+    | _
+    | _
+    | _
+    | _
+    | _
+    with ⇒-eval
        ⟪ When cs (mkTimeout (mkPosixTime t)) c
        , s
        , e
@@ -218,9 +229,9 @@ case∷-preserves-⇒ (Notify x x₁ x₂ x₃) = Notify (∷-preserves-∈ x) x
   (mkTransactionInput i (NormalInput (IChoice i₂ n₂) ∷ is))
   (suc m)
   with i₁ ≟-ChoiceId i₂
-  with n₂ inBounds b₁ 𝔹.≟ true
-  with interval-end e <? t
-  with eval
+     | n₂ inBounds b₁ 𝔹.≟ true
+     | interval-end e <? t
+     | eval
        ⟪ cₐ
        , record s
          { choices =
@@ -231,9 +242,16 @@ case∷-preserves-⇒ (Notify x x₁ x₂ x₃) = Notify (∷-preserves-∈ x) x
        , ps
        ⟫
        m
-... | yes refl | yes p | yes tₑ<tₒ | (D , C⇀⋆D , inj₁ q) = inj₁ (D , Choice (here refl) p tₑ<tₒ (Reduce-until-quiescent C⇀⋆D q) , q)
-... | _ | _ | _ | _
-  with ⇒-eval
+... | yes refl
+    | yes p
+    | yes tₑ<tₒ
+    | (D , C⇀⋆D , inj₁ q)
+    = inj₁ (D , Choice (here refl) p tₑ<tₒ (Reduce-until-quiescent C⇀⋆D q) , q)
+... | _
+    | _
+    | _
+    | _
+    with ⇒-eval
        ⟪ When cs (mkTimeout (mkPosixTime t)) c
        , s
        , e
@@ -254,8 +272,8 @@ case∷-preserves-⇒ (Notify x x₁ x₂ x₃) = Notify (∷-preserves-∈ x) x
   (mkTransactionInput i (NormalInput INotify ∷ is))
   (suc m)
   with 𝒪⟦ o ⟧ e s 𝔹.≟ true
-  with interval-end e <? t
-  with eval
+     | interval-end e <? t
+     | eval
        ⟪ cₐ
        , s
        , e
@@ -263,9 +281,14 @@ case∷-preserves-⇒ (Notify x x₁ x₂ x₃) = Notify (∷-preserves-∈ x) x
        , ps
        ⟫
        m
-... | yes 𝒪⟦o⟧≡true | yes tₑ<tₒ | (D , C⇀⋆D , inj₁ q) = inj₁ (D , Notify (here refl) 𝒪⟦o⟧≡true tₑ<tₒ (Reduce-until-quiescent C⇀⋆D q) , q)
-... | _ | _ | _
-  with ⇒-eval
+... | yes o≡true
+    | yes tₑ<tₒ
+    | (D , C⇀⋆D , inj₁ q)
+    = inj₁ (D , Notify (here refl) o≡true tₑ<tₒ (Reduce-until-quiescent C⇀⋆D q) , q)
+... | _
+    | _
+    | _
+    with ⇒-eval
        ⟪ When cs (mkTimeout (mkPosixTime t)) c
        , s
        , e
