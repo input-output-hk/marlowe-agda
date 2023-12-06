@@ -21,32 +21,15 @@ open TransactionInput
 ⇒-Quiescent : ∀ {C D i}
   → (C , i) ⇒ D
   → Quiescent D
-⇒-Quiescent (Deposit _ _ _ x) = ⇒-Quiescent x
-⇒-Quiescent (Choice _ _ _ x) = ⇒-Quiescent x
-⇒-Quiescent (Notify _ _ _ x) = ⇒-Quiescent x
-⇒-Quiescent (Reduce-until-quiescent _ q) = q
-
--- A transaction on a closed contract does not produce any warning
-⇒-Close-is-safe :
-  ∀ {C D i}
-  → (C , i) ⇒ D
-  → contract C ≡ Close
-  → warnings C ≡ warnings D
-⇒-Close-is-safe (Reduce-until-quiescent C⇀⋆D _) refl = ⇀⋆Close-is-safe C⇀⋆D
-
-⇒-Close-is-terminal :
-  ∀ {C D i}
-  → (C , i) ⇒ D
-  → contract C ≡ Close
-  → contract D ≡ Close
-⇒-Close-is-terminal (Reduce-until-quiescent C⇀⋆D _) refl = ⇀⋆Close-is-terminal C⇀⋆D
+⇒-Quiescent (Deposit _ _ _ (Reduce-until-quiescent C⇀⋆D q)) = q
+⇒-Quiescent (Choice _ _ _ (Reduce-until-quiescent C⇀⋆D q)) = q
+⇒-Quiescent (Notify _ _ _ (Reduce-until-quiescent C⇀⋆D q)) = q
 
 ⇓-Close-is-safe :
   ∀ {s r}
   → (Close , s) ⇓ r
   → (Result.warnings r) ≡ []
 ⇓-Close-is-safe (done _) = refl
-⇓-Close-is-safe (advance refl refl x y)
-  rewrite ⇒-Close-is-terminal x refl rewrite ⇓-Close-is-safe y =
-    trans (cong (convertReduceWarnings) (sym (⇒-Close-is-safe x refl))) refl
-
+⇓-Close-is-safe (reduce-until-quiescent refl refl x y)
+  rewrite ↠-Close-is-terminal x refl rewrite ⇓-Close-is-safe y =
+    trans (cong (convertReduceWarnings) (sym (↠-Close-is-safe x refl))) refl
