@@ -7,3 +7,24 @@ tmp/
 \#*\#
 .\#*
 .pre-commit-config.yaml
+
+# Cabal
+.ghc.environment*
+tags
+dist-newstyle
+dist
+cabal-dev
+.cabal-sandbox/
+cabal.sandbox.config
+cabal.config
+cabal.project.local
+
+# Haskell output files
+*.o
+*.hi
+*.dyn_o
+*.dyn_hi
+*.chi
+*.chs.h
+*.prof
+.liquid/

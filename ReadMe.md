@@ -11,16 +11,10 @@ Run `nix develop` to enter a Nix shell for the Agda environment. If the Agda env
 
 ## Example
 
-The program [`main`](src/main.agda) creates and executes Marlowe's example *Escrow* contract. First, compile the program:
+The program [`main`](app/Main.hs) creates and executes Marlowe's example *Escrow* contract. First, compile the program:
 
 ```bash
-agda --compile src/main.agda
-```
-
-Then run it:
-
-```bash
-./src/main | json2yaml
+cabal -v0 run marlowe-agda | json2yaml
 ```
 ```YAML
 contract:
