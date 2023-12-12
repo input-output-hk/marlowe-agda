@@ -182,12 +182,12 @@ totalAmount t c = Σ-accounts t (accounts (state c)) + Σ-payments t (payments c
 ⇀⋆-expiry (_ ⇀⟨ x ⟩ y) = ≤-trans (⇀⋆-expiry y) (⇀-expiry x)
 
 ⇀⋆-reduce-after-timeout-closes-contract :
-  ∀ {c s e ws ps D}
-  → ⟪ c , s , e , ws , ps ⟫ ⇀⋆ D
+  ∀ {C D}
+  → C ⇀⋆ D
   → Quiescent D
-  → expiry c < getPosixTime (startTime (timeInterval e))
+  → expiry (contract C) < getPosixTime (startTime (timeInterval (environment C)))
   → (contract D) ≡ Close
-⇀⋆-reduce-after-timeout-closes-contract x close x₂ = refl
+⇀⋆-reduce-after-timeout-closes-contract _ close _ = refl
 ⇀⋆-reduce-after-timeout-closes-contract x (waiting {t} {tₛ} {Δₜ} {cs} {s} {c} x₁) x₂ rewrite ⇀⋆-env-not-modified x =
   contradiction
     (≤-trans
