@@ -1,9 +1,8 @@
 module Marlowe.Semantics.Reduce where
 
-open import Agda.Builtin.Int using (Int)
 open import Data.Bool using (Bool; if_then_else_; not; _∧_; _∨_; true; false)
 open import Data.Bool.Properties using (_≟_; ¬-not)
-open import Data.Integer as ℤ using (0ℤ; _≤_; _>_; ∣_∣; _<?_; _≤?_)
+open import Data.Integer as ℤ using (ℤ; 0ℤ; _≤_; _>_; ∣_∣; _<?_; _≤?_)
 open import Data.Integer.Properties as ℤ using ()
 open import Data.List using (List; []; _∷_; _++_; foldr; reverse; [_]; null; sum; filter; map)
 open import Data.List.Membership.Propositional using () renaming (_∈_ to _∈-List_)
@@ -17,13 +16,9 @@ open import Data.Product using (_×_; proj₁; proj₂)
 import Data.String as String
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Function.Base using (case_of_; _∘_)
-
-open import Relation.Nullary.Decidable using (⌊_⌋)
-open import Relation.Nullary using (Dec; yes; no; ¬_)
-
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; cong; sym)
-open import Data.Empty using (⊥; ⊥-elim)
+open import Relation.Nullary using (Dec; yes; no; ¬_)
 
 open import Marlowe.Language.Contract
 open import Marlowe.Language.Input
@@ -41,9 +36,9 @@ open State using (accounts; boundValues; choices)
 open TimeInterval using (startTime)
 
 data ReduceWarning : Set where
-  ReduceNonPositivePay : AccountId → Payee → Token → Int → ReduceWarning
+  ReduceNonPositivePay : AccountId → Payee → Token → ℤ → ReduceWarning
   ReducePartialPay : AccountId → Payee → Token → ℕ → ℕ → ReduceWarning
-  ReduceShadowing : ValueId → Int → Int → ReduceWarning
+  ReduceShadowing : ValueId → ℤ → ℤ → ReduceWarning
   ReduceAssertionFailed : ReduceWarning
 
 record Configuration : Set where
@@ -58,26 +53,27 @@ open Configuration
 
 data _⇀_ : Configuration → Configuration → Set where
 
-  CloseRefund :
-    ∀ { a } { t } { n } { as } { cs } { vs } { ws } { ps } { e } { m }
-    ------------------------------------------------------------------
+  CloseRefund : ∀ {a t n s ws ps e}
+    --------------------------------
     → ⟪ Close
-      , ⟨ ((a , t) , n) ∷ as , cs , vs , m ⟩
+      , record s
+          { accounts =
+            ((a , t) , n) ∷ accounts s
+          }
       , e
       , ws
       , ps
       ⟫ ⇀
       ⟪ Close
-      , ⟨ as , cs , vs , m ⟩
+      , s
       , e
       , ws
       , a [ t , n ]↦ mkParty (unAccountId a) ∷ ps
       ⟫
 
-  PayNonPositive :
-    ∀ { s } { e } { v } { a } { p } { t } { c } { ws } { ps }
+  PayNonPositive : ∀ {s e v a p t c ws ps}
     → ℰ⟦ v ⟧ e s ℤ.≤ 0ℤ
-    ---------------------------------------------------------
+    --------------------------------------
     → ⟪ Pay a p t v c
       , s
       , e
@@ -91,11 +87,10 @@ data _⇀_ : Configuration → Configuration → Set where
       , ps
       ⟫
 
-  PayNoAccount :
-    ∀ { s } { e } { v } { a } { p } { t } { c } { ws } { ps }
+  PayNoAccount : ∀ {s e v a p t c ws ps}
     → ℰ⟦ v ⟧ e s > 0ℤ
     → (a , t) ∉ accounts s
-    ---------------------------------------------------------
+    ------------------------------------
     → ⟪ Pay a p t v c
       , s
       , e
@@ -109,13 +104,14 @@ data _⇀_ : Configuration → Configuration → Set where
       , ps
       ⟫
 
-  PayInternalTransfer :
-    ∀ { s } { e } { v } { aₛ aₜ } { t } { c } { ws } { ps }
+  PayInternalTransfer : ∀ {s e v aₛ aₜ t c ws ps}
     → ℰ⟦ v ⟧ e s > 0ℤ
     → (aₛ×t∈as : (aₛ , t) ∈ accounts s)
-    ------------------------------------------------------
-    → let m = proj₂ (lookup aₛ×t∈as)
-          n = ∣ ℰ⟦ v ⟧ e s ∣ in
+    --------------------------------------------
+    → let
+        m = proj₂ (lookup aₛ×t∈as)
+        n = ∣ ℰ⟦ v ⟧ e s ∣
+      in
       ⟪ Pay aₛ (mkAccount aₜ) t v c
       , s
       , e
@@ -123,19 +119,25 @@ data _⇀_ : Configuration → Configuration → Set where
       , ps
       ⟫ ⇀
       ⟪ c
-      , record s { accounts = ((aₜ , t) , (m ⊓ n)) ↑-update (aₛ×t∈as ∷= ((aₛ , t) , m ∸ n)) }
+      , record s
+          { accounts =
+            ((aₜ , t) , (m ⊓ n)) ↑-update (aₛ×t∈as ∷= ((aₛ , t) , m ∸ n))
+          }
       , e
-      , if (m <ᵇ n) then ReducePartialPay aₛ (mkAccount aₜ) t m n ∷ ws else ws
+      , if (m <ᵇ n)
+          then ReducePartialPay aₛ (mkAccount aₜ) t m n ∷ ws
+          else ws
       , ps
       ⟫
 
-  PayExternal :
-    ∀ { s } { e } { v } { a } { t } { c } { ws } { ps } { p }
+  PayExternal : ∀ {s e v a t c ws ps p}
     → ℰ⟦ v ⟧ e s > 0ℤ
     → (a×t∈as : (a , t) ∈ accounts s)
-    ---------------------------------------------------------
-    → let m = proj₂ (lookup a×t∈as)
-          n = ∣ ℰ⟦ v ⟧ e s ∣ in
+    -----------------------------------
+    → let
+        m = proj₂ (lookup a×t∈as)
+        n = ∣ ℰ⟦ v ⟧ e s ∣
+      in
       ⟪ Pay a (mkParty p) t v c
       , s
       , e
@@ -143,16 +145,20 @@ data _⇀_ : Configuration → Configuration → Set where
       , ps
       ⟫ ⇀
       ⟪ c
-      , record s { accounts = a×t∈as ∷= ((a , t) , m ∸ n) }
+      , record s
+          { accounts =
+            a×t∈as ∷= ((a , t) , m ∸ n)
+          }
       , e
-      , if (m <ᵇ n) then ReducePartialPay a (mkParty p) t m n ∷ ws else ws
+      , if (m <ᵇ n)
+          then ReducePartialPay a (mkParty p) t m n ∷ ws
+          else ws
       , a [ t , m ⊓ n ]↦ mkParty p ∷ ps
       ⟫
 
-  IfTrue :
-    ∀ { s } { e } { o } { c₁ c₂ } { ws } { ps }
+  IfTrue : ∀ {s e o c₁ c₂ ws ps}
     → 𝒪⟦ o ⟧ e s ≡ true
-    -------------------------------------------
+    ----------------------------
     → ⟪ If o c₁ c₂
       , s
       , e
@@ -166,10 +172,9 @@ data _⇀_ : Configuration → Configuration → Set where
       , ps
       ⟫
 
-  IfFalse :
-    ∀ { s } { e } { o } { c₁ c₂ } { ws } { ps }
+  IfFalse : ∀ {s e o c₁ c₂ ws ps}
     → 𝒪⟦ o ⟧ e s ≡ false
-    -------------------------------------------
+    -----------------------------
     → ⟪ If o c₁ c₂
       , s
       , e
@@ -183,25 +188,26 @@ data _⇀_ : Configuration → Configuration → Set where
       , ps
       ⟫
 
-  WhenTimeout :
-    ∀ { s } { t tₛ Δₜ } { c } { ws } { ps } { cs }
+  WhenTimeout : ∀ {s t tₛ Δₜ c ws ps cs}
     → t ℕ.≤ tₛ
-    ---------------------------------------------
-    → ⟪ When cs (mkTimeout (mkPosixTime t)) c
+    -----------------------------------
+    → let
+        e = mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ)
+      in
+      ⟪ When cs (mkTimeout (mkPosixTime t)) c
       , s
-      , mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ)
+      , e
       , ws
       , ps
       ⟫ ⇀
       ⟪ c
       , s
-      , mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ)
+      , e
       , ws
       , ps
       ⟫
 
-  LetShadow :
-    ∀ { s } { e } { c } { i } { v } { vᵢ } { ws ws'} { ps }
+  LetShadow : ∀ {s e c i v vᵢ ws ws' ps}
     → (i , vᵢ) ∈-List boundValues s
     → ws' ≡ ReduceShadowing i vᵢ (ℰ⟦ v ⟧ e s) ∷ ws
     ----------------------------------------------
@@ -218,10 +224,9 @@ data _⇀_ : Configuration → Configuration → Set where
       , ps
       ⟫
 
-  LetNoShadow :
-    ∀ { s } { e } { c } { i } { v } { ws } { ps }
+  LetNoShadow : ∀ {s e c i v ws ps}
     → i ∉ boundValues s
-    ---------------------------------------------
+    --------------------
     → ⟪ Let i v c
       , s
       , e
@@ -229,16 +234,18 @@ data _⇀_ : Configuration → Configuration → Set where
       , ps
       ⟫ ⇀
       ⟪ c
-      , record s { boundValues = (i , ℰ⟦ v ⟧ e s) ∷ boundValues s }
+      , record s
+          { boundValues =
+            (i , ℰ⟦ v ⟧ e s) ∷ boundValues s
+          }
       , e
       , ws
       , ps
       ⟫
 
-  AssertTrue :
-    ∀ { s } { e } { o } { c } { ws } { ps }
+  AssertTrue : ∀ {s e o c ws ps}
     → 𝒪⟦ o ⟧ e s ≡ true
-    ---------------------------------------
+    ----------------------------
     → ⟪ Assert o c
       , s
       , e
@@ -252,10 +259,9 @@ data _⇀_ : Configuration → Configuration → Set where
       , ps
       ⟫
 
-  AssertFalse :
-    ∀ { s } { e } { o } { c } { ws } { ps }
+  AssertFalse : ∀ {s e o c ws ps}
     → 𝒪⟦ o ⟧ e s ≡ false
-    ---------------------------------------
+    -----------------------------
     → ⟪ Assert o c
       , s
       , e
@@ -295,9 +301,8 @@ begin M⇀⋆N = M⇀⋆N
 
 data Quiescent : Configuration → Set where
 
-  close :
-    ∀ { e } { cs } { vs } { ws } { m } { ps }
-    -----------------------------------------
+  close : ∀ {e cs vs ws m ps}
+    -------------------------
     → Quiescent
         ⟪ Close
         , ⟨ [] , cs , vs , m ⟩
@@ -306,12 +311,11 @@ data Quiescent : Configuration → Set where
         , ps
         ⟫
 
-  waiting :
-    ∀ { t tₛ Δₜ } { cases } { s } { c } { ws } { ps }
+  waiting : ∀ {t tₛ Δₜ cs s c ws ps}
     → (tₛ + Δₜ) ℕ.< t
-    -------------------------------------------------
+    -------------------------------
     → Quiescent
-        ⟪ When cases (mkTimeout (mkPosixTime t)) c
+        ⟪ When cs (mkTimeout (mkPosixTime t)) c
         , s
         , mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ)
         , ws
@@ -320,11 +324,10 @@ data Quiescent : Configuration → Set where
 
 data AmbiguousTimeInterval : Configuration → Set where
 
-  AmbiguousTimeIntervalError :
-    ∀ { t tₛ Δₜ } { cs } { c } { s } { ws } { ps }
+  AmbiguousTimeIntervalError : ∀ {t tₛ Δₜ cs c s ws ps}
     → tₛ ℕ.< t
     → (tₛ + Δₜ) ℕ.≥ t
-    ----------------------------------------------
+    --------------------------------------------------
     → AmbiguousTimeInterval
         ⟪ When cs (mkTimeout (mkPosixTime t)) c
         , s
@@ -432,33 +435,40 @@ progress
 ... | no ¬o≡true = step (AssertFalse (¬-not ¬o≡true))
 
 -- Evaluator
-data EvalError (C : Configuration) : Set where
+data ReduceError (C : Configuration) : Set where
 
   ambiguousTimeInterval :
       AmbiguousTimeInterval C
-    → EvalError C
+    → ReduceError C
 
-  execution-costs-exceeded :
-      EvalError C
+  execution-budget-exceeded :
+      ReduceError C
+
+data _↠_ : Configuration → Configuration → Set where
+
+  Reduce-until-quiescent : ∀ {C D}
+    → C ⇀⋆ D
+    → Quiescent D
+    -------------
+    → C ↠ D
+
+  Reduce-error : ∀ {C D}
+    → C ⇀⋆ D
+    → ReduceError D
+    -------------
+    → C ↠ D
 
 eval :
   ∀ (C : Configuration)
   → ℕ
-  → Σ[ D ∈ Configuration ] ((C ⇀⋆ D) × (Quiescent D ⊎ EvalError D))
-eval C zero = C , (C ∎) , inj₂ execution-costs-exceeded
+  → Σ[ D ∈ Configuration ] (C ↠ D)
+eval C zero = C , Reduce-error (C ∎) execution-budget-exceeded
 eval C (suc m) with progress C
-... | quiescent q = C , (C ∎) , inj₁ q
-... | ambiguousTimeInterval a = C , (C ∎) , inj₂ (ambiguousTimeInterval a)
+... | quiescent q = C , Reduce-until-quiescent (C ∎) q
+... | ambiguousTimeInterval a = C , Reduce-error (C ∎) (ambiguousTimeInterval a)
 ... | step {D} C⇀D with eval D m
-...      | E , D⇀⋆E , s = E , (C ⇀⟨ C⇀D ⟩ D⇀⋆E) , s
-
-data _↠_ : Configuration → Configuration → Set where
-
-  Reduce-until-quiescent :
-    ∀ {C D}
-    → C ⇀⋆ D
-    → Quiescent D
-    → C ↠ D
+...      | E , Reduce-until-quiescent D⇀⋆E s = E , Reduce-until-quiescent (C ⇀⟨ C⇀D ⟩ D⇀⋆E) s
+...      | E , Reduce-error D⇀⋆E e = E , Reduce-error (C ⇀⟨ C⇀D ⟩ D⇀⋆E) e
 
 -- Examples
 
@@ -501,4 +511,4 @@ private
     , [ accountId₁ [ token₁ , 5 ]↦ mkParty (unAccountId accountId₁) ]
     ⟫
 
-  _ = eval config₂ 100 ≡ (config₀ , ((config₂ ⇀⟨ IfTrue refl ⟩ config₁ ⇀⟨ CloseRefund ⟩ config₀ ∎) , inj₁ close))
+  _ = eval config₂ 100 ≡ (config₀ , Reduce-until-quiescent (config₂ ⇀⟨ IfTrue refl ⟩ config₁ ⇀⟨ CloseRefund ⟩ config₀ ∎) close)
