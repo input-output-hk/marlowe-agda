@@ -434,41 +434,39 @@ progress
 ... | yes o≡true = step (AssertTrue o≡true)
 ... | no ¬o≡true = step (AssertFalse (¬-not ¬o≡true))
 
--- Evaluator
-data ReduceError (C : Configuration) : Set where
-
-  ambiguousTimeInterval :
-      AmbiguousTimeInterval C
-    → ReduceError C
-
-  execution-budget-exceeded :
-      ReduceError C
-
-data _↠_ : Configuration → Configuration → Set where
+data _⇀ₙ_ : Configuration → Configuration → Set where
 
   Reduce-until-quiescent : ∀ {C D}
     → C ⇀⋆ D
     → Quiescent D
     -------------
-    → C ↠ D
+    → C ⇀ₙ D
 
-  Reduce-error : ∀ {C D}
+  Ambiguous-time-interval : ∀ {C D}
     → C ⇀⋆ D
-    → ReduceError D
-    -------------
-    → C ↠ D
+    → AmbiguousTimeInterval D
+    -------------------------
+    → C ⇀ₙ D
+
+  Execution-budget-exceeded : ∀ {C D}
+    → C ⇀⋆ D
+    ---------
+    → C ⇀ₙ D
+
+-- Evaluator
 
 eval :
   ∀ (C : Configuration)
   → ℕ
-  → Σ[ D ∈ Configuration ] (C ↠ D)
-eval C zero = C , Reduce-error (C ∎) execution-budget-exceeded
+  → Σ[ D ∈ Configuration ] (C ⇀ₙ D)
+eval C zero = C , Execution-budget-exceeded (C ∎)
 eval C (suc m) with progress C
 ... | quiescent q = C , Reduce-until-quiescent (C ∎) q
-... | ambiguousTimeInterval a = C , Reduce-error (C ∎) (ambiguousTimeInterval a)
+... | ambiguousTimeInterval a = C , Ambiguous-time-interval (C ∎) a
 ... | step {D} C⇀D with eval D m
 ...      | E , Reduce-until-quiescent D⇀⋆E s = E , Reduce-until-quiescent (C ⇀⟨ C⇀D ⟩ D⇀⋆E) s
-...      | E , Reduce-error D⇀⋆E e = E , Reduce-error (C ⇀⟨ C⇀D ⟩ D⇀⋆E) e
+...      | E , Ambiguous-time-interval D⇀⋆E a = E , Ambiguous-time-interval (C ⇀⟨ C⇀D ⟩ D⇀⋆E) a
+...      | E , Execution-budget-exceeded D⇀⋆E = E , Execution-budget-exceeded (C ⇀⟨ C⇀D ⟩ D⇀⋆E)
 
 -- Examples
 

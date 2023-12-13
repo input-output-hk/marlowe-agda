@@ -30,6 +30,6 @@ Computing a transaction on a Close contract does not produce any warnings.
   → (Close , s) ⇓ r
   → (Result.warnings r) ≡ []
 ⇓-Close-is-safe (done _) = refl
-⇓-Close-is-safe (reduce-until-quiescent refl refl x y)
-  rewrite ↠-Close-is-terminal x refl rewrite ⇓-Close-is-safe y =
-    trans (cong (convertReduceWarnings) (sym (↠-Close-is-safe x refl))) refl
+⇓-Close-is-safe (reduce-until-quiescent refl refl x q y)
+  rewrite ⇀⋆Close-is-terminal x rewrite ⇓-Close-is-safe y =
+    trans (cong convertReduceWarnings (sym (⇀⋆Close-is-safe x))) refl

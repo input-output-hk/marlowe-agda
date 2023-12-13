@@ -176,11 +176,11 @@ data Contract where
 getAction : Case → Action
 getAction (mkCase action _) = action
 
-expiry : Contract → ℕ
-expiry Close = 0
-expiry (Pay _ _ _ _ c) = expiry c
-expiry (If _ c₁ c₂) = expiry c₁ ⊔ expiry c₂
-expiry (When [] (mkTimeout (mkPosixTime t)) c) = t ⊔ expiry c
-expiry (When ((mkCase _ x) ∷ xs) t c) = expiry x ⊔ expiry (When xs t c)
-expiry (Let x x₁ c) = expiry c
-expiry (Assert x c) = expiry c
+maxTimeout : Contract → ℕ
+maxTimeout Close = 0
+maxTimeout (Pay _ _ _ _ c) = maxTimeout c
+maxTimeout (If _ c₁ c₂) = maxTimeout c₁ ⊔ maxTimeout c₂
+maxTimeout (When [] (mkTimeout (mkPosixTime t)) c) = t ⊔ maxTimeout c
+maxTimeout (When ((mkCase _ x) ∷ xs) t c) = maxTimeout x ⊔ maxTimeout (When xs t c)
+maxTimeout (Let x x₁ c) = maxTimeout c
+maxTimeout (Assert x c) = maxTimeout c
