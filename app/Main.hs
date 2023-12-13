@@ -26,13 +26,13 @@ main =
 
     contract :: T_Contract_420 = coe c
     minTime :: T_PosixTime_38 = coe m
-    inputs :: [ T_TransactionInput_62 ] = coe i
+    inputs :: [ T_TransactionInput_64 ] = coe i
     state = d_emptyState_38 minTime
 
     execBudget = 100
 
     printResult (C_mkPosixTime_44 t) inputs contract (C__'44'__32 x _) =
-      let (C_'10214'_'44'_'44'_'10215'_808 ws ps s) = coe x
+      let (C_'10214'_'44'_'44'_'10215'_924 ws ps s) = coe x
        in print . encodePretty $
             object
               [ "minTime" .= t
@@ -47,4 +47,4 @@ main =
               ]
     printError r = putStr "error"
 
-    playTrace = d_'8659''45'eval_850
+    playTrace = d_'8659''45'eval_964

@@ -311,6 +311,7 @@ library
     MAlonzo.Code.Marlowe.Language.Contract
     MAlonzo.Code.Marlowe.Language.Input
     MAlonzo.Code.Contrib.Data.List.AssocList
+    MAlonzo.Code.Contrib.Data.List.Membership
     MAlonzo.Code.Contrib.Data.Nat.Properties
     MAlonzo.Code.Induction
     MAlonzo.RTE
@@ -562,6 +563,7 @@ library
     MAlonzo.Code.Marlowe.Language.Contract
     MAlonzo.Code.Marlowe.Language.Input
     MAlonzo.Code.Contrib.Data.List.AssocList
+    MAlonzo.Code.Contrib.Data.List.Membership
     MAlonzo.Code.Contrib.Data.Nat.Properties
     MAlonzo.Code.Induction
     MAlonzo.RTE
