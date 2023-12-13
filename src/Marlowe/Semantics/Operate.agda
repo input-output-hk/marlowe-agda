@@ -23,6 +23,7 @@ open import Marlowe.Language.Transaction
 open import Marlowe.Semantics.Evaluate
 open import Marlowe.Semantics.Reduce
 
+open import Contrib.Data.List.Membership.Properties using (∈-∷)
 open import Contrib.Data.List.AssocList hiding (_∈_)
 open Decidable _≟-AccountId×Token_  renaming (_‼_default_ to _‼-AccountId×Token_default_; _↑_ to _↑-AccountId×Token_) hiding (_∈?_)
 open Decidable _≟-ChoiceId_ renaming (_‼_default_ to _‼-ChoiceId_default_;  _↑_ to _↑-ChoiceId_) using (_∈?_)
@@ -54,6 +55,7 @@ data _⇒_ : Configuration × List Input → Configuration → Set where
     → (mkCase (Deposit a p t v) cₐ) ∈ cs
     → ∣ ℰ⟦ v ⟧ e s ∣ ≡ n
     → interval-end e < tₒ
+    → Quiescent D
     → ( ⟪ cₐ
         , record s
             { accounts =
@@ -63,7 +65,7 @@ data _⇒_ : Configuration × List Input → Configuration → Set where
         , ws
         , ps
         ⟫
-      ) ↠ D
+      ) ⇀⋆ D
     ----------------------------------------------------
     → ( ⟪ When cs (mkTimeout (mkPosixTime tₒ)) c
         , s
@@ -78,6 +80,7 @@ data _⇒_ : Configuration × List Input → Configuration → Set where
     → (mkCase (Choice i bs) cₐ) ∈ cs
     → n inBounds bs ≡ true
     → interval-end e < tₒ
+    → Quiescent D
     → ( ⟪ cₐ
         , record s
             { choices =
@@ -87,7 +90,7 @@ data _⇒_ : Configuration × List Input → Configuration → Set where
         , ws
         , ps
         ⟫
-      ) ↠ D
+      ) ⇀⋆ D
     ----------------------------------------------------
     → ( ⟪ When cs (mkTimeout (mkPosixTime tₒ)) c
         , s
@@ -102,13 +105,14 @@ data _⇒_ : Configuration × List Input → Configuration → Set where
     → (mkCase (Notify o) cₐ) ∈ cs
     → 𝒪⟦ o ⟧ e s ≡ true
     → interval-end e < tₒ
+    → Quiescent D
     → ( ⟪ cₐ
         , s
         , e
         , ws
         , ps
         ⟫
-      ) ↠ D
+      ) ⇀⋆ D
     --------------------------------------------
     → ( ⟪ When cs (mkTimeout (mkPosixTime tₒ)) c
         , s
@@ -119,26 +123,6 @@ data _⇒_ : Configuration × List Input → Configuration → Set where
       , NormalInput INotify ∷ is
       ) ⇒ D
 
-∈-∷ :
-  ∀ {A : Set} {x : A} {a : A} {as : List A}
-  → x ∈ as
-  --------------
-  → x ∈ (a ∷ as)
-∈-∷ (here refl) = there (here refl)
-∈-∷ (there x) = there (∈-∷ x)
-
-case∷-preserves-⇒ :
-  ∀ { cs t c s e ws ps i case D}
-  → (( ⟪ When cs t c , s , e , ws , ps ⟫ , i) ⇒ D)
-  → (( ⟪ When (case ∷ cs) t c , s , e , ws , ps ⟫ , i) ⇒ D)
-case∷-preserves-⇒ (Deposit x x₁ x₂ x₃) = Deposit (∈-∷ x) x₁ x₂ x₃
-case∷-preserves-⇒ (Choice x x₁ x₂ x₃) = Choice (∈-∷ x) x₁ x₂ x₃
-case∷-preserves-⇒ (Notify x x₁ x₂ x₃) = Notify (∈-∷ x) x₁ x₂ x₃
-
-mapError : ∀ {C : Configuration} → ReduceError C → TransactionError
-mapError (ambiguousTimeInterval x) = TEAmbiguousTimeIntervalError
-mapError execution-budget-exceeded = TEExecutionBudgetExceeded
-
 ⇒-eval :
   ∀ {cases} {t} {c} (C : Configuration)
   → (contract C) ≡ When cases (mkTimeout (mkPosixTime t)) c
@@ -147,175 +131,35 @@ mapError execution-budget-exceeded = TEExecutionBudgetExceeded
   → ℕ
   → (Σ[ D ∈ Configuration ] (((C , i) ⇒ D) × (Quiescent D))) ⊎ TransactionError
 ⇒-eval _ _ _ _ zero = inj₂ TEExecutionBudgetExceeded
+⇒-eval ⟪ When [] _ _ , _ , _ , _ , _ ⟫ refl _ _ (suc _) = inj₂ TEApplyNoMatchError
 ⇒-eval
-  ⟪ When [] (mkTimeout (mkPosixTime t)) c
-  , s
-  , e
-  , w
-  , p
-  ⟫
-  refl
-  _
-  _
-  _ = inj₂ TEApplyNoMatchError
-{-
+  ⟪ When (mkCase (Deposit a₁ p₁ t₁ v) cₐ ∷ cs) (mkTimeout (mkPosixTime t)) c , s , e , ws , ps ⟫ refl tₑ<t (NormalInput (IDeposit a₂ p₂ t₂ n) ∷ is) (suc m)
+  with a₁ ≟-AccountId a₂ | p₁ ≟-Party p₂ | t₁ ≟-Token t₂ | ∣ ℰ⟦ v ⟧ e s ∣ ≟ n | eval ⟪ cₐ , record s { accounts = ((a₁ , t₁) , n) ↑-update (accounts s) } , e , ws , ps ⟫ m
+... | yes refl | yes refl | yes refl | yes refl | (D , Reduce-until-quiescent C⇀⋆D  q) = inj₁ (D , Deposit (here refl) refl tₑ<t q C⇀⋆D , q)
+... | yes _    | yes _    | yes _    | yes _    | (D , Ambiguous-time-interval  _ _)   = inj₂ TEAmbiguousTimeIntervalError
+... | yes _    | yes _    | yes _    | yes _    | (D , Execution-budget-exceeded _)    = inj₂ TEExecutionBudgetExceeded
+... | _        | _        | _        | _        | _ with ⇒-eval ⟪ When cs (mkTimeout (mkPosixTime t)) c , s , e , ws , ps ⟫ refl tₑ<t (NormalInput (IDeposit a₂ p₂ t₂ n) ∷ is) m
+... | inj₁ (D , (Deposit x x₁ x₂ x₃ x₄) , q) = inj₁ (D , (Deposit (∈-∷ x) x₁ x₂ x₃ x₄ , q))
+... | inj₂ e = inj₂ e
 ⇒-eval
-  ⟪ When cs (mkTimeout (mkPosixTime t)) c
-  , s
-  , e
-  , w
-  , p
-  ⟫
-  refl
-  []
-  _ = inj₂ TEUselessTransaction
--}
+  ⟪ When (mkCase (Choice i₁ b₁) cₐ ∷ cs) (mkTimeout (mkPosixTime t)) c , s , e , ws , ps ⟫ refl tₑ<t (NormalInput (IChoice i₂ n₂) ∷ is) (suc m)
+  with i₁ ≟-ChoiceId i₂ | n₂ inBounds b₁ 𝔹.≟ true | eval ⟪ cₐ , record s { choices = (i₁ , unChosenNum n₂) ↑-ChoiceId (choices s) } , e , ws , ps ⟫ m
+... | yes refl | yes p | (D , Reduce-until-quiescent C⇀⋆D q) = inj₁ (D , Choice (here refl) p tₑ<t q C⇀⋆D , q)
+... | yes _    | yes _ | (_ , Ambiguous-time-interval _ _)    = inj₂ TEAmbiguousTimeIntervalError
+... | yes _    | yes _ | (_ , Execution-budget-exceeded _)    = inj₂ TEExecutionBudgetExceeded
+... | _        | _     | _ with ⇒-eval ⟪ When cs (mkTimeout (mkPosixTime t)) c , s , e , ws , ps ⟫ refl tₑ<t (NormalInput (IChoice i₂ n₂) ∷ is) m
+... | inj₁ (D , (Choice x x₁ x₂ x₃ x₄) , q) = inj₁ (D , (Choice (∈-∷ x) x₁ x₂ x₃ x₄ , q))
+... | inj₂ e = inj₂ e
 ⇒-eval
-  ⟪ When (mkCase (Deposit a₁ p₁ t₁ v) cₐ ∷ cs) (mkTimeout (mkPosixTime t)) c
-  , s
-  , e
-  , ws
-  , ps
-  ⟫
-  refl
-  tₑ<t
-  (NormalInput (IDeposit a₂ p₂ t₂ n) ∷ is)
-  (suc m)
-  with a₁ ≟-AccountId a₂
-     | p₁ ≟-Party p₂
-     | t₁ ≟-Token t₂
-     | ∣ ℰ⟦ v ⟧ e s ∣ ≟ n
-     | eval
-       ⟪ cₐ
-       , record s
-         { accounts =
-           ((a₁ , t₁) , n) ↑-update (accounts s)
-         }
-       , e
-       , ws
-       , ps
-       ⟫
-       m
-... | yes refl
-    | yes refl
-    | yes refl
-    | yes refl
-    | (D , Reduce-until-quiescent C⇀⋆D  q)
-    = inj₁ (D , Deposit (here refl) refl tₑ<t (Reduce-until-quiescent C⇀⋆D q) , q)
-... | yes refl
-    | yes refl
-    | yes refl
-    | yes refl
-    | (D , Reduce-error _ e)
-    = inj₂ (mapError e)
-... | _
-    | _
-    | _
-    | _
-    | _
-    with ⇒-eval
-       ⟪ When cs (mkTimeout (mkPosixTime t)) c
-       , s
-       , e
-       , ws
-       , ps
-       ⟫
-       refl
-       tₑ<t
-       (NormalInput (IDeposit a₂ p₂ t₂ n) ∷ is)
-       m
-... | inj₁ (D , C×i⇒D , q) = inj₁ (D , (case∷-preserves-⇒ C×i⇒D , q))
-... | inj₂ err = inj₂ err
-⇒-eval
-  ⟪ When (mkCase (Choice i₁ b₁) cₐ ∷ cs) (mkTimeout (mkPosixTime t)) c
-  , s
-  , e
-  , ws
-  , ps
-  ⟫
-  refl
-  tₑ<t
-  (NormalInput (IChoice i₂ n₂) ∷ is)
-  (suc m)
-  with i₁ ≟-ChoiceId i₂
-     | n₂ inBounds b₁ 𝔹.≟ true
-     | eval
-       ⟪ cₐ
-       , record s
-         { choices =
-           (i₁ , unChosenNum n₂) ↑-ChoiceId (choices s)
-         }
-       , e
-       , ws
-       , ps
-       ⟫
-       m
-... | yes refl
-    | yes p
-    | (D , Reduce-until-quiescent C⇀⋆D q)
-    = inj₁ (D , Choice (here refl) p tₑ<t (Reduce-until-quiescent C⇀⋆D q) , q)
-... | yes refl
-    | yes p
-    | (D , Reduce-error _ e)
-    = inj₂ (mapError e)
-... | _
-    | _
-    | _
-    with ⇒-eval
-       ⟪ When cs (mkTimeout (mkPosixTime t)) c
-       , s
-       , e
-       , ws
-       , ps
-       ⟫
-       refl
-       tₑ<t
-       (NormalInput (IChoice i₂ n₂) ∷ is)
-       m
-... | inj₁ (D , C×i⇒D , q) = inj₁ (D , (case∷-preserves-⇒ C×i⇒D , q))
-... | inj₂ err = inj₂ err
-⇒-eval
-  ⟪ When (mkCase (Notify o) cₐ ∷ cs) (mkTimeout (mkPosixTime t)) c
-  , s
-  , e
-  , ws
-  , ps
-  ⟫
-  refl
-  tₑ<t
-  (NormalInput INotify ∷ is)
-  (suc m)
-  with 𝒪⟦ o ⟧ e s 𝔹.≟ true
-     | eval
-       ⟪ cₐ
-       , s
-       , e
-       , ws
-       , ps
-       ⟫
-       m
-... | yes o≡true
-    | (D , Reduce-until-quiescent C⇀⋆D q)
-    = inj₁ (D , Notify (here refl) o≡true tₑ<t (Reduce-until-quiescent C⇀⋆D q) , q)
-... | yes o≡true
-    | (D , Reduce-error _ e)
-    = inj₂ (mapError e)
-... | _
-    | _
-    with ⇒-eval
-       ⟪ When cs (mkTimeout (mkPosixTime t)) c
-       , s
-       , e
-       , ws
-       , ps
-       ⟫
-       refl
-       tₑ<t
-       (NormalInput INotify ∷ is)
-       m
-... | inj₁ (D , C×i⇒D , q) = inj₁ (D , (case∷-preserves-⇒ C×i⇒D , q))
-... | inj₂ err = inj₂ err
-⇒-eval C refl _ x _ = inj₂ TEUselessTransaction
+  ⟪ When (mkCase (Notify o) cₐ ∷ cs) (mkTimeout (mkPosixTime t)) c , s , e , ws , ps ⟫ refl tₑ<t (NormalInput INotify ∷ is) (suc m)
+  with 𝒪⟦ o ⟧ e s 𝔹.≟ true | eval ⟪ cₐ , s , e , ws , ps ⟫ m
+... | yes o≡true | (D , Reduce-until-quiescent C⇀⋆D q) = inj₁ (D , Notify (here refl) o≡true tₑ<t q C⇀⋆D , q)
+... | yes _      | (_ , Ambiguous-time-interval _ _)    = inj₂ TEAmbiguousTimeIntervalError
+... | yes _      | (_ , Execution-budget-exceeded _)    = inj₂ TEExecutionBudgetExceeded
+... | no _       | _ with ⇒-eval ⟪ When cs (mkTimeout (mkPosixTime t)) c , s , e , ws , ps ⟫ refl tₑ<t (NormalInput INotify ∷ is) m
+... | inj₁ (D , (Notify x x₁ x₂ x₃ x₄) , q) = inj₁ (D , (Notify (∈-∷ x) x₁ x₂ x₃ x₄ , q))
+... | inj₂ e = inj₂ e
+⇒-eval _ _ _ _ (suc _) = inj₂ TEUselessTransaction
 
 
 record Result : Set where
@@ -331,7 +175,8 @@ data _⇓_ : Contract × State → Result → Set where
     ∀ {C D ws ps s}
     → warnings C ≡ []
     → payments C ≡ []
-    → C ↠ D
+    → C ⇀⋆ D
+    → Quiescent D
     → (contract D , state D) ⇓
       ⟦ ws
       , ps
@@ -379,37 +224,26 @@ data _⇓_ : Contract × State → Result → Set where
   → ℕ
   → (Σ[ r ∈ Result ] (c , s) ⇓ r) ⊎ TransactionError
 ⇓-eval _ _ _ zero = inj₂ TEExecutionBudgetExceeded
-⇓-eval Close s@(⟨ [] , _ , _ , _ ⟩) [] _ = inj₁ (⟦ [] , [] , s ⟧ , done refl)
-⇓-eval c@(When cases (mkTimeout (mkPosixTime t)) _) s ((mkTransactionInput i@(mkInterval (mkPosixTime tₛ) Δₜ) ts) ∷ is) (suc m) with (tₛ ℕ.+ Δₜ) <? t
-... | no q with eval
-       ⟪ c
-       , s
-       , mkEnvironment i
-       , []
-       , []
-       ⟫
-       m
-... | _ , Reduce-error _ e = inj₂ (mapError e)
+⇓-eval Close s@(⟨ [] , _ , _ , _ ⟩) [] (suc _) = inj₁ (⟦ [] , [] , s ⟧ , done refl)
+⇓-eval
+  (When cases (mkTimeout (mkPosixTime t)) _) s ((mkTransactionInput i@(mkInterval (mkPosixTime tₛ) Δₜ) ts) ∷ is) (suc m)
+  with (tₛ ℕ.+ Δₜ) <? t
+... | no q with eval ⟪ When cases (mkTimeout (mkPosixTime t)) _ , s , mkEnvironment i , [] , [] ⟫ m
+... | _ , Ambiguous-time-interval _ _ = inj₂ TEAmbiguousTimeIntervalError
+... | _ , Execution-budget-exceeded _ = inj₂ TEExecutionBudgetExceeded
 ... | D , Reduce-until-quiescent C×i⇒D q with ⇓-eval (contract D) (state D) is m
 ... | inj₁ (⟦ ws , ps , s ⟧ , d×s×is⇓r) =
       inj₁ (⟦ ws ++ convertReduceWarnings (warnings D)
             , ps ++ payments D
             , s
             ⟧
-            , reduce-until-quiescent refl refl (Reduce-until-quiescent C×i⇒D q) d×s×is⇓r
+            , reduce-until-quiescent refl refl C×i⇒D q d×s×is⇓r
            )
 ... | inj₂ err = inj₂ err
-⇓-eval c@(When cases (mkTimeout (mkPosixTime t)) _) s ((mkTransactionInput i@(mkInterval (mkPosixTime tₛ) Δₜ) ts) ∷ is) (suc m) | yes tₑ<t with ⇒-eval
-       ⟪ c
-       , s -- fixInterval
-       , mkEnvironment i
-       , []
-       , []
-       ⟫
-       refl
-       tₑ<t
-       ts
-       m
+⇓-eval
+  (When cases (mkTimeout (mkPosixTime t)) _) s ((mkTransactionInput i ts) ∷ is) (suc m)
+    | yes tₑ<t with ⇒-eval
+       ⟪ When cases (mkTimeout (mkPosixTime t)) _ , s , mkEnvironment i , [] , [] ⟫ refl tₑ<t ts m -- TODO: fixInterval
 ... | inj₂ _ = inj₂ TEUselessTransaction
 ... | inj₁ (D , C×i⇒D , _) with ⇓-eval (contract D) (state D) is m
 ... | inj₁ (⟦ ws , ps , s ⟧ , d×s×is⇓r) =
@@ -422,24 +256,18 @@ data _⇓_ : Contract × State → Result → Set where
 ... | inj₂ err = inj₂ err
 ⇓-eval c s [] (suc m) = inj₂ TEUselessTransaction -- TODO
 ⇓-eval c s ((mkTransactionInput i _) ∷ is) (suc m)
-  with eval
-       ⟪ c
-       , s
-       , mkEnvironment i
-       , []
-       , []
-       ⟫
-       m
-... | _ , Reduce-error _ e = inj₂ (mapError e)
+  with eval ⟪ c , s , mkEnvironment i , [] , [] ⟫ m
+... | _ , Ambiguous-time-interval _ _ = inj₂ TEAmbiguousTimeIntervalError
+... | _ , Execution-budget-exceeded _ = inj₂ TEExecutionBudgetExceeded
 ... | D , Reduce-until-quiescent C×i⇒D q with ⇓-eval (contract D) (state D) is m
 ... | inj₁ (⟦ ws , ps , s ⟧ , d×s×is⇓r) =
       inj₁ (⟦ ws ++ convertReduceWarnings (warnings D)
             , ps ++ payments D
             , s
             ⟧
-            , reduce-until-quiescent refl refl (Reduce-until-quiescent C×i⇒D q) d×s×is⇓r
+            , reduce-until-quiescent refl refl C×i⇒D q d×s×is⇓r
            )
-... | inj₂ err = inj₂ err
+... | inj₂ e = inj₂ e
 
 private
 
@@ -487,14 +315,12 @@ private
       ⟧
   reduction-steps =
     reduce-until-quiescent refl refl
-      (Reduce-until-quiescent
-        ((⟪ c , s , e , [] , [] ⟫) ⇀⟨ AssertFalse refl ⟩ (⟪ d , s , e , [ ReduceAssertionFailed ] , [] ⟫) ∎)
-        (waiting (s≤s (s≤s (s≤s z≤n)))))
-      (apply-inputs {i = [ NormalInput (IDeposit a₁ p₂ t 1) ]} refl refl (Deposit (here refl) refl (s≤s (s≤s (s≤s z≤n)))
-        (Reduce-until-quiescent
+      (⟪ c , s , e , [] , [] ⟫ ⇀⟨ AssertFalse refl ⟩ (⟪ d , s , e , [ ReduceAssertionFailed ] , [] ⟫ ∎))
+      (waiting (s≤s (s≤s (s≤s z≤n))))
+      (apply-inputs {i = [ NormalInput (IDeposit a₁ p₂ t 1) ]} refl refl
+        (Deposit (here refl) refl (s≤s (s≤s (s≤s z≤n))) close
           (⟪ Close , ⟨ [((a₁ , t) , 1)] , [] , [] , minTime s ⟩ , e , []  , [] ⟫
-                 ⇀⟨ CloseRefund ⟩ (⟪ Close , ⟨ [] , [] , [] , (minTime s) ⟩ , e , [] , [ a₁ [ t , 1 ]↦ mkParty p₁ ] ⟫) ∎)
-          close))
+                 ⇀⟨ CloseRefund ⟩ (⟪ Close , ⟨ [] , [] , [] , (minTime s) ⟩ , e , [] , [ a₁ [ t , 1 ]↦ mkParty p₁ ] ⟫) ∎))
         (done refl))
 
   _ = ⇓-eval c s (i ∷ []) 100 ≡

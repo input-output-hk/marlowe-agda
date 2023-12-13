@@ -32,32 +32,32 @@ open PosixTime
 
 -- Quiescent configurations do not reduce
 Quiescent¬⇀ :
-  ∀ {c₁ c₂ : Configuration}
-  → Quiescent c₁
+  ∀ {C₁ C₂ : Configuration}
+  → Quiescent C₁
   ---------------------------
-  → ¬ (c₁ ⇀ c₂)
+  → ¬ (C₁ ⇀ C₂)
 Quiescent¬⇀ close ()
 Quiescent¬⇀ (waiting {t} {tₛ} {Δₜ} (x)) (WhenTimeout {_} {t} {tₛ} {Δₜ} y) =
   let ¬p = ≤⇒≯ (≤-trans y (m≤m+n tₛ Δₜ)) in ¬p x
 
 -- If a configuration reduces, it is not quiescent
 ⇀¬Quiescent :
-  ∀ {c₁ c₂ : Configuration}
-  → c₁ ⇀ c₂
+  ∀ {C₁ C₂ : Configuration}
+  → C₁ ⇀ C₂
   ----------------
-  → ¬ Quiescent c₁
-⇀¬Quiescent c₁⇀c₂ q = Quiescent¬⇀ q c₁⇀c₂
+  → ¬ Quiescent C₁
+⇀¬Quiescent C₁⇀C₂ q = Quiescent¬⇀ q C₁⇀C₂
 
 -- A reduction step preserves assets
 totalAmount : Token → Configuration → ℕ
-totalAmount t c = Σ-accounts t (accounts (state c)) + Σ-payments t (payments c)
+totalAmount t C = Σ-accounts t (accounts (state C)) + Σ-payments t (payments C)
 
 ⇀assetPreservation :
-  ∀ {c₁ c₂ : Configuration}
+  ∀ {C₁ C₂ : Configuration}
   → (t : Token)
-  → (c₁ ⇀ c₂)
+  → (C₁ ⇀ C₂)
   --------------------------------
-  → totalAmount t c₁ ≡ totalAmount t c₂
+  → totalAmount t C₁ ≡ totalAmount t C₂
 ⇀assetPreservation t* (CloseRefund {a} {t} {i}) = m+n+o≡n+[m+o] {m = projₜ t* ((a , t) , i)}
 ⇀assetPreservation _ (PayNonPositive _) = refl
 ⇀assetPreservation _ (PayNoAccount _ _) = refl
@@ -99,6 +99,15 @@ totalAmount t c = Σ-accounts t (accounts (state c)) + Σ-payments t (payments c
 ⇀assetPreservation _ (AssertTrue _) = refl
 ⇀assetPreservation _ (AssertFalse _) = refl
 
+⇀⋆assetPreservation :
+  ∀ {C₁ C₂ : Configuration}
+  → (t : Token)
+  → (C₁ ⇀⋆ C₂)
+  --------------------------------
+  → totalAmount t C₁ ≡ totalAmount t C₂
+⇀⋆assetPreservation t (_ ∎) = refl
+⇀⋆assetPreservation t (_ ⇀⟨ x ⟩ x₁) rewrite ⇀assetPreservation t x = ⇀⋆assetPreservation t x₁
+
 -- Reducing a closed contract does not produce any warning
 ⇀⋆Close-is-safe :
   ∀ {c₂} {s₁ s₂} {e₁ e₂} {ws₁ ws₂} {ps₁ ps₂}
@@ -114,22 +123,6 @@ totalAmount t c = Σ-accounts t (accounts (state c)) + Σ-payments t (payments c
   → c₂ ≡ Close
 ⇀⋆Close-is-terminal ((⟪ Close , _ , _ , _ , _ ⟫) ∎) = refl
 ⇀⋆Close-is-terminal ((⟪ Close , _ , _ , _ , _ ⟫) ⇀⟨ CloseRefund ⟩ x) rewrite ⇀⋆Close-is-terminal x = refl
-
-↠-Close-is-terminal :
-  ∀ {C D}
-  → C ↠ D
-  → contract C ≡ Close
-  → contract D ≡ Close
-↠-Close-is-terminal (Reduce-until-quiescent C⇀⋆D _) refl = ⇀⋆Close-is-terminal C⇀⋆D
-↠-Close-is-terminal (Reduce-error C⇀⋆D _) refl = ⇀⋆Close-is-terminal C⇀⋆D
-
-↠-Close-is-safe :
-  ∀ {C D}
-  → C ↠ D
-  → contract C ≡ Close
-  → warnings C ≡ warnings D
-↠-Close-is-safe (Reduce-until-quiescent C⇀⋆D _) refl = ⇀⋆Close-is-safe C⇀⋆D
-↠-Close-is-safe (Reduce-error C⇀⋆D _) refl = ⇀⋆Close-is-safe C⇀⋆D
 
 ⇀-env-not-modified :
   ∀ {C D}
@@ -155,53 +148,53 @@ totalAmount t c = Σ-accounts t (accounts (state c)) + Σ-payments t (payments c
 ⇀⋆-env-not-modified (_ ∎) = refl
 ⇀⋆-env-not-modified (_ ⇀⟨ x ⟩ y) rewrite ⇀-env-not-modified x = ⇀⋆-env-not-modified y
 
-⇀-expiry : ∀ {C D}
+⇀-maxTimeout : ∀ {C D}
   → C ⇀ D
-  → expiry (contract D) ≤ expiry (contract C)
-⇀-expiry CloseRefund = ≤-refl
-⇀-expiry (PayNonPositive _) = ≤-refl
-⇀-expiry (PayNoAccount _ _) = ≤-refl
-⇀-expiry (PayInternalTransfer _ _) = ≤-refl
-⇀-expiry (PayExternal _ _) = ≤-refl
-⇀-expiry (IfTrue {c₁ = c₁} {c₂ = c₂} _) = m≤m⊔n (expiry c₁) (expiry c₂)
-⇀-expiry (IfFalse {c₁ = c₁} {c₂ = c₂} _) = m≤n⊔m (expiry c₁) (expiry c₂)
-⇀-expiry (WhenTimeout {t = t} {c = c} {cs = []} x) = m≤n⊔m t (expiry c)
-⇀-expiry (WhenTimeout {s} {t} {tₛ} {Δₜ} {c} {ws} {ps} {(mkCase _ c₁) ∷ cs} x) =
+  → maxTimeout (contract D) ≤ maxTimeout (contract C)
+⇀-maxTimeout CloseRefund = ≤-refl
+⇀-maxTimeout (PayNonPositive _) = ≤-refl
+⇀-maxTimeout (PayNoAccount _ _) = ≤-refl
+⇀-maxTimeout (PayInternalTransfer _ _) = ≤-refl
+⇀-maxTimeout (PayExternal _ _) = ≤-refl
+⇀-maxTimeout (IfTrue {c₁ = c₁} {c₂ = c₂} _) = m≤m⊔n (maxTimeout c₁) (maxTimeout c₂)
+⇀-maxTimeout (IfFalse {c₁ = c₁} {c₂ = c₂} _) = m≤n⊔m (maxTimeout c₁) (maxTimeout c₂)
+⇀-maxTimeout (WhenTimeout {t = t} {c = c} {cs = []} x) = m≤n⊔m t (maxTimeout c)
+⇀-maxTimeout (WhenTimeout {s} {t} {tₛ} {Δₜ} {c} {ws} {ps} {(mkCase _ c₁) ∷ cs} x) =
   ≤-trans
-    (⇀-expiry (WhenTimeout {s} {t} {tₛ} {Δₜ} {c} {ws} {ps} {cs} x))
-    (m≤n⊔m (expiry c₁) (expiry (When cs (mkTimeout (mkPosixTime t)) c)))
-⇀-expiry (LetShadow _ _) = ≤-refl
-⇀-expiry (LetNoShadow _) = ≤-refl
-⇀-expiry (AssertTrue _) = ≤-refl
-⇀-expiry (AssertFalse _) = ≤-refl
+    (⇀-maxTimeout (WhenTimeout {s} {t} {tₛ} {Δₜ} {c} {ws} {ps} {cs} x))
+    (m≤n⊔m (maxTimeout c₁) (maxTimeout (When cs (mkTimeout (mkPosixTime t)) c)))
+⇀-maxTimeout (LetShadow _ _) = ≤-refl
+⇀-maxTimeout (LetNoShadow _) = ≤-refl
+⇀-maxTimeout (AssertTrue _) = ≤-refl
+⇀-maxTimeout (AssertFalse _) = ≤-refl
 
-⇀⋆-expiry : ∀ {C D}
+⇀⋆-maxTimeout : ∀ {C D}
   → C ⇀⋆ D
-  → expiry (contract D) ≤ expiry (contract C)
-⇀⋆-expiry (_ ∎) = ≤-refl
-⇀⋆-expiry (_ ⇀⟨ x ⟩ y) = ≤-trans (⇀⋆-expiry y) (⇀-expiry x)
+  → maxTimeout (contract D) ≤ maxTimeout (contract C)
+⇀⋆-maxTimeout (_ ∎) = ≤-refl
+⇀⋆-maxTimeout (_ ⇀⟨ x ⟩ y) = ≤-trans (⇀⋆-maxTimeout y) (⇀-maxTimeout x)
 
-⇀⋆-reduce-after-timeout-closes-contract :
-  ∀ {C D}
+⇀⋆-reduce-after-timeout-closes-contract : ∀ {C D}
   → C ⇀⋆ D
   → Quiescent D
-  → expiry (contract C) < getPosixTime (startTime (timeInterval (environment C)))
+  → maxTimeout (contract C) < getPosixTime (startTime (timeInterval (environment C)))
   → (contract D) ≡ Close
 ⇀⋆-reduce-after-timeout-closes-contract _ close _ = refl
 ⇀⋆-reduce-after-timeout-closes-contract x (waiting {t} {tₛ} {Δₜ} {cs} {s} {c} x₁) x₂ rewrite ⇀⋆-env-not-modified x =
   contradiction
     (≤-trans
-      (expiry-When t cs c)
-      (⇀⋆-expiry x))
+      (timeout≤maxTimeout t cs c)
+      (⇀⋆-maxTimeout x))
     (<⇒≱ (≤-trans
            (≤-stepsʳ (suc Δₜ) x₂)
            (≤-trans
              (≤-reflexive (+-suc tₛ Δₜ))
              x₁)))
   where
-    expiry-When : ∀ t cs c → t ≤ expiry ( When cs (mkTimeout (mkPosixTime t)) c)
-    expiry-When t [] c = m≤m⊔n t (expiry c)
-    expiry-When t ((mkCase _ x) ∷ cs) c =
+    timeout≤maxTimeout : ∀ t cs c → t ≤ maxTimeout (When cs (mkTimeout (mkPosixTime t)) c)
+    timeout≤maxTimeout t [] c = m≤m⊔n t (maxTimeout c)
+    timeout≤maxTimeout t ((mkCase _ x) ∷ cs) c =
       ≤-trans
-        (expiry-When t cs c)
-        (m≤n⊔m (expiry x) (expiry (When cs (mkTimeout (mkPosixTime t)) c)))
+        (timeout≤maxTimeout t cs c)
+        (m≤n⊔m (maxTimeout x) (maxTimeout (When cs (mkTimeout (mkPosixTime t)) c)))
+
