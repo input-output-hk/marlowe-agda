@@ -1,5 +1,8 @@
+{-# OPTIONS --sized-types #-}
+
 module Marlowe.Semantics.Reduce where
 
+open import Agda.Builtin.Size
 open import Data.Bool using (Bool; if_then_else_; not; _∧_; _∨_; true; false)
 open import Data.Bool.Properties using (_≟_; ¬-not)
 open import Data.Integer as ℤ using (ℤ; 0ℤ; _≤_; _>_; ∣_∣; _<?_; _≤?_)
@@ -41,7 +44,7 @@ data ReduceWarning : Set where
   ReduceShadowing : ValueId → ℤ → ℤ → ReduceWarning
   ReduceAssertionFailed : ReduceWarning
 
-record Configuration : Set where
+record Configuration {i : Size} : Set where
   constructor ⟪_,_,_,_,_⟫
   field contract : Contract
         state : State
@@ -336,9 +339,9 @@ data AmbiguousTimeInterval : Configuration → Set where
         , ps
         ⟫
 
-data Reducible (C : Configuration) : Set where
+data Reducible {i} {j : Size< i} (C : Configuration {i}) : Set where
 
-  step : ∀ {D}
+  step : ∀ {D : Configuration {j}}
     → C ⇀ D
       -----------
     → Reducible C
@@ -448,29 +451,23 @@ data _⇀ₙ_ : Configuration → Configuration → Set where
     -------------------------
     → C ⇀ₙ D
 
-  Execution-budget-exceeded : ∀ {C D}
-    → C ⇀⋆ D
-    ---------
-    → C ⇀ₙ D
-
 -- Evaluator
 
+{-# TERMINATING #-} -- TODO: use sized types properly instead
 eval :
   ∀ (C : Configuration)
-  → ℕ
   → Σ[ D ∈ Configuration ] (C ⇀ₙ D)
-eval C zero = C , Execution-budget-exceeded (C ∎)
-eval C (suc m) with progress C
+eval C with progress C
 ... | quiescent q = C , Reduce-until-quiescent (C ∎) q
 ... | ambiguousTimeInterval a = C , Ambiguous-time-interval (C ∎) a
-... | step {D} C⇀D with eval D m
+... | step {D} C⇀D with eval D
 ...      | E , Reduce-until-quiescent D⇀⋆E s = E , Reduce-until-quiescent (C ⇀⟨ C⇀D ⟩ D⇀⋆E) s
 ...      | E , Ambiguous-time-interval D⇀⋆E a = E , Ambiguous-time-interval (C ⇀⟨ C⇀D ⟩ D⇀⋆E) a
-...      | E , Execution-budget-exceeded D⇀⋆E = E , Execution-budget-exceeded (C ⇀⟨ C⇀D ⟩ D⇀⋆E)
 
 -- Examples
 
 private
+
   role₁ role₂ : Party
   role₁ = Role (mkByteString "foo")
   role₂ = Role (mkByteString "bar")
@@ -509,4 +506,4 @@ private
     , [ accountId₁ [ token₁ , 5 ]↦ mkParty (unAccountId accountId₁) ]
     ⟫
 
-  _ = eval config₂ 100 ≡ (config₀ , Reduce-until-quiescent (config₂ ⇀⟨ IfTrue refl ⟩ config₁ ⇀⟨ CloseRefund ⟩ config₀ ∎) close)
+  _ = eval config₂ ≡ (config₀ , Reduce-until-quiescent (config₂ ⇀⟨ IfTrue refl ⟩ config₁ ⇀⟨ CloseRefund ⟩ config₀ ∎) close)
