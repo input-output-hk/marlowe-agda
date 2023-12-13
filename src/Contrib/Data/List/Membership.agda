@@ -1,4 +1,4 @@
-module Contrib.Data.List.Membership.Properties where
+module Contrib.Data.List.Membership where
 
 open import Data.List using (List; _∷_)
 open import Data.List.Membership.Propositional using (_∈_)

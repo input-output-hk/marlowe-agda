@@ -23,7 +23,7 @@ open import Marlowe.Language.Transaction
 open import Marlowe.Semantics.Evaluate
 open import Marlowe.Semantics.Reduce
 
-open import Contrib.Data.List.Membership.Properties using (∈-∷)
+open import Contrib.Data.List.Membership using (∈-∷)
 open import Contrib.Data.List.AssocList hiding (_∈_)
 open Decidable _≟-AccountId×Token_  renaming (_‼_default_ to _‼-AccountId×Token_default_; _↑_ to _↑-AccountId×Token_) hiding (_∈?_)
 open Decidable _≟-ChoiceId_ renaming (_‼_default_ to _‼-ChoiceId_default_;  _↑_ to _↑-ChoiceId_) using (_∈?_)
@@ -226,12 +226,36 @@ data _⇓_ : Contract × State → Result → Set where
 ⇓-eval _ _ _ zero = inj₂ TEExecutionBudgetExceeded
 ⇓-eval Close s@(⟨ [] , _ , _ , _ ⟩) [] (suc _) = inj₁ (⟦ [] , [] , s ⟧ , done refl)
 ⇓-eval
-  (When cases (mkTimeout (mkPosixTime t)) _) s ((mkTransactionInput i@(mkInterval (mkPosixTime tₛ) Δₜ) ts) ∷ is) (suc m)
-  with (tₛ ℕ.+ Δₜ) <? t
-... | no q with eval ⟪ When cases (mkTimeout (mkPosixTime t)) _ , s , mkEnvironment i , [] , [] ⟫ m
+  (When cases (mkTimeout (mkPosixTime t)) _) s ((mkTransactionInput i@(mkInterval (mkPosixTime tₛ) Δₜ) _) ∷ is) (suc m) with (tₛ ℕ.+ Δₜ) <? t
+... | no t≤tₑ with eval ⟪ When cases (mkTimeout (mkPosixTime t)) _ , s , mkEnvironment i , [] , [] ⟫ (suc m)
+...           | _ , Ambiguous-time-interval _ _ = inj₂ TEAmbiguousTimeIntervalError
+...           | _ , Execution-budget-exceeded _ = inj₂ TEExecutionBudgetExceeded
+...           | D , Reduce-until-quiescent C×i⇒D ¬q with ⇓-eval (contract D) (state D) is m
+...           | inj₁ (⟦ ws , ps , s ⟧ , d×s×is⇓r) =
+                inj₁ (⟦ ws ++ convertReduceWarnings (warnings D)
+                      , ps ++ payments D
+                      , s
+                      ⟧
+                      , reduce-until-quiescent refl refl C×i⇒D ¬q d×s×is⇓r
+                     )
+... | inj₂ e = inj₂ e
+⇓-eval
+  (When cases (mkTimeout (mkPosixTime t)) _) s ((mkTransactionInput i ts) ∷ is) (suc m)
+    | yes tₑ<t with ⇒-eval ⟪ When cases (mkTimeout (mkPosixTime t)) _ , s , mkEnvironment i , [] , [] ⟫ refl tₑ<t ts (suc m) -- TODO: fixInterval
+...            | inj₂ _ = inj₂ TEUselessTransaction
+...            | inj₁ (D , C×i⇒D , _) with ⇓-eval (contract D) (state D) is m
+...            | inj₁ (⟦ ws , ps , s ⟧ , d×s×is⇓r) =
+                 inj₁ (⟦ ws ++ convertReduceWarnings (warnings D)
+                       , ps ++ payments D
+                       , s
+                       ⟧
+                       , apply-inputs refl refl C×i⇒D d×s×is⇓r
+                      )
+... | inj₂ e = inj₂ e
+⇓-eval c s [] (suc m) with eval ⟪ c , s , mkEnvironment (mkInterval (mkPosixTime 0) 0) , [] , [] ⟫ (suc m)
 ... | _ , Ambiguous-time-interval _ _ = inj₂ TEAmbiguousTimeIntervalError
 ... | _ , Execution-budget-exceeded _ = inj₂ TEExecutionBudgetExceeded
-... | D , Reduce-until-quiescent C×i⇒D q with ⇓-eval (contract D) (state D) is m
+... | D , Reduce-until-quiescent C×i⇒D q with ⇓-eval (contract D) (state D) [] m
 ... | inj₁ (⟦ ws , ps , s ⟧ , d×s×is⇓r) =
       inj₁ (⟦ ws ++ convertReduceWarnings (warnings D)
             , ps ++ payments D
@@ -239,24 +263,8 @@ data _⇓_ : Contract × State → Result → Set where
             ⟧
             , reduce-until-quiescent refl refl C×i⇒D q d×s×is⇓r
            )
-... | inj₂ err = inj₂ err
-⇓-eval
-  (When cases (mkTimeout (mkPosixTime t)) _) s ((mkTransactionInput i ts) ∷ is) (suc m)
-    | yes tₑ<t with ⇒-eval
-       ⟪ When cases (mkTimeout (mkPosixTime t)) _ , s , mkEnvironment i , [] , [] ⟫ refl tₑ<t ts m -- TODO: fixInterval
-... | inj₂ _ = inj₂ TEUselessTransaction
-... | inj₁ (D , C×i⇒D , _) with ⇓-eval (contract D) (state D) is m
-... | inj₁ (⟦ ws , ps , s ⟧ , d×s×is⇓r) =
-      inj₁ (⟦ ws ++ convertReduceWarnings (warnings D)
-            , ps ++ payments D
-            , s
-            ⟧
-            , apply-inputs refl refl C×i⇒D d×s×is⇓r
-           )
-... | inj₂ err = inj₂ err
-⇓-eval c s [] (suc m) = inj₂ TEUselessTransaction -- TODO
-⇓-eval c s ((mkTransactionInput i _) ∷ is) (suc m)
-  with eval ⟪ c , s , mkEnvironment i , [] , [] ⟫ m
+... | inj₂ e = inj₂ e
+⇓-eval c s ((mkTransactionInput i _) ∷ is) (suc m) with eval ⟪ c , s , mkEnvironment i , [] , [] ⟫ (suc m)
 ... | _ , Ambiguous-time-interval _ _ = inj₂ TEAmbiguousTimeIntervalError
 ... | _ , Execution-budget-exceeded _ = inj₂ TEExecutionBudgetExceeded
 ... | D , Reduce-until-quiescent C×i⇒D q with ⇓-eval (contract D) (state D) is m

@@ -266,8 +266,8 @@ instance ToJSON T_InputContent_30 where
 instance ToJSON T_Input_38 where
   toJSON (C_NormalInput_40 content) = toJSON content
 
-instance ToJSON T_TransactionInput_62 where
-  toJSON (C_mkTransactionInput_72 (C_mkInterval_52 (C_mkPosixTime_44 start) delta) txInps) =
+instance ToJSON T_TransactionInput_64 where
+  toJSON (C_mkTransactionInput_74 (C_mkInterval_52 (C_mkPosixTime_44 start) delta) txInps) =
     object
       [ "tx_interval" .= timeIntervalJSON
       , "tx_inputs" .= toJSONList (map toJSON txInps)
