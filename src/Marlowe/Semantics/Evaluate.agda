@@ -1,3 +1,5 @@
+{-# OPTIONS --sized-types #-}
+
 module Marlowe.Semantics.Evaluate where
 
 open import Data.Bool using (Bool; false; true; _∧_; _∨_; if_then_else_; not)

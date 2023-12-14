@@ -1,5 +1,8 @@
+{-# OPTIONS --sized-types #-}
+
 module Marlowe.Language.Contract where
 
+open import Agda.Builtin.Size
 open import Agda.Builtin.Int using (Int)
 open import Agda.Builtin.List using (List)
 open import Data.Bool using (Bool; false; _∧_)
@@ -159,24 +162,24 @@ data Payee : Set where
   mkParty : Party → Payee
 
 
-data Contract : Set
+data Contract : {i : Size} → Set
 
-data Case : Set where
-  mkCase : Action → Contract → Case
+data Case : {i : Size} → Set where
+  mkCase : {i : Size} → Action → Contract {i} → Case
 
 data Contract where
-  Close : Contract
-  Pay : AccountId → Payee → Token → Value → Contract → Contract
-  If : Observation → Contract → Contract → Contract
-  When : List Case → Timeout → Contract → Contract
-  Let : ValueId → Value → Contract → Contract
-  Assert : Observation → Contract → Contract
+  Close : {i : Size} → Contract {i}
+  Pay : {i : Size} → AccountId → Payee → Token → Value → Contract {i} → Contract {↑ i}
+  If : {i j : Size} → Observation → Contract {i} → Contract {j} → Contract {i ⊔ˢ j}
+  When : {i j : Size} → List (Case {j}) → Timeout → Contract {i} → Contract {i ⊔ˢ j}
+  Let : {i : Size} → ValueId → Value → Contract {i} → Contract {↑ i}
+  Assert : {i : Size} → Observation → Contract {i} → Contract {↑ i}
 
 
 getAction : Case → Action
 getAction (mkCase action _) = action
 
-maxTimeout : Contract → ℕ
+maxTimeout : {i : Size} → Contract {i}  → ℕ
 maxTimeout Close = 0
 maxTimeout (Pay _ _ _ _ c) = maxTimeout c
 maxTimeout (If _ c₁ c₂) = maxTimeout c₁ ⊔ maxTimeout c₂

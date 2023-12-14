@@ -1,6 +1,6 @@
+{-# OPTIONS --sized-types #-}
 
 module Marlowe.Language.Input where
-
 
 open import Agda.Builtin.Int using (Int)
 open import Agda.Builtin.List using (List)

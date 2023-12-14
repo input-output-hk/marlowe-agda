@@ -1,3 +1,5 @@
+{-# OPTIONS --sized-types #-}
+
 module Marlowe.Language.State where
 
 open import Agda.Builtin.Int using (Int)

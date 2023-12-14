@@ -46,7 +46,7 @@ data ReduceWarning : Set where
 
 record Configuration {i : Size} : Set where
   constructor ⟪_,_,_,_,_⟫
-  field contract : Contract
+  field contract : Contract {i}
         state : State
         environment : Environment
         warnings : List ReduceWarning
@@ -339,9 +339,9 @@ data AmbiguousTimeInterval : Configuration → Set where
         , ps
         ⟫
 
-data Reducible {i} {j : Size< i} (C : Configuration {i}) : Set where
+data Reducible {i} (C : Configuration {i}) : Set where
 
-  step : ∀ {D : Configuration {j}}
+  step : ∀ {j : Size< i} {D : Configuration {j}}
     → C ⇀ D
       -----------
     → Reducible C
@@ -357,7 +357,7 @@ data Reducible {i} {j : Size< i} (C : Configuration {i}) : Set where
     → Reducible C
 
 
-progress : ∀ (C : Configuration) → Reducible C
+progress : ∀ {i : Size} (C : Configuration {i}) → Reducible {i} C
 progress
   ⟪ Close
   , ⟨ [] , _ , _ , _ ⟩
@@ -453,10 +453,11 @@ data _⇀ₙ_ : Configuration → Configuration → Set where
 
 -- Evaluator
 
-{-# TERMINATING #-} -- TODO: use sized types properly instead
 eval :
-  ∀ (C : Configuration)
-  → Σ[ D ∈ Configuration ] (C ⇀ₙ D)
+  ∀ {i : Size}
+    {j : Size< i}
+    (C : Configuration {i})
+  → Σ[ D ∈ (Configuration {j}) ] (C ⇀ₙ D)
 eval C with progress C
 ... | quiescent q = C , Reduce-until-quiescent (C ∎) q
 ... | ambiguousTimeInterval a = C , Ambiguous-time-interval (C ∎) a
