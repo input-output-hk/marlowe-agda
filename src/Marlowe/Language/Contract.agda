@@ -170,8 +170,8 @@ data Case : {i : Size} → Set where
 data Contract where
   Close : {i : Size} → Contract {i}
   Pay : {i : Size} → AccountId → Payee → Token → Value → Contract {i} → Contract {↑ i}
-  If : {i j : Size} → Observation → Contract {i} → Contract {j} → Contract {i ⊔ˢ j}
-  When : {i j : Size} → List (Case {j}) → Timeout → Contract {i} → Contract {i ⊔ˢ j}
+  If : {i : Size} → Observation → Contract {i} → Contract {i} → Contract {↑ i}
+  When : {i : Size} → List (Case {i}) → Timeout → Contract {i} → Contract {↑ i}
   Let : {i : Size} → ValueId → Value → Contract {i} → Contract {↑ i}
   Assert : {i : Size} → Observation → Contract {i} → Contract {↑ i}
 

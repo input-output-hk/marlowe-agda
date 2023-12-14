@@ -54,11 +54,11 @@ record Configuration {i : Size} : Set where
 
 open Configuration
 
-data _⇀_ : Configuration → Configuration → Set where
+data _⇀_ {i : Size} : Configuration {↑ i} → Configuration {i} → Set where
 
   CloseRefund : ∀ {a t n s ws ps e}
     --------------------------------
-    → ⟪ Close
+    → ⟪ Close {i}
       , record s
           { accounts =
             ((a , t) , n) ∷ accounts s
@@ -67,7 +67,7 @@ data _⇀_ : Configuration → Configuration → Set where
       , ws
       , ps
       ⟫ ⇀
-      ⟪ Close
+      ⟪ Close {i}
       , s
       , e
       , ws
@@ -77,7 +77,7 @@ data _⇀_ : Configuration → Configuration → Set where
   PayNonPositive : ∀ {s e v a p t c ws ps}
     → ℰ⟦ v ⟧ e s ℤ.≤ 0ℤ
     --------------------------------------
-    → ⟪ Pay a p t v c
+    → ⟪ Pay {i} a p t v c
       , s
       , e
       , ws
@@ -94,7 +94,7 @@ data _⇀_ : Configuration → Configuration → Set where
     → ℰ⟦ v ⟧ e s > 0ℤ
     → (a , t) ∉ accounts s
     ------------------------------------
-    → ⟪ Pay a p t v c
+    → ⟪ Pay {i} a p t v c
       , s
       , e
       , ws
@@ -115,7 +115,7 @@ data _⇀_ : Configuration → Configuration → Set where
         m = proj₂ (lookup aₛ×t∈as)
         n = ∣ ℰ⟦ v ⟧ e s ∣
       in
-      ⟪ Pay aₛ (mkAccount aₜ) t v c
+      ⟪ Pay {i} aₛ (mkAccount aₜ) t v c
       , s
       , e
       , ws
@@ -141,7 +141,7 @@ data _⇀_ : Configuration → Configuration → Set where
         m = proj₂ (lookup a×t∈as)
         n = ∣ ℰ⟦ v ⟧ e s ∣
       in
-      ⟪ Pay a (mkParty p) t v c
+      ⟪ Pay {i} a (mkParty p) t v c
       , s
       , e
       , ws
@@ -162,7 +162,7 @@ data _⇀_ : Configuration → Configuration → Set where
   IfTrue : ∀ {s e o c₁ c₂ ws ps}
     → 𝒪⟦ o ⟧ e s ≡ true
     ----------------------------
-    → ⟪ If o c₁ c₂
+    → ⟪ If {i} o c₁ c₂
       , s
       , e
       , ws
@@ -178,7 +178,7 @@ data _⇀_ : Configuration → Configuration → Set where
   IfFalse : ∀ {s e o c₁ c₂ ws ps}
     → 𝒪⟦ o ⟧ e s ≡ false
     -----------------------------
-    → ⟪ If o c₁ c₂
+    → ⟪ If {i} o c₁ c₂
       , s
       , e
       , ws
@@ -197,7 +197,7 @@ data _⇀_ : Configuration → Configuration → Set where
     → let
         e = mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ)
       in
-      ⟪ When cs (mkTimeout (mkPosixTime t)) c
+      ⟪ When {i} cs (mkTimeout (mkPosixTime t)) c
       , s
       , e
       , ws
@@ -210,11 +210,11 @@ data _⇀_ : Configuration → Configuration → Set where
       , ps
       ⟫
 
-  LetShadow : ∀ {s e c i v vᵢ ws ws' ps}
-    → (i , vᵢ) ∈-List boundValues s
-    → ws' ≡ ReduceShadowing i vᵢ (ℰ⟦ v ⟧ e s) ∷ ws
+  LetShadow : ∀ {s e c j v vᵢ ws ws' ps}
+    → (j , vᵢ) ∈-List boundValues s
+    → ws' ≡ ReduceShadowing j vᵢ (ℰ⟦ v ⟧ e s) ∷ ws
     ----------------------------------------------
-    → ⟪ Let i v c
+    → ⟪ Let {i} j v c
       , s
       , e
       , ws
@@ -227,10 +227,10 @@ data _⇀_ : Configuration → Configuration → Set where
       , ps
       ⟫
 
-  LetNoShadow : ∀ {s e c i v ws ps}
-    → i ∉ boundValues s
+  LetNoShadow : ∀ {s e c j v ws ps}
+    → j ∉ boundValues s
     --------------------
-    → ⟪ Let i v c
+    → ⟪ Let {i} j v c
       , s
       , e
       , ws
@@ -239,7 +239,7 @@ data _⇀_ : Configuration → Configuration → Set where
       ⟪ c
       , record s
           { boundValues =
-            (i , ℰ⟦ v ⟧ e s) ∷ boundValues s
+            (j , ℰ⟦ v ⟧ e s) ∷ boundValues s
           }
       , e
       , ws
@@ -249,7 +249,7 @@ data _⇀_ : Configuration → Configuration → Set where
   AssertTrue : ∀ {s e o c ws ps}
     → 𝒪⟦ o ⟧ e s ≡ true
     ----------------------------
-    → ⟪ Assert o c
+    → ⟪ Assert {i} o c
       , s
       , e
       , ws
@@ -265,7 +265,7 @@ data _⇀_ : Configuration → Configuration → Set where
   AssertFalse : ∀ {s e o c ws ps}
     → 𝒪⟦ o ⟧ e s ≡ false
     -----------------------------
-    → ⟪ Assert o c
+    → ⟪ Assert {i} o c
       , s
       , e
       , ws
@@ -339,9 +339,9 @@ data AmbiguousTimeInterval : Configuration → Set where
         , ps
         ⟫
 
-data Reducible {i} (C : Configuration {i}) : Set where
+data Reducible {i} (C : Configuration {↑ i}) : Set where
 
-  step : ∀ {j : Size< i} {D : Configuration {j}}
+  step : ∀ {D : Configuration {i}}
     → C ⇀ D
       -----------
     → Reducible C
@@ -359,7 +359,7 @@ data Reducible {i} (C : Configuration {i}) : Set where
 
 progress : ∀ {i : Size} (C : Configuration {i}) → Reducible {i} C
 progress
-  ⟪ Close
+  ⟪ Close {i}
   , ⟨ [] , _ , _ , _ ⟩
   , _
   , _
@@ -373,7 +373,7 @@ progress
   , _
   ⟫ = step CloseRefund
 progress
-  ⟪ Pay a (mkAccount p) t v c
+  ⟪ Pay {i} a (mkAccount p) t v c
   , s@(⟨ as , _ , _ , _ ⟩)
   , e
   , _
