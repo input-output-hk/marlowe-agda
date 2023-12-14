@@ -302,12 +302,12 @@ begin_ : ∀ {M N}
   → M ⇀⋆ N
 begin M⇀⋆N = M⇀⋆N
 
-data Quiescent : Configuration → Set where
+data Quiescent {i} : Configuration {↑ i} → Set where
 
   close : ∀ {e cs vs ws m ps}
     -------------------------
     → Quiescent
-        ⟪ Close
+        ⟪ Close {i}
         , ⟨ [] , cs , vs , m ⟩
         , e
         , ws
@@ -318,21 +318,21 @@ data Quiescent : Configuration → Set where
     → (tₛ + Δₜ) ℕ.< t
     -------------------------------
     → Quiescent
-        ⟪ When cs (mkTimeout (mkPosixTime t)) c
+        ⟪ When {i} cs (mkTimeout (mkPosixTime t)) c
         , s
         , mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ)
         , ws
         , ps
         ⟫
 
-data AmbiguousTimeInterval : Configuration → Set where
+data AmbiguousTimeInterval {i} : Configuration {↑ i} → Set where
 
   AmbiguousTimeIntervalError : ∀ {t tₛ Δₜ cs c s ws ps}
     → tₛ ℕ.< t
     → (tₛ + Δₜ) ℕ.≥ t
     --------------------------------------------------
     → AmbiguousTimeInterval
-        ⟪ When cs (mkTimeout (mkPosixTime t)) c
+        ⟪ When {i} cs (mkTimeout (mkPosixTime t)) c
         , s
         , mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ)
         , ws
@@ -357,9 +357,9 @@ data Reducible {i} (C : Configuration {↑ i}) : Set where
     → Reducible C
 
 
-progress : ∀ {i : Size} (C : Configuration {i}) → Reducible {i} C
+progress : ∀ {i : Size} (C : Configuration {↑ i}) → Reducible {i} C
 progress
-  ⟪ Close {i}
+  ⟪ Close
   , ⟨ [] , _ , _ , _ ⟩
   , _
   , _
@@ -373,7 +373,7 @@ progress
   , _
   ⟫ = step CloseRefund
 progress
-  ⟪ Pay {i} a (mkAccount p) t v c
+  ⟪ Pay a (mkAccount p) t v c
   , s@(⟨ as , _ , _ , _ ⟩)
   , e
   , _
@@ -419,7 +419,7 @@ progress
   ⟫ with i ∈-ValueId? vs
 ... | yes i∈vs =
   let vᵢ = proj₂ (lookup i∈vs)
-  in step (LetShadow {s} {e} {c} {i} {v} {vᵢ} {ws} {ReduceShadowing i vᵢ (ℰ⟦ v ⟧ e s) ∷ ws} {ps} (lookup∈-L i∈vs) refl)
+  in step (LetShadow {_} {s} {e} {c} {i} {v} {vᵢ} {ws} {ReduceShadowing i vᵢ (ℰ⟦ v ⟧ e s) ∷ ws} {ps} (lookup∈-L i∈vs) refl)
   where
     lookup∈-L : ∀ {A B : Set} {a : A} {abs : AssocList A B}
       → (a∈abs : a ∈ abs)
