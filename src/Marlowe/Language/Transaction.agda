@@ -41,7 +41,6 @@ data TransactionError : Set where
   TEIntervalError : IntervalError → TransactionError
   TEUselessTransaction : TransactionError
   TEHashMismatch : TransactionError
-  TEExecutionBudgetExceeded : TransactionError
 
 record TransactionInput : Set where
   constructor mkTransactionInput
