@@ -496,7 +496,9 @@
         "CHaP": "CHaP",
         "easy-purescript-nix": "easy-purescript-nix",
         "flake-utils": "flake-utils_2",
-        "hackage": "hackage",
+        "hackage": [
+          "hackage"
+        ],
         "haskell-nix": "haskell-nix",
         "iohk-nix": "iohk-nix",
         "nix2container": "nix2container",
@@ -868,6 +870,7 @@
     },
     "root": {
       "inputs": {
+        "hackage": "hackage",
         "iogx": "iogx"
       }
     },
