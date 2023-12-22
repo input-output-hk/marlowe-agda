@@ -81,8 +81,8 @@ data _⇒_ : {C : Configuration} → Waiting C × Input → Configuration → Se
         , ps
         ⟫
       ) ⇀⋆ D
-    ----------------------------------------------------
-    → ( waiting {cs = cs} {t = tₒ} {c = c} {s = s} {e = e} {ws = ws} {ps = ps} tₑ<tₒ
+    -------------------------------------------------
+    → ( waiting {cs} {tₒ} {c} {s} {e} {ws} {ps} tₑ<tₒ
       , NormalInput (IDeposit a p t n)
       ) ⇒ D
 
@@ -101,8 +101,8 @@ data _⇒_ : {C : Configuration} → Waiting C × Input → Configuration → Se
         , ps
         ⟫
       ) ⇀⋆ D
-    ----------------------------------------------------
-    → ( waiting {cs = cs} {t = tₒ} {c = c} {s = s} {e = e} {ws = ws} {ps = ps} tₑ<tₒ
+    -------------------------------------------------
+    → ( waiting {cs} {tₒ} {c} {s} {e} {ws} {ps} tₑ<tₒ
       , NormalInput (IChoice i n)
       ) ⇒ D
 
@@ -118,12 +118,14 @@ data _⇒_ : {C : Configuration} → Waiting C × Input → Configuration → Se
         , ps
         ⟫
       ) ⇀⋆ D
-    --------------------------------------------
-    → ( waiting {cs = cs} {t = tₒ} {c = c} {s = s} {e = e} {ws = ws} {ps = ps} tₑ<tₒ
+    -------------------------------------------------
+    → ( waiting {cs} {tₒ} {c} {s} {e} {ws} {ps} tₑ<tₒ
       , NormalInput INotify
       ) ⇒ D
 
-{-# TERMINATING #-} -- TODO: replace recursion
+-- Evaluator for mid-step semantics
+
+{-# TERMINATING #-} -- TODO: use sized types instead
 ⇒-eval :
   ∀ {C : Configuration}
   → (w : Waiting C)
@@ -273,7 +275,7 @@ data _⇓_ : Contract × State → Result → Set where
   apply-inputs :
     ∀ {i D s cs t c sc e ws ps ws′ ps′}
     → (tₑ<t : (interval-end e) ℕ.< t)
-    → (waiting {cs = cs} {t = t} {c = c} {s = sc} {e = e} {ws = ws} {ps = ps} tₑ<t , i) ⇒ D
+    → (waiting {cs} {t} {c} {sc} {e} {ws} {ps} tₑ<t , i) ⇒ D
     → (contract D , state D) ⇓
       ⟦ ws′
       , ps′
