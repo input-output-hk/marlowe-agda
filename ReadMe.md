@@ -5,7 +5,7 @@ This repository implements [Marlowe Semantics](https://github.com/input-output-h
 
 ## Development
 
-Run `nix-shell` to enter a Nix shell for the Agda environment. If the Agda environment has not been used previously, run `agda-mode setup && agda-mode compile`. Use `emacs` to edit `.agda` files.
+Run `nix develop` to enter a Nix shell for the Agda environment. If the Agda environment has not been used previously, run `agda-mode setup && agda-mode compile`. Use `emacs` to edit `.agda` files.
 
 
 

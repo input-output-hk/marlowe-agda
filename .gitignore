@@ -6,3 +6,4 @@ tmp/
 *.agdai
 \#*\#
 .\#*
+.pre-commit-config.yaml
