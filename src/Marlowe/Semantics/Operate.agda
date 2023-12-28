@@ -175,30 +175,30 @@ applicable? {s} {e} INotify (Notify o)
   with applicable? {s} {e} ic a
 
 -- here
-⇒-eval (waiting {mkCase _ cₐ ∷ cs} {_} {c} {s} {e} {ws} {ps} tₑ<t) (NormalInput ic) | just (deposit-input {a} {p} {t} {_} {n} ℰ⟦v⟧≡+n)
-  with eval ⟪ cₐ , record s { accounts = ((a , t) , n) ↑-update (accounts s) } , e , ws , ps ⟫
+⇒-eval (waiting {mkCase _ cₐ ∷ cs} {_} {_} {s} {e} {ws} {ps} tₑ<t) (NormalInput ic) | just (deposit-input {a} {p} {t} {_} {n} ℰ⟦v⟧≡+n)
+  with ⇀-eval ⟪ cₐ , record s { accounts = ((a , t) , n) ↑-update (accounts s) } , e , ws , ps ⟫
 ... | D , Reduce-until-quiescent C⇀⋆D  q = inj₁ (D , Deposit (here refl) ℰ⟦v⟧≡+n tₑ<t q C⇀⋆D , q)
 ... | _ , Ambiguous-time-interval _ _    = inj₂ TEAmbiguousTimeIntervalError
-⇒-eval (waiting {mkCase a cₐ ∷ cs} {t} {c} {s} {e} {ws} {ps} tₑ<t) (NormalInput ic) | just (choice-input {i} {n} {bs} p)
-  with eval ⟪ cₐ , record s { choices = (i , unChosenNum n) ↑-ChoiceId (choices s) } , e , ws , ps ⟫
+⇒-eval (waiting {mkCase _ cₐ ∷ cs} {_} {_} {s} {e} {ws} {ps} tₑ<t) (NormalInput ic) | just (choice-input {i} {n} {bs} p)
+  with ⇀-eval ⟪ cₐ , record s { choices = (i , unChosenNum n) ↑-ChoiceId (choices s) } , e , ws , ps ⟫
 ... | D , Reduce-until-quiescent C⇀⋆D q = inj₁ (D , Choice (here refl) p tₑ<t q C⇀⋆D , q)
 ... | _ , Ambiguous-time-interval _ _   = inj₂ TEAmbiguousTimeIntervalError
-⇒-eval (waiting {mkCase a cₐ ∷ cs} {t} {c} {s} {e} {ws} {ps} tₑ<t) (NormalInput ic) | just (notify-input {o} o≡true)
-  with eval ⟪ cₐ , s , e , ws , ps ⟫
+⇒-eval (waiting {mkCase _ cₐ ∷ cs} {_} {_} {s} {e} {ws} {ps} tₑ<t) (NormalInput ic) | just (notify-input {o} o≡true)
+  with ⇀-eval ⟪ cₐ , s , e , ws , ps ⟫
 ... | D , Reduce-until-quiescent C⇀⋆D q = inj₁ (D , Notify {s = s} {o = o} {e = e} (here refl) o≡true tₑ<t q C⇀⋆D , q)
 ... | _ , Ambiguous-time-interval _ _   = inj₂ TEAmbiguousTimeIntervalError
 
 -- there
-⇒-eval (waiting {(_ ∷ cs)} {_} {c} tₑ<t) (NormalInput (IDeposit x x₁ x₂ x₃)) | nothing with
-  ⇒-eval (waiting {cs} {_} {c} tₑ<t) (NormalInput (IDeposit x x₁ x₂ x₃))
+⇒-eval (waiting {(_ ∷ cs)} {_} {c} tₑ<t) (NormalInput i@(IDeposit x x₁ x₂ x₃)) | nothing with
+  ⇒-eval (waiting {cs} {_} {c} tₑ<t) (NormalInput i)
 ... | inj₁ (D , (Deposit x x₁ x₂ x₃ x₄) , q) = inj₁ (D , (Deposit (∈-∷ x) x₁ x₂ x₃ x₄ , q))
 ... | inj₂ e = inj₂ e
-⇒-eval (waiting {(_ ∷ cs)} {_} {c} {s} tₑ<t) (NormalInput (IChoice x x₁)) | nothing with
-  ⇒-eval (waiting {cs} {_} {c} {s} tₑ<t) (NormalInput (IChoice x x₁))
+⇒-eval (waiting {(_ ∷ cs)} {_} {c} {s} tₑ<t) (NormalInput i@(IChoice x x₁)) | nothing with
+  ⇒-eval (waiting {cs} {_} {c} {s} tₑ<t) (NormalInput i)
 ... | inj₁ (D , (Choice x x₁ x₂ x₃ x₄) , q) = inj₁ (D , (Choice (∈-∷ x) x₁ x₂ x₃ x₄ , q))
 ... | inj₂ e = inj₂ e
-⇒-eval (waiting {(_ ∷ cs)} {_} {c} tₑ<t) (NormalInput INotify) | nothing with
-  ⇒-eval (waiting {cs} {_} {c} tₑ<t) (NormalInput INotify)
+⇒-eval (waiting {(_ ∷ cs)} {_} {c} tₑ<t) (NormalInput i@INotify) | nothing with
+  ⇒-eval (waiting {cs} {_} {c} tₑ<t) (NormalInput i)
 ... | inj₁ (D , (Notify x x₁ x₂ x₃ x₄) , q) = inj₁ (D , (Notify (∈-∷ x) x₁ x₂ x₃ x₄ , q))
 ... | inj₂ e = inj₂ e
 
@@ -230,7 +230,7 @@ data _⇓_ : Contract × State → Result → Set where
       , s
       ⟧
 
-  apply-inputs :
+  apply-input :
     ∀ {i D s cs t c sc e ws ps ws′ ps′}
     → (tₑ<t : (interval-end e) < t)
     → (waiting {cs} {t} {c} {sc} {e} {ws} {ps} tₑ<t , i) ⇒ D
@@ -273,9 +273,9 @@ fixInterval i@(mkInterval (mkPosixTime tₛ) Δₜ) s@(⟨ _ , _ , _ , mkPosixTi
 ⇓-eval Close s@(⟨ [] , _ , _ , _ ⟩) [] = inj₁ (⟦ [] , [] , s ⟧ , done refl)
 
 ⇓-eval
-  (When cases (mkTimeout (mkPosixTime t)) _) s ((mkTransactionInput i@(mkInterval (mkPosixTime tₛ) Δₜ) _) ∷ is) with (tₛ + Δₜ) <? t
+  (When cs (mkTimeout (mkPosixTime t)) _) s ((mkTransactionInput i@(mkInterval (mkPosixTime tₛ) Δₜ) _) ∷ is) with (tₛ + Δₜ) <? t
 ... | no t≤tₑ
-    with eval ⟪ When cases (mkTimeout (mkPosixTime t)) _ , s , mkEnvironment i , [] , [] ⟫
+    with ⇀-eval ⟪ When cs (mkTimeout (mkPosixTime t)) _ , s , mkEnvironment i , [] , [] ⟫
 ...    | _ , Ambiguous-time-interval _ _ = inj₂ TEAmbiguousTimeIntervalError
 ...    | D , Reduce-until-quiescent C×i⇒D ¬q
     with ⇓-eval (contract D) (state D) is
@@ -289,25 +289,26 @@ fixInterval i@(mkInterval (mkPosixTime tₛ) Δₜ) s@(⟨ _ , _ , _ , mkPosixTi
 ...    | inj₂ e = inj₂ e
 
 ⇓-eval
-  (When cases (mkTimeout (mkPosixTime t)) c) s ((mkTransactionInput i@(mkInterval (mkPosixTime tₛ) Δₜ) (ts ∷ tss)) ∷ is)
+  (When cs (mkTimeout (mkPosixTime t)) c) s ((mkTransactionInput i@(mkInterval (mkPosixTime tₛ) Δₜ) (ts ∷ tss)) ∷ is)
     | yes tₑ<t
-    with ⇒-eval (waiting  {cases} {t} {c} {s} {e = mkEnvironment i} {[]} {[]} tₑ<t) ts -- TODO: fixInterval
+    with ⇒-eval (waiting {cs} {t} {c} {s} {e = mkEnvironment i} {[]} {[]} tₑ<t) ts -- TODO: fixInterval
 ...    | inj₂ _ = inj₂ TEUselessTransaction
 ...    | inj₁ (D , C×i⇒D , _)
+
     with ⇓-eval (contract D) (state D) is
 ...    | inj₁ (⟦ ws , ps , s ⟧ , d×s×is⇓r) =
            inj₁ (⟦ ws ++ convertReduceWarnings (warnings D)
                  , ps ++ payments D
                  , s
                  ⟧
-                 , apply-inputs tₑ<t C×i⇒D d×s×is⇓r
+                 , apply-input tₑ<t C×i⇒D d×s×is⇓r
                 )
 ...    | inj₂ e = inj₂ e
 
 ⇓-eval
-  (When cases (mkTimeout (mkPosixTime t)) c) s ((mkTransactionInput i@(mkInterval (mkPosixTime tₛ) Δₜ) []) ∷ is)
+  (When cs (mkTimeout (mkPosixTime t)) c) s ((mkTransactionInput i@(mkInterval (mkPosixTime tₛ) Δₜ) []) ∷ is)
     | yes tₑ<t
-    with eval ⟪ When cases (mkTimeout (mkPosixTime t)) _ , s , mkEnvironment i , [] , [] ⟫
+    with ⇀-eval ⟪ When cs (mkTimeout (mkPosixTime t)) _ , s , mkEnvironment i , [] , [] ⟫
 ...    | _ , Ambiguous-time-interval _ _ = inj₂ TEAmbiguousTimeIntervalError
 ...    | D , Reduce-until-quiescent C×i⇒D ¬q
     with ⇓-eval (contract D) (state D) is
@@ -321,7 +322,7 @@ fixInterval i@(mkInterval (mkPosixTime tₛ) Δₜ) s@(⟨ _ , _ , _ , mkPosixTi
 ...    | inj₂ e = inj₂ e
 
 ⇓-eval c s []
-    with eval ⟪ c , s , mkEnvironment (mkInterval (mkPosixTime 0) 0) , [] , [] ⟫
+    with ⇀-eval ⟪ c , s , mkEnvironment (mkInterval (mkPosixTime 0) 0) , [] , [] ⟫
 ... | _ , Ambiguous-time-interval _ _ = inj₂ TEAmbiguousTimeIntervalError
 ... | D , Reduce-until-quiescent C×i⇒D q
     with ⇓-eval (contract D) (state D) []
@@ -334,7 +335,7 @@ fixInterval i@(mkInterval (mkPosixTime tₛ) Δₜ) s@(⟨ _ , _ , _ , mkPosixTi
            )
 ... | inj₂ e = inj₂ e
 ⇓-eval c s ((mkTransactionInput i _) ∷ is)
-    with eval ⟪ c , s , mkEnvironment i , [] , [] ⟫
+    with ⇀-eval ⟪ c , s , mkEnvironment i , [] , [] ⟫
 ... | _ , Ambiguous-time-interval _ _ = inj₂ TEAmbiguousTimeIntervalError
 ... | D , Reduce-until-quiescent C×i⇒D q
     with ⇓-eval (contract D) (state D) is
@@ -395,7 +396,7 @@ private
     reduce-until-quiescent refl refl
       (⟪ c , s , e , [] , [] ⟫ ⇀⟨ AssertFalse refl ⟩ (⟪ d , s , e , [ ReduceAssertionFailed ] , [] ⟫ ∎))
       (waiting (s≤s (s≤s (s≤s z≤n))))
-      (apply-inputs {i = NormalInput (IDeposit a₁ p₂ t 1)} (s≤s (s≤s (s≤s z≤n)))
+      (apply-input {i = NormalInput (IDeposit a₁ p₂ t 1)} (s≤s (s≤s (s≤s z≤n)))
         (Deposit (here refl) refl (s≤s (s≤s (s≤s z≤n))) close
           (⟪ Close , ⟨ [((a₁ , t) , 1)] , [] , [] , minTime s ⟩ , e , []  , [] ⟫
                  ⇀⟨ CloseRefund ⟩ (⟪ Close , ⟨ [] , [] , [] , (minTime s) ⟩ , e , [] , [ a₁ [ t , 1 ]↦ mkParty p₁ ] ⟫) ∎))

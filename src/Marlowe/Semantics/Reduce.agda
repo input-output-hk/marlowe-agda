@@ -434,6 +434,8 @@ progress
 ... | yes o≡true = step (AssertTrue o≡true)
 ... | no ¬o≡true = step (AssertFalse (¬-not ¬o≡true))
 
+
+-- TODO: probably remove
 data _⇀ₙ_ : Configuration → Configuration → Set where
 
   Reduce-until-quiescent : ∀ {C D}
@@ -451,13 +453,13 @@ data _⇀ₙ_ : Configuration → Configuration → Set where
 -- Evaluator
 
 {-# TERMINATING #-} -- TODO: use sized types instead
-eval :
+⇀-eval :
   ∀ (C : Configuration)
   → Σ[ D ∈ Configuration ] (C ⇀ₙ D)
-eval C with progress C
+⇀-eval C with progress C
 ... | quiescent q = C , Reduce-until-quiescent (C ∎) q
 ... | ambiguousTimeInterval a = C , Ambiguous-time-interval (C ∎) a
-... | step {D} C⇀D with eval D
+... | step {D} C⇀D with ⇀-eval D
 ...      | E , Reduce-until-quiescent D⇀⋆E s = E , Reduce-until-quiescent (C ⇀⟨ C⇀D ⟩ D⇀⋆E) s
 ...      | E , Ambiguous-time-interval D⇀⋆E a = E , Ambiguous-time-interval (C ⇀⟨ C⇀D ⟩ D⇀⋆E) a
 
@@ -503,4 +505,4 @@ private
     , [ accountId₁ [ token₁ , 5 ]↦ mkParty (unAccountId accountId₁) ]
     ⟫
 
-  _ = eval config₂ ≡ (config₀ , Reduce-until-quiescent (config₂ ⇀⟨ IfTrue refl ⟩ config₁ ⇀⟨ CloseRefund ⟩ config₀ ∎) close)
+  _ = ⇀-eval config₂ ≡ (config₀ , Reduce-until-quiescent (config₂ ⇀⟨ IfTrue refl ⟩ config₁ ⇀⟨ CloseRefund ⟩ config₀ ∎) close)
