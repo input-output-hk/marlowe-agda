@@ -3,13 +3,12 @@ module Marlowe.Semantics.Operate where
 open import Agda.Builtin.Int using (Int)
 open import Data.Bool as 𝔹 using (Bool; if_then_else_; not; _∧_; _∨_; true; false)
 open import Data.Integer as ℤ using (∣_∣; +_)
-
 open import Data.List using (List; []; _∷_; _++_; foldr; reverse; [_]; null; map)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Membership.DecSetoid using () renaming (_∈?_ to _∈?-List_)
 open import Data.List.Membership.Setoid.Properties
-open import Data.List.Relation.Unary.Any using (Any; here; there; lookup)
-open import Data.List.Relation.Unary.Any.Properties using (map⁻)
+open import Data.List.Relation.Unary.Any using (Any; here; there; lookup; any?)
+open import Data.List.Relation.Unary.Any.Properties -- using (map⁻)
 open import Data.Maybe using (Maybe; just; nothing; fromMaybe)
 open import Data.Nat as ℕ using (ℕ; suc; zero; _<_; _<ᵇ_; _<?_; _≟_; z≤n; s≤s; _+_; _⊔_; _∸_)
 open import Data.Nat.Properties using (≰⇒>)
@@ -17,7 +16,9 @@ open import Data.Product using (Σ; _,_; ∃; Σ-syntax; ∃-syntax)
 open import Data.Product using (_×_; proj₁; proj₂)
 import Data.String as String
 open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Function.Base using (_∘_ ;id)
 open import Relation.Nullary.Decidable using (⌊_⌋)
+open import Relation.Binary.Consequences
 
 open import Marlowe.Language.Contract
 open import Marlowe.Language.Input
@@ -31,12 +32,12 @@ open import Contrib.Data.List.AssocList renaming (_∈_ to _∈′_)
 open Decidable _≟-AccountId×Token_  renaming (_‼_default_ to _‼-AccountId×Token_default_; _↑_ to _↑-AccountId×Token_) hiding (_∈?_)
 open Decidable _≟-ChoiceId_ renaming (_‼_default_ to _‼-ChoiceId_default_;  _↑_ to _↑-ChoiceId_) using (_∈?_)
 open Decidable _≟-ValueId_ renaming (_‼_ to _‼_ValueId_; _‼_default_ to _‼-ValueId_default_; _∈?_ to _∈-ValueId?_; _↑_ to _↑-ValueId_)
-
+open import Relation.Binary using (Decidable; DecidableEquality; WeaklyDecidable)
+import Relation.Binary.PropositionalEquality as Eq
+open Eq using (_≡_; refl; cong; sym; trans)
 open import Relation.Nullary.Decidable using (⌊_⌋)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 
-import Relation.Binary.PropositionalEquality as Eq
-open Eq using (_≡_; refl; cong; sym)
 
 open Configuration
 open State
@@ -124,6 +125,42 @@ data _⇒_ : {C : Configuration} → Waiting C × Input → Configuration → Se
       , NormalInput INotify
       ) ⇒ D
 
+
+data _↦_ {s : State} {e : Environment} : InputContent → Action → Set where
+
+  deposit-input : ∀ {a p t v n}
+    → ℰ⟦ v ⟧ e s ≡ + n
+    → IDeposit a p t n ↦ Deposit a p t v
+
+  choice-input : ∀ {i n bs}
+    → n inBounds bs ≡ true
+    → IChoice i n ↦ Choice i bs
+
+  notify-input : ∀ {o}
+    → 𝒪⟦ o ⟧ e s ≡ true
+    → INotify ↦ Notify o
+
+applicable? : ∀ {s : State} {e : Environment} → (i : InputContent) → (a : Action) → Maybe (_↦_ {s} {e} i a)
+applicable? {s} {e} (IDeposit a₁ p₁ t₁ n) (Deposit a₂ p₂ t₂ v)
+  with a₁ ≟-AccountId a₂ | p₁ ≟-Party p₂ | t₁ ≟-Token t₂ | ℰ⟦ v ⟧ e s  ℤ.≟ + n
+... | yes refl | yes refl | yes refl | yes p = just (deposit-input {_} {_} {a₁} {p₁} {t₁} {v} {n} p)
+... | _        | _        | _        | _     = nothing
+applicable? (IDeposit _ _ _ _) (Choice _ _ ) = nothing
+applicable? (IDeposit _ _ _ _) (Notify _) = nothing
+applicable? (IChoice _ _ ) (Deposit _ _ _ _ ) = nothing
+applicable? (IChoice i₁ n) (Choice i₂ b)
+  with i₁ ≟-ChoiceId i₂ | n inBounds b 𝔹.≟ true
+... | yes refl | yes p = (just (choice-input {_} {_} {i₁} {n} {b} p))
+... | _        | _     = nothing
+applicable? (IChoice _ _) (Notify _) = nothing
+applicable? INotify (Deposit _ _ _ _) = nothing
+applicable? INotify (Choice _ _) = nothing
+applicable? {s} {e} INotify (Notify o)
+  with 𝒪⟦ o ⟧ e s 𝔹.≟ true
+... | yes p = just (notify-input {_} {_} {o = o} p)
+... | no _  = nothing
+
+
 -- Evaluator for mid-step semantics
 
 {-# TERMINATING #-} -- TODO: use sized types instead
@@ -132,117 +169,37 @@ data _⇒_ : {C : Configuration} → Waiting C × Input → Configuration → Se
   → (w : Waiting C)
   → (i : Input)
   → (Σ[ D ∈ Configuration ] (((w , i) ⇒ D) × (Quiescent D))) ⊎ TransactionError
-⇒-eval (waiting {[]} _) _ = inj₂ TEApplyNoMatchError
+⇒-eval {⟪ When [] (mkTimeout (mkPosixTime tₒ)) c , s , e , ws , ps ⟫} (waiting tₑ<t) (NormalInput ic) = inj₂ TEApplyNoMatchError
 
--- Deposit
+⇒-eval (waiting {mkCase a cₐ ∷ cs} {t} {c} {s} {e} {ws} {ps} tₑ<t) (NormalInput ic)
+  with applicable? {s} {e} ic a
 
-⇒-eval
-  (waiting {mkCase (Deposit a₁ p₁ t₁ v) cₐ ∷ cs} {_} {c} {s} {e} {ws} {ps} tₑ<t)
-  x@(NormalInput (IDeposit a₂ p₂ t₂ n))
-  with a₁ ≟-AccountId a₂ | p₁ ≟-Party p₂ | t₁ ≟-Token t₂ | ℰ⟦ v ⟧ e s  ℤ.≟ + n |
-    eval ⟪ cₐ , record s { accounts = ((a₁ , t₁) , n) ↑-update (accounts s) } , e , ws , ps ⟫
-... | yes refl | yes refl | yes refl | yes ℰ⟦v⟧≡+n | (D , Reduce-until-quiescent C⇀⋆D  q) = inj₁ (D , Deposit (here refl) ℰ⟦v⟧≡+n tₑ<t q C⇀⋆D , q)
-... | yes _    | yes _    | yes _    | yes _       | (D , Ambiguous-time-interval _ _)    = inj₂ TEAmbiguousTimeIntervalError
-... | _        | _        | _        | _           | _
-  with
-    ⇒-eval
-      (waiting {cs = cs} {c = c} tₑ<t)
-      x
+-- here
+⇒-eval (waiting {mkCase _ cₐ ∷ cs} {_} {c} {s} {e} {ws} {ps} tₑ<t) (NormalInput ic) | just (deposit-input {a} {p} {t} {_} {n} ℰ⟦v⟧≡+n)
+  with eval ⟪ cₐ , record s { accounts = ((a , t) , n) ↑-update (accounts s) } , e , ws , ps ⟫
+... | D , Reduce-until-quiescent C⇀⋆D  q = inj₁ (D , Deposit (here refl) ℰ⟦v⟧≡+n tₑ<t q C⇀⋆D , q)
+... | _ , Ambiguous-time-interval _ _    = inj₂ TEAmbiguousTimeIntervalError
+⇒-eval (waiting {mkCase a cₐ ∷ cs} {t} {c} {s} {e} {ws} {ps} tₑ<t) (NormalInput ic) | just (choice-input {i} {n} {bs} p)
+  with eval ⟪ cₐ , record s { choices = (i , unChosenNum n) ↑-ChoiceId (choices s) } , e , ws , ps ⟫
+... | D , Reduce-until-quiescent C⇀⋆D q = inj₁ (D , Choice (here refl) p tₑ<t q C⇀⋆D , q)
+... | _ , Ambiguous-time-interval _ _   = inj₂ TEAmbiguousTimeIntervalError
+⇒-eval (waiting {mkCase a cₐ ∷ cs} {t} {c} {s} {e} {ws} {ps} tₑ<t) (NormalInput ic) | just (notify-input {o} o≡true)
+  with eval ⟪ cₐ , s , e , ws , ps ⟫
+... | D , Reduce-until-quiescent C⇀⋆D q = inj₁ (D , Notify {s = s} {o = o} {e = e} (here refl) o≡true tₑ<t q C⇀⋆D , q)
+... | _ , Ambiguous-time-interval _ _   = inj₂ TEAmbiguousTimeIntervalError
+
+-- there
+⇒-eval (waiting {(_ ∷ cs)} {_} {c} tₑ<t) (NormalInput (IDeposit x x₁ x₂ x₃)) | nothing with
+  ⇒-eval (waiting {cs} {_} {c} tₑ<t) (NormalInput (IDeposit x x₁ x₂ x₃))
 ... | inj₁ (D , (Deposit x x₁ x₂ x₃ x₄) , q) = inj₁ (D , (Deposit (∈-∷ x) x₁ x₂ x₃ x₄ , q))
 ... | inj₂ e = inj₂ e
-
-⇒-eval
-  (waiting {mkCase (Deposit a p t v) cₐ ∷ cs} {_} {c} {s} {e} {ws} {ps} tₑ<t)
-  x@(NormalInput (IChoice i n))
-  with
-    ⇒-eval
-      (waiting {cs = cs} {c = c} {s = s} tₑ<t)
-      x
+⇒-eval (waiting {(_ ∷ cs)} {_} {c} {s} tₑ<t) (NormalInput (IChoice x x₁)) | nothing with
+  ⇒-eval (waiting {cs} {_} {c} {s} tₑ<t) (NormalInput (IChoice x x₁))
 ... | inj₁ (D , (Choice x x₁ x₂ x₃ x₄) , q) = inj₁ (D , (Choice (∈-∷ x) x₁ x₂ x₃ x₄ , q))
 ... | inj₂ e = inj₂ e
-
-⇒-eval
-  (waiting {mkCase (Deposit a p t v) cₐ ∷ cs} {_} {c} {s} {e} {ws} {ps} tₑ<t)
-  x@(NormalInput INotify)
-  with
-    ⇒-eval
-      (waiting {cs = cs} {c = c} {s = s} tₑ<t)
-      x
+⇒-eval (waiting {(_ ∷ cs)} {_} {c} tₑ<t) (NormalInput INotify) | nothing with
+  ⇒-eval (waiting {cs} {_} {c} tₑ<t) (NormalInput INotify)
 ... | inj₁ (D , (Notify x x₁ x₂ x₃ x₄) , q) = inj₁ (D , (Notify (∈-∷ x) x₁ x₂ x₃ x₄ , q))
-... | inj₂ e = inj₂ e
-
--- Choice
-
-⇒-eval
-  (waiting {mkCase (Choice i₁ b₁) cₐ ∷ cs} {t} {c} {s} {e} {ws} {ps} tₑ<t)
-  (NormalInput (IChoice i₂ n₂))
-  with i₁ ≟-ChoiceId i₂ | n₂ inBounds b₁ 𝔹.≟ true |
-    eval ⟪ cₐ , record s { choices = (i₁ , unChosenNum n₂) ↑-ChoiceId (choices s) } , e , ws , ps ⟫
-... | yes refl | yes p | (D , Reduce-until-quiescent C⇀⋆D q) = inj₁ (D , Choice (here refl) p tₑ<t q C⇀⋆D , q)
-... | yes _    | yes _ | (_ , Ambiguous-time-interval _ _)    = inj₂ TEAmbiguousTimeIntervalError
-... | _        | _     | _
-  with
-    ⇒-eval
-      (waiting {cs = cs} {c = c} {s = s} tₑ<t)
-      (NormalInput (IChoice i₂ n₂))
-... | inj₁ (D , (Choice x x₁ x₂ x₃ x₄) , q) = inj₁ (D , (Choice (∈-∷ x) x₁ x₂ x₃ x₄ , q))
-... | inj₂ e = inj₂ e
-
-⇒-eval
-  (waiting {mkCase (Choice i₁ b₁) cₐ ∷ cs} {t} {c} {s} {e} {ws} {ps} tₑ<t)
-  x@(NormalInput (IDeposit a₂ p₂ t₂ n))
-  with
-    ⇒-eval
-      (waiting {cs = cs} {c = c} {s = s} tₑ<t)
-      x
-... | inj₁ (D , (Deposit x x₁ x₂ x₃ x₄) , q) = inj₁ (D , (Deposit (∈-∷ x) x₁ x₂ x₃ x₄ , q))
-... | inj₂ e = inj₂ e
-
-⇒-eval
-  (waiting {mkCase (Choice i₁ b₁) cₐ ∷ cs} {t} {c} {s} {e} {ws} {ps} tₑ<t)
-  x@(NormalInput INotify)
-  with
-    ⇒-eval
-      (waiting {cs = cs} {c = c} {s = s} tₑ<t)
-      x
-... | inj₁ (D , (Notify x x₁ x₂ x₃ x₄) , q) = inj₁ (D , (Notify (∈-∷ x) x₁ x₂ x₃ x₄ , q))
-... | inj₂ e = inj₂ e
-
--- Notify
-
-⇒-eval
-  (waiting {mkCase (Notify o) cₐ ∷ cs} {t} {c} {s} {e} {ws} {ps} tₑ<t)
-  (NormalInput INotify)
-  with 𝒪⟦ o ⟧ e s 𝔹.≟ true |
-    eval ⟪ cₐ , s , e , ws , ps ⟫
-... | yes o≡true | (D , Reduce-until-quiescent C⇀⋆D q) = inj₁ (D , Notify (here refl) o≡true tₑ<t q C⇀⋆D , q)
-... | yes _      | (_ , Ambiguous-time-interval _ _)    = inj₂ TEAmbiguousTimeIntervalError
-... | no _       | _
-  with
-    ⇒-eval
-      (waiting {cs = cs} {c = c} tₑ<t)
-      (NormalInput INotify)
-... | inj₁ (D , (Notify x x₁ x₂ x₃ x₄) , q) = inj₁ (D , (Notify (∈-∷ x) x₁ x₂ x₃ x₄ , q))
-... | inj₂ e = inj₂ e
-
-⇒-eval
-  (waiting {mkCase (Notify o) cₐ ∷ cs} {t} {c} {s} {e} {ws} {ps} tₑ<t)
-  x@(NormalInput (IDeposit a₂ p₂ t₂ n))
-  with
-    ⇒-eval
-      (waiting {cs = cs} {c = c} tₑ<t)
-      x
-... | inj₁ (D , (Deposit x x₁ x₂ x₃ x₄) , q) = inj₁ (D , (Deposit (∈-∷ x) x₁ x₂ x₃ x₄ , q))
-... | inj₂ e = inj₂ e
-
-⇒-eval
-  (waiting {mkCase (Notify o) cₐ ∷ cs} {t} {c} {s} {e} {ws} {ps} tₑ<t)
-  x@(NormalInput (IChoice i n))
-  with
-    ⇒-eval
-      (waiting {cs = cs} {c = c} {s = s} tₑ<t)
-      x
-... | inj₁ (D , (Choice x x₁ x₂ x₃ x₄) , q) = inj₁ (D , (Choice (∈-∷ x) x₁ x₂ x₃ x₄ , q))
 ... | inj₂ e = inj₂ e
 
 
