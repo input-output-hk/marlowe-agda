@@ -3,6 +3,7 @@ module Marlowe.Semantics.Operate where
 open import Agda.Builtin.Int using (Int)
 open import Data.Bool as 𝔹 using (Bool; if_then_else_; not; _∧_; _∨_; true; false)
 open import Data.Integer as ℤ using (∣_∣; +_)
+
 open import Data.List using (List; []; _∷_; _++_; foldr; reverse; [_]; null; map)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Membership.DecSetoid using () renaming (_∈?_ to _∈?-List_)
@@ -10,7 +11,7 @@ open import Data.List.Membership.Setoid.Properties
 open import Data.List.Relation.Unary.Any using (Any; here; there; lookup)
 open import Data.List.Relation.Unary.Any.Properties using (map⁻)
 open import Data.Maybe using (Maybe; just; nothing; fromMaybe)
-open import Data.Nat as ℕ using (ℕ; suc; zero; _<_; _<?_; _≟_; z≤n; s≤s; _+_)
+open import Data.Nat as ℕ using (ℕ; suc; zero; _<_; _<ᵇ_; _<?_; _≟_; z≤n; s≤s; _+_; _⊔_; _∸_)
 open import Data.Nat.Properties using (≰⇒>)
 open import Data.Product using (Σ; _,_; ∃; Σ-syntax; ∃-syntax)
 open import Data.Product using (_×_; proj₁; proj₂)
@@ -54,7 +55,7 @@ convertReduceWarnings = map convertReduceWarning
 data Waiting : Configuration → Set where
 
   waiting : ∀ {cs t c s e ws ps}
-    → (interval-end e) ℕ.< t
+    → (interval-end e) < t
     -----------------------------------------------
     → Waiting
         ⟪ When cs (mkTimeout (mkPosixTime t)) c
@@ -274,7 +275,7 @@ data _⇓_ : Contract × State → Result → Set where
 
   apply-inputs :
     ∀ {i D s cs t c sc e ws ps ws′ ps′}
-    → (tₑ<t : (interval-end e) ℕ.< t)
+    → (tₑ<t : (interval-end e) < t)
     → (waiting {cs} {t} {c} {sc} {e} {ws} {ps} tₑ<t , i) ⇒ D
     → (contract D , state D) ⇓
       ⟦ ws′
@@ -298,6 +299,14 @@ data _⇓_ : Contract × State → Result → Set where
       , s
       ⟧
 
+fixInterval : TimeInterval → State → IntervalResult
+fixInterval i@(mkInterval (mkPosixTime tₛ) Δₜ) s@(⟨ _ , _ , _ , mkPosixTime tₘ ⟩) =
+  if (tₛ + Δₜ) <ᵇ tₘ
+    then mkIntervalError (IntervalInPastError (mkPosixTime tₘ) i)
+    else IntervalTrimmed
+      (mkEnvironment (mkInterval (mkPosixTime (tₛ ⊔ tₘ)) (Δₜ ∸ (tₘ ∸ tₛ))))
+      (record s { minTime = mkPosixTime (tₛ ⊔ tₘ) })
+
 {-# TERMINATING #-} -- TODO: use sized types instead
 ⇓-eval :
   ∀ (c : Contract)
@@ -307,7 +316,7 @@ data _⇓_ : Contract × State → Result → Set where
 ⇓-eval Close s@(⟨ [] , _ , _ , _ ⟩) [] = inj₁ (⟦ [] , [] , s ⟧ , done refl)
 
 ⇓-eval
-  (When cases (mkTimeout (mkPosixTime t)) _) s ((mkTransactionInput i@(mkInterval (mkPosixTime tₛ) Δₜ) _) ∷ is) with (tₛ ℕ.+ Δₜ) <? t
+  (When cases (mkTimeout (mkPosixTime t)) _) s ((mkTransactionInput i@(mkInterval (mkPosixTime tₛ) Δₜ) _) ∷ is) with (tₛ + Δₜ) <? t
 ... | no t≤tₑ
     with eval ⟪ When cases (mkTimeout (mkPosixTime t)) _ , s , mkEnvironment i , [] , [] ⟫
 ...    | _ , Ambiguous-time-interval _ _ = inj₂ TEAmbiguousTimeIntervalError
@@ -325,7 +334,7 @@ data _⇓_ : Contract × State → Result → Set where
 ⇓-eval
   (When cases (mkTimeout (mkPosixTime t)) c) s ((mkTransactionInput i@(mkInterval (mkPosixTime tₛ) Δₜ) (ts ∷ tss)) ∷ is)
     | yes tₑ<t
-    with ⇒-eval (waiting  {cs = cases} {t = t} {c = c} {s = s} {e = mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ)} {ws = []} {ps = []} tₑ<t) ts -- TODO: fixInterval
+    with ⇒-eval (waiting  {cases} {t} {c} {s} {e = mkEnvironment i} {[]} {[]} tₑ<t) ts -- TODO: fixInterval
 ...    | inj₂ _ = inj₂ TEUselessTransaction
 ...    | inj₁ (D , C×i⇒D , _)
     with ⇓-eval (contract D) (state D) is
