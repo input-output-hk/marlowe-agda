@@ -166,7 +166,7 @@ applicable? {s} {e} INotify (Notify o)
   ∀ {C : Configuration}
   → (w : Waiting C)
   → (i : Input)
-  → (Σ[ D ∈ Configuration ] (((w , i) ⇒ D) × Quiescent D)) ⊎ TransactionError
+  → (Σ[ D ∈ Configuration ] ((w , i) ⇒ D)) ⊎ TransactionError
 ⇒-eval {⟪ When [] (mkTimeout (mkPosixTime tₒ)) c , s , e , ws , ps ⟫} (waiting tₑ<t) (NormalInput ic) = inj₂ TEApplyNoMatchError
 
 ⇒-eval (waiting {mkCase a cₐ ∷ cs} {t} {c} {s} {e} {ws} {ps} tₑ<t) (NormalInput ic)
@@ -175,31 +175,39 @@ applicable? {s} {e} INotify (Notify o)
 -- here
 ⇒-eval (waiting {mkCase _ cₐ ∷ cs} {_} {_} {s} {e} {ws} {ps} tₑ<t) (NormalInput ic) | just (deposit-input {a} {p} {t} {_} {n} ℰ⟦v⟧≡+n)
   with ⇀-eval ⟪ cₐ , record s { accounts = ((a , t) , n) ↑-update (accounts s) } , e , ws , ps ⟫
-... | D , Reduce-until-quiescent C⇀⋆D  q = inj₁ (D , Deposit (here refl) ℰ⟦v⟧≡+n tₑ<t q C⇀⋆D , q)
-... | _ , Ambiguous-time-interval _ _    = inj₂ TEAmbiguousTimeIntervalError
+... | D , C⇀⋆D , inj₁ q = inj₁ (D , Deposit (here refl) ℰ⟦v⟧≡+n tₑ<t q C⇀⋆D)
+... | _ , _    , inj₂ _ = inj₂ TEAmbiguousTimeIntervalError
 ⇒-eval (waiting {mkCase _ cₐ ∷ cs} {_} {_} {s} {e} {ws} {ps} tₑ<t) (NormalInput ic) | just (choice-input {i} {n} {bs} p)
   with ⇀-eval ⟪ cₐ , record s { choices = (i , unChosenNum n) ↑-ChoiceId (choices s) } , e , ws , ps ⟫
-... | D , Reduce-until-quiescent C⇀⋆D q = inj₁ (D , Choice (here refl) p tₑ<t q C⇀⋆D , q)
-... | _ , Ambiguous-time-interval _ _   = inj₂ TEAmbiguousTimeIntervalError
+... | D , C⇀⋆D , inj₁ q = inj₁ (D , Choice (here refl) p tₑ<t q C⇀⋆D)
+... | _ , _    , inj₂ q = inj₂ TEAmbiguousTimeIntervalError
 ⇒-eval (waiting {mkCase _ cₐ ∷ cs} {_} {_} {s} {e} {ws} {ps} tₑ<t) (NormalInput ic) | just (notify-input {o} o≡true)
   with ⇀-eval ⟪ cₐ , s , e , ws , ps ⟫
-... | D , Reduce-until-quiescent C⇀⋆D q = inj₁ (D , Notify {s = s} {o = o} {e = e} (here refl) o≡true tₑ<t q C⇀⋆D , q)
-... | _ , Ambiguous-time-interval _ _   = inj₂ TEAmbiguousTimeIntervalError
+... | D , C⇀⋆D , inj₁ q = inj₁ (D , Notify {s = s} {o = o} {e = e} (here refl) o≡true tₑ<t q C⇀⋆D)
+... | _ , _    , inj₂ _ = inj₂ TEAmbiguousTimeIntervalError
 
 -- there
 ⇒-eval (waiting {(_ ∷ cs)} {_} {c} tₑ<t) i@(NormalInput (IDeposit x x₁ x₂ x₃)) | nothing
   with ⇒-eval (waiting {cs} {_} {c} tₑ<t) i
-... | inj₁ (D , (Deposit x x₁ x₂ x₃ x₄) , q) = inj₁ (D , (Deposit (there x) x₁ x₂ x₃ x₄ , q))
+... | inj₁ (D , (Deposit x x₁ x₂ x₃ x₄)) = inj₁ (D , (Deposit (there x) x₁ x₂ x₃ x₄))
 ... | inj₂ e = inj₂ e
 ⇒-eval (waiting {(_ ∷ cs)} {_} {c} {s} tₑ<t) i@(NormalInput (IChoice x x₁)) | nothing
   with ⇒-eval (waiting {cs} {_} {c} {s} tₑ<t) i
-... | inj₁ (D , (Choice x x₁ x₂ x₃ x₄) , q) = inj₁ (D , (Choice (there x) x₁ x₂ x₃ x₄ , q))
+... | inj₁ (D , (Choice x x₁ x₂ x₃ x₄)) = inj₁ (D , (Choice (there x) x₁ x₂ x₃ x₄))
 ... | inj₂ e = inj₂ e
 ⇒-eval (waiting {(_ ∷ cs)} {_} {c} tₑ<t) i@(NormalInput INotify) | nothing
   with ⇒-eval (waiting {cs} {_} {c} tₑ<t) i
-... | inj₁ (D , (Notify x x₁ x₂ x₃ x₄) , q) = inj₁ (D , (Notify (there x) x₁ x₂ x₃ x₄ , q))
+... | inj₁ (D , (Notify x x₁ x₂ x₃ x₄)) = inj₁ (D , (Notify (there x) x₁ x₂ x₃ x₄))
 ... | inj₂ e = inj₂ e
 
+
+fixInterval : TimeInterval → State → IntervalResult
+fixInterval i@(mkInterval (mkPosixTime tₛ) Δₜ) s@(⟨ _ , _ , _ , mkPosixTime tₘ ⟩) =
+  if (tₛ + Δₜ) <ᵇ tₘ
+    then mkIntervalError (IntervalInPastError (mkPosixTime tₘ) i)
+    else IntervalTrimmed
+      (mkEnvironment (mkInterval (mkPosixTime (tₛ ⊔ tₘ)) (Δₜ ∸ (tₘ ∸ tₛ))))
+      (record s { minTime = mkPosixTime (tₛ ⊔ tₘ) })
 
 record Result : Set where
   constructor ⟦_,_,_⟧
@@ -254,13 +262,7 @@ data _⇓_ : Contract × State → Result → Set where
       , s
       ⟧
 
-fixInterval : TimeInterval → State → IntervalResult
-fixInterval i@(mkInterval (mkPosixTime tₛ) Δₜ) s@(⟨ _ , _ , _ , mkPosixTime tₘ ⟩) =
-  if (tₛ + Δₜ) <ᵇ tₘ
-    then mkIntervalError (IntervalInPastError (mkPosixTime tₘ) i)
-    else IntervalTrimmed
-      (mkEnvironment (mkInterval (mkPosixTime (tₛ ⊔ tₘ)) (Δₜ ∸ (tₘ ∸ tₛ))))
-      (record s { minTime = mkPosixTime (tₛ ⊔ tₘ) })
+
 
 {-# TERMINATING #-} -- TODO: use sized types instead
 ⇓-eval :
@@ -268,6 +270,7 @@ fixInterval i@(mkInterval (mkPosixTime tₛ) Δₜ) s@(⟨ _ , _ , _ , mkPosixTi
   → (s : State)
   → List TransactionInput
   → (Σ[ r ∈ Result ] (c , s) ⇓ r) ⊎ TransactionError
+
 -- Close
 ⇓-eval Close s@(⟨ [] , _ , _ , _ ⟩) [] = inj₁ (⟦ [] , [] , s ⟧ , done refl)
 
@@ -276,45 +279,48 @@ fixInterval i@(mkInterval (mkPosixTime tₛ) Δₜ) s@(⟨ _ , _ , _ , mkPosixTi
   (When cs (mkTimeout (mkPosixTime t)) _) s ((mkTransactionInput i@(mkInterval (mkPosixTime tₛ) Δₜ) _) ∷ is) with (tₛ + Δₜ) <? t
 ... | no t≤tₑ
     with ⇀-eval ⟪ When cs (mkTimeout (mkPosixTime t)) _ , s , mkEnvironment i , [] , [] ⟫
-... | _ , Ambiguous-time-interval _ _ = inj₂ TEAmbiguousTimeIntervalError
-... | D , Reduce-until-quiescent C×i⇒D ¬q
+... | _ , _ , inj₂ _ = inj₂ TEAmbiguousTimeIntervalError
+... | D , C×i⇒D , inj₁ q
     with ⇓-eval (contract D) (state D) is
-... | inj₁ (⟦ ws , ps , s ⟧ , d×s×is⇓r) = inj₁ (⟦ ws ++ convertReduceWarnings (warnings D) , ps ++ payments D , s ⟧ , reduce-until-quiescent refl refl C×i⇒D ¬q d×s×is⇓r)
-... | inj₂ e = inj₂ e
-
-⇓-eval
-  (When cs (mkTimeout (mkPosixTime t)) c) s ((mkTransactionInput i@(mkInterval (mkPosixTime tₛ) Δₜ) (ts ∷ tss)) ∷ is)
-    | yes tₑ<t
-    with ⇒-eval (waiting {cs} {t} {c} {s} {e = mkEnvironment i} {[]} {[]} tₑ<t) ts -- TODO: fixInterval
-... | inj₂ _ = inj₂ TEUselessTransaction
-... | inj₁ (D , C×i⇒D , _)
-    with ⇓-eval (contract D) (state D) is
-... | inj₁ (⟦ ws , ps , s ⟧ , d×s×is⇓r) = inj₁ (⟦ ws ++ convertReduceWarnings (warnings D) , ps ++ payments D , s ⟧ , apply-input tₑ<t C×i⇒D d×s×is⇓r)
+... | inj₁ (⟦ ws , ps , s ⟧ , d×s×is⇓r) = inj₁ (⟦ ws ++ convertReduceWarnings (warnings D) , ps ++ payments D , s ⟧ , reduce-until-quiescent refl refl C×i⇒D q d×s×is⇓r)
 ... | inj₂ e = inj₂ e
 
 ⇓-eval
   (When cs (mkTimeout (mkPosixTime t)) c) s ((mkTransactionInput i@(mkInterval (mkPosixTime tₛ) Δₜ) []) ∷ is)
     | yes tₑ<t
     with ⇀-eval ⟪ When cs (mkTimeout (mkPosixTime t)) _ , s , mkEnvironment i , [] , [] ⟫
-... | _ , Ambiguous-time-interval _ _ = inj₂ TEAmbiguousTimeIntervalError
-... | D , Reduce-until-quiescent C×i⇒D ¬q
+... | _ , _ , inj₂ _ = inj₂ TEAmbiguousTimeIntervalError
+... | D , C×i⇒D , inj₁ q
     with ⇓-eval (contract D) (state D) is
-... | inj₁ (⟦ ws , ps , s ⟧ , d×s×is⇓r) = inj₁ (⟦ ws ++ convertReduceWarnings (warnings D) , ps ++ payments D , s ⟧ , reduce-until-quiescent refl refl C×i⇒D ¬q d×s×is⇓r)
+... | inj₁ (⟦ ws , ps , s ⟧ , d×s×is⇓r) = inj₁ (⟦ ws ++ convertReduceWarnings (warnings D) , ps ++ payments D , s ⟧ , reduce-until-quiescent refl refl C×i⇒D q d×s×is⇓r)
+... | inj₂ e = inj₂ e
+
+⇓-eval
+  (When cs (mkTimeout (mkPosixTime t)) c) s ((mkTransactionInput i@(mkInterval (mkPosixTime tₛ) Δₜ) (ts ∷ tss)) ∷ is)
+    | yes tₑ<t
+    with fixInterval i s
+... | mkIntervalError e = inj₂ (TEIntervalError e)
+... | IntervalTrimmed e′ s′
+    with ⇒-eval (waiting {cs} {t} {c} {s} {e = mkEnvironment i} {[]} {[]} tₑ<t) ts -- TODO: fixInterval in apply-input
+... | inj₂ _ = inj₂ TEUselessTransaction
+... | inj₁ (D , C×i⇒D)
+    with ⇓-eval (contract D) (state D) is
+... | inj₁ (⟦ ws , ps , s ⟧ , d×s×is⇓r) = inj₁ (⟦ ws ++ convertReduceWarnings (warnings D) , ps ++ payments D , s ⟧ , apply-input tₑ<t C×i⇒D d×s×is⇓r)
 ... | inj₂ e = inj₂ e
 
 -- Otherwise
 ⇓-eval c s []
     with ⇀-eval ⟪ c , s , mkEnvironment (mkInterval (mkPosixTime 0) 0) , [] , [] ⟫
-... | _ , Ambiguous-time-interval _ _ = inj₂ TEAmbiguousTimeIntervalError
-... | D , Reduce-until-quiescent C×i⇒D q
+... | _ , _ , inj₂ _ = inj₂ TEAmbiguousTimeIntervalError
+... | D , C×i⇒D , inj₁ q
     with ⇓-eval (contract D) (state D) []
 ... | inj₁ (⟦ ws , ps , s ⟧ , d×s×is⇓r) = inj₁ (⟦ ws ++ convertReduceWarnings (warnings D) , ps ++ payments D , s ⟧ , reduce-until-quiescent refl refl C×i⇒D q d×s×is⇓r)
 ... | inj₂ e = inj₂ e
 
 ⇓-eval c s ((mkTransactionInput i _) ∷ is)
     with ⇀-eval ⟪ c , s , mkEnvironment i , [] , [] ⟫
-... | _ , Ambiguous-time-interval _ _ = inj₂ TEAmbiguousTimeIntervalError
-... | D , Reduce-until-quiescent C×i⇒D q
+... | _ , _ , inj₂ _ = inj₂ TEAmbiguousTimeIntervalError
+... | D , C×i⇒D , inj₁ q
     with ⇓-eval (contract D) (state D) is
 ... | inj₁ (⟦ ws , ps , s ⟧ , d×s×is⇓r) = inj₁ (⟦ ws ++ convertReduceWarnings (warnings D) , ps ++ payments D , s ⟧ , reduce-until-quiescent refl refl C×i⇒D q d×s×is⇓r)
 ... | inj₂ e = inj₂ e
