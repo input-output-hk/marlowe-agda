@@ -1,5 +1,19 @@
-module Marlowe.Semantics.Reduce where
+---
+title: Marlowe.Semantics.Reduce
+layout: page
+---
 
+This module contains the formalisation of small step reduction semantics for Marlowe.
+The formalization was initially proposed by the Faustus team at University of Wyoming, see
+Appendix A in "Developing Faustus: A Formally Verified Smart Contract Programming Language"
+
+```
+module Marlowe.Semantics.Reduce where
+```
+
+## Imports
+
+```
 open import Data.Bool using (Bool; if_then_else_; not; _∧_; _∨_; true; false)
 open import Data.Bool.Properties using (_≟_; ¬-not)
 open import Data.Integer as ℤ using (ℤ; 0ℤ; _≤_; _>_; ∣_∣; _<?_; _≤?_)
@@ -34,7 +48,11 @@ open Decidable _≟-ValueId_ renaming (_‼_ to _‼-ValueId_; _‼_default_ to 
 open Environment using (timeInterval)
 open State using (accounts; boundValues; choices)
 open TimeInterval using (startTime)
+```
 
+## 
+
+```
 data ReduceWarning : Set where
   ReduceNonPositivePay : AccountId → Payee → Token → ℤ → ReduceWarning
   ReducePartialPay : AccountId → Payee → Token → ℕ → ℕ → ReduceWarning
@@ -50,7 +68,11 @@ record Configuration : Set where
         payments : List Payment
 
 open Configuration
+```
 
+## Small step reduction rules
+
+``` 
 data _⇀_ : Configuration → Configuration → Set where
 
   CloseRefund : ∀ {a t n s ws ps e}
@@ -298,7 +320,14 @@ begin_ : ∀ {M N}
     ------
   → M ⇀⋆ N
 begin M⇀⋆N = M⇀⋆N
+```
 
+### Quiescent
+
+A contract that is either waiting for input or has been fully reduced is called
+quiescent. 
+
+``` 
 data Quiescent : Configuration → Set where
 
   close : ∀ {e cs vs ws m ps}
@@ -321,7 +350,13 @@ data Quiescent : Configuration → Set where
         , ws
         , ps
         ⟫
+```
 
+### Ambiguous time interval
+
+
+
+```
 data AmbiguousTimeInterval : Configuration → Set where
 
   AmbiguousTimeIntervalError : ∀ {t tₛ Δₜ cs c s ws ps}
@@ -335,7 +370,17 @@ data AmbiguousTimeInterval : Configuration → Set where
         , ws
         , ps
         ⟫
+```
 
+## Reducible
+
+A configuration is reducible, if
+
+* there is a reduction step or
+* the configuration is quiescent or
+* the time interval is ambiguous
+
+```
 data Reducible (C : Configuration) : Set where
 
   step : ∀ {D}
@@ -352,8 +397,11 @@ data Reducible (C : Configuration) : Set where
       AmbiguousTimeInterval C
       -----------------------
     → Reducible C
+```
 
+Every configuration is reducible:
 
+```
 progress : ∀ (C : Configuration) → Reducible C
 progress
   ⟪ Close
@@ -433,10 +481,11 @@ progress
   ⟫ with 𝒪⟦ o ⟧ e s ≟ true
 ... | yes o≡true = step (AssertTrue o≡true)
 ... | no ¬o≡true = step (AssertFalse (¬-not ¬o≡true))
+```
 
+## Evaluator
 
--- Evaluator
-
+```
 {-# TERMINATING #-} -- TODO: use sized types instead
 ⇀-eval :
   ∀ (C : Configuration)
@@ -446,9 +495,11 @@ progress
 ... | ambiguousTimeInterval a = C , (C ∎) , inj₂ a
 ... | step {D} C⇀D with ⇀-eval D
 ...      | E , D⇀⋆E , q⊎a = E , (C ⇀⟨ C⇀D ⟩ D⇀⋆E) , q⊎a
+```
 
--- Examples
+### Examples
 
+```
 private
 
   role₁ role₂ : Party
@@ -490,3 +541,4 @@ private
     ⟫
 
   _ = ⇀-eval config₂ ≡ (config₀ , (config₂ ⇀⟨ IfTrue refl ⟩ config₁ ⇀⟨ CloseRefund ⟩ config₀ ∎) , inj₁ close)
+```
