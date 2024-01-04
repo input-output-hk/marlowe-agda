@@ -1,5 +1,17 @@
-module Marlowe.Semantics.Operate where
+---
+title: Marlowe.Semantics.Operate
+layout: page
+---
 
+The module contains the formalisation of mid-step and big-step semantics for Marlowe.
+
+```
+module Marlowe.Semantics.Operate where
+```
+
+## Imports
+
+```
 open import Agda.Builtin.Int using (Int)
 open import Data.Bool as 𝔹 using (Bool; if_then_else_; not; _∧_; _∨_; true; false)
 open import Data.Integer as ℤ using (∣_∣; +_)
@@ -37,21 +49,21 @@ open Eq using (_≡_; refl; cong; sym; trans)
 open import Relation.Nullary.Decidable using (⌊_⌋)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 
-
 open Configuration
 open State
 open PosixTime
 open TransactionInput
+```
 
-convertReduceWarnings : List ReduceWarning -> List TransactionWarning
-convertReduceWarnings = map convertReduceWarning
-  where
-    convertReduceWarning : ReduceWarning → TransactionWarning
-    convertReduceWarning (ReduceNonPositivePay a p t v) = TransactionNonPositivePay a p t v
-    convertReduceWarning (ReducePartialPay a p t v e) = TransactionPartialPay a p t v e
-    convertReduceWarning (ReduceShadowing i o n) = TransactionShadowing i o n
-    convertReduceWarning ReduceAssertionFailed = TransactionAssertionFailed
+# Mid step semantics
 
+## Waiting
+
+The contract is in the waiting state, when the timeout in the `When` constructor
+is after the upper bound of the time interval. In the waiting state the contract
+can accept inputs.
+
+```
 data Waiting : Configuration → Set where
 
   waiting : ∀ {cs t c s e ws ps}
@@ -64,7 +76,13 @@ data Waiting : Configuration → Set where
         , ws
         , ps
         ⟫
+```
 
+## Mid step reduction rules
+
+Mid step reduction applies an input to a contract in the waiting state
+
+```
 data _⇒_ : {C : Configuration} → Waiting C × Input → Configuration → Set where
 
   Deposit : ∀ {a p t v n cₐ e s ws ps cs c tₒ D}
@@ -158,9 +176,11 @@ applicable? {s} {e} INotify (Notify o)
   with 𝒪⟦ o ⟧ e s 𝔹.≟ true
 ... | yes p = just (notify-input {_} {_} {o = o} p)
 ... | no _  = nothing
+```
 
--- Evaluator for mid-step semantics
+## Evaluator for mid step semantics
 
+```
 {-# TERMINATING #-} -- TODO: use sized types instead
 ⇒-eval :
   ∀ {C : Configuration}
@@ -199,8 +219,11 @@ applicable? {s} {e} INotify (Notify o)
   with ⇒-eval (waiting {cs} {_} {c} tₑ<t) i
 ... | inj₁ (D , (Notify x x₁ x₂ x₃ x₄)) = inj₁ (D , (Notify (there x) x₁ x₂ x₃ x₄))
 ... | inj₂ e = inj₂ e
+```
 
+# Big step semantics
 
+```
 data _↝_ : Configuration → Configuration → Set where
 
   trim-interval : ∀ {c as cs bs tₘ tₛ Δₜ ws ps }
@@ -242,7 +265,24 @@ record Result : Set where
     warnings : List TransactionWarning
     payments : List Payment
     state : State
+```
 
+### Warnings
+
+```
+convertReduceWarnings : List ReduceWarning -> List TransactionWarning
+convertReduceWarnings = map convertReduceWarning
+  where
+    convertReduceWarning : ReduceWarning → TransactionWarning
+    convertReduceWarning (ReduceNonPositivePay a p t v) = TransactionNonPositivePay a p t v
+    convertReduceWarning (ReducePartialPay a p t v e) = TransactionPartialPay a p t v e
+    convertReduceWarning (ReduceShadowing i o n) = TransactionShadowing i o n
+    convertReduceWarning ReduceAssertionFailed = TransactionAssertionFailed
+```
+
+## Big step reduction rules
+
+```
 data _⇓_ : Contract × State → Result → Set where
 
   reduce-until-quiescent :
@@ -289,9 +329,11 @@ data _⇓_ : Contract × State → Result → Set where
       , []
       , s
       ⟧
+```
 
+## Evaluator for big step semantics
 
-
+```
 {-# TERMINATING #-} -- TODO: use sized types instead
 ⇓-eval :
   ∀ (c : Contract)
@@ -353,7 +395,11 @@ data _⇓_ : Contract × State → Result → Set where
     with ⇓-eval (contract D) (state D) is
 ... | inj₁ (⟦ ws , ps , s ⟧ , d×s×is⇓r) = inj₁ (⟦ ws ++ convertReduceWarnings (warnings D) , ps ++ payments D , s ⟧ , reduce-until-quiescent refl refl C×i⇒D q d×s×is⇓r)
 ... | inj₂ e = inj₂ e
+```
 
+### Example
+
+```
 private
 
   tₒ : PosixTime
@@ -414,3 +460,4 @@ private
          , [ a₁ [ t , 1 ]↦ mkParty p₁ ]
          , s
          ⟧ , reduction-steps)
+```

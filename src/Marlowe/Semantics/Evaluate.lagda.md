@@ -1,5 +1,15 @@
-module Marlowe.Semantics.Evaluate where
+---
+title: Marlowe.Semantics.Evaluate
+layout: page
+---
 
+```
+module Marlowe.Semantics.Evaluate where
+```
+
+## Imports
+
+```
 open import Data.Bool using (Bool; false; true; _∧_; _∨_; if_then_else_; not)
 open import Data.Integer using (ℤ; -_; _-_; +_; _+_; _*_; _≟_; _<?_; _≤?_; ∣_∣; 0ℤ; 1ℤ; NonZero)
 open import Data.Integer.DivMod using (_div_)
@@ -20,7 +30,11 @@ open State using (accounts; boundValues; choices)
 open Decidable _≟-AccountId×Token_ renaming (_‼_default_ to _‼ᵃ_default_) using ()
 open Decidable _≟-ChoiceId_ renaming (_‼_default_ to _‼ᶜ_default_) using (_∈?_)
 open Decidable _≟-ValueId_ renaming (_‼_default_ to _‼ᵛ_default_) using ()
+```
 
+## Evaluate `Value` and `Observation`
+
+```
 ℰ⟦_⟧ : Value → Environment → State → ℤ
 𝒪⟦_⟧ : Observation → Environment → State → Bool
 
@@ -53,3 +67,4 @@ open Decidable _≟-ValueId_ renaming (_‼_default_ to _‼ᵛ_default_) using 
 𝒪⟦ ValueEQ x y ⟧ e s = ⌊ ℰ⟦ x ⟧ e s ≟ ℰ⟦ y ⟧ e s ⌋
 𝒪⟦ TrueObs ⟧ _ _ = true
 𝒪⟦ FalseObs ⟧ _ _ = false
+```

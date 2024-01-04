@@ -50,7 +50,9 @@ open State using (accounts; boundValues; choices)
 open TimeInterval using (startTime)
 ```
 
-## 
+# Small step semantics
+
+## Configuration
 
 ```
 data ReduceWarning : Set where

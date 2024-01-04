@@ -164,6 +164,11 @@ data Observation where
   FalseObs : Observation
 ```
 
+## Actions
+
+Actions are the counterparts to inputs, i.e. a given input can trigger a
+certain action.
+
 ```
 data Bound : Set where
   mkBound : Int → Int → Bound
@@ -180,10 +185,14 @@ data Payee : Set where
 
 ## Contract
 
-Marlowe is a continuation-based language, this means that a Contract can
-either be a Close or another construct that recursively has a Contract.
-Eventually, all contracts end up with a Close construct. Case and Contract
-are defined in a mutually recursive way as follows:
+Marlowe is a continuation-based language in the sense that a `Contract` is
+a tree with `Close` contracts in the leaves. A branch in the tree represents
+a possible exection path of the contract.
+
+The `When` constructor allows for applying inputs before a specified timeout.
+
+`Case` and `Contract` are defined mutually recursive in order to specify the
+continuation of the contract for a given action.
 
 ```
 data Contract : Set
@@ -202,6 +211,10 @@ data Contract where
 getAction : Case → Action
 getAction (mkCase action _) = action
 ```
+
+### Expiry
+
+All contracts are finite and have an expiration time.
 
 ```
 maxTimeout : Contract → ℕ
