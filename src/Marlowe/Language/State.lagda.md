@@ -1,3 +1,9 @@
+---
+title: Marlowe.Language.State
+layout: page
+---
+
+```
 module Marlowe.Language.State where
 
 open import Agda.Builtin.Int using (Int)
@@ -68,3 +74,4 @@ _↑-update_ : (p : (AccountId × Token) × ℕ) (abs : AssocList (AccountId × 
 (a , b) ↑-update abs with a ∈? abs
 ... | yes p = p ∷= (a , proj₂ (lookup p) + b)
 ... | no _ = (a , b) ∷ abs
+```

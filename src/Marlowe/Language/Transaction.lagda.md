@@ -1,3 +1,9 @@
+---
+title: Marlowe.Language.Transaction
+layout: page
+---
+
+```
 module Marlowe.Language.Transaction where
 
 open import Agda.Builtin.Int using (Int)
@@ -41,13 +47,24 @@ data TransactionError : Set where
   TEIntervalError : IntervalError → TransactionError
   TEUselessTransaction : TransactionError
   TEHashMismatch : TransactionError
+```
 
+## TransactionInput
+
+We use transactions to move contracts forward. Transactions are comprised
+of a list of inputs (possibly empty) to be applied within a TimeInterval
+
+```
 record TransactionInput : Set where
   constructor mkTransactionInput
   field
     timeInterval : TimeInterval
     inputs : List Input
+```
 
+## TransactionOutput
+
+```
 data TransactionOutput : Set where
   mkTransactionOutput : List TransactionWarning → List Payment → State → Contract → TransactionOutput
   mkError : TransactionError → TransactionOutput
@@ -60,3 +77,4 @@ projₚ t (a [ t′ , n ]↦ _) = 1ₜ t (t′ , n)
 
 filter-payments : Token → List Payment → List Payment
 filter-payments t = filter (λ {(_ [ t′ , _ ]↦ _) → (t ≟-Token t′)})
+```

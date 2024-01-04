@@ -1,3 +1,9 @@
+---
+title: Marlowe.Language.Contract
+layout: page
+---
+
+```
 module Marlowe.Language.Contract where
 
 open import Agda.Builtin.Int using (Int)
@@ -11,7 +17,13 @@ open import Data.String as String using (String)
 open import Relation.Binary using (DecidableEquality)
 open import Relation.Binary.PropositionalEquality using (cong; cong₂; _≡_; _≢_)
 open import Relation.Nullary using (yes; no)
+```
 
+## Domain
+
+TODO: abstract the domain in the Agda module system
+
+```
 data ByteString : Set where
   mkByteString : String → ByteString
 
@@ -113,7 +125,15 @@ _≟-AccountId×Token_ = let _eq_ = ≡-dec _≟-AccountId_ _≟-Token_ in λ x 
 
 _≟-Party×Token_ : DecidableEquality (Party × Token)
 _≟-Party×Token_ = let _eq_ = ≡-dec _≟-Party_ _≟-Token_ in λ x y → x eq y
+```
 
+## Values and observations 
+
+Values and observations are language terms that interact with most of the
+other constructs. Value evaluates to an integer and observation evaluates to
+a boolean respectively. They are defined in a mutually recursive way as follows:
+
+```
 data Observation : Set
 
 data Value : Set where
@@ -142,23 +162,30 @@ data Observation where
   ValueEQ : Value → Value → Observation
   TrueObs : Observation
   FalseObs : Observation
+```
 
-
+```
 data Bound : Set where
   mkBound : Int → Int → Bound
-
 
 data Action : Set where
   Deposit : AccountId → Party → Token → Value → Action
   Choice : ChoiceId → List Bound → Action
   Notify : Observation → Action
 
-
 data Payee : Set where
   mkAccount : AccountId → Payee
   mkParty : Party → Payee
+```
 
+## Contract
 
+Marlowe is a continuation-based language, this means that a Contract can
+either be a Close or another construct that recursively has a Contract.
+Eventually, all contracts end up with a Close construct. Case and Contract
+are defined in a mutually recursive way as follows:
+
+```
 data Contract : Set
 
 data Case : Set where
@@ -172,10 +199,11 @@ data Contract where
   Let : ValueId → Value → Contract → Contract
   Assert : Observation → Contract → Contract
 
-
 getAction : Case → Action
 getAction (mkCase action _) = action
+```
 
+```
 maxTimeout : Contract → ℕ
 maxTimeout Close = 0
 maxTimeout (Pay _ _ _ _ c) = maxTimeout c
@@ -184,3 +212,4 @@ maxTimeout (When [] (mkTimeout (mkPosixTime t)) c) = t ⊔ maxTimeout c
 maxTimeout (When ((mkCase _ x) ∷ xs) t c) = maxTimeout x ⊔ maxTimeout (When xs t c)
 maxTimeout (Let x x₁ c) = maxTimeout c
 maxTimeout (Assert x c) = maxTimeout c
+```
