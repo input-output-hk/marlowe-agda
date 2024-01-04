@@ -10,8 +10,8 @@ open import Data.List.Membership.Setoid.Properties
 open import Data.List.Relation.Unary.Any using (Any; here; there; lookup; any?)
 open import Data.List.Relation.Unary.Any.Properties -- using (map⁻)
 open import Data.Maybe using (Maybe; just; nothing; fromMaybe)
-open import Data.Nat as ℕ using (ℕ; suc; zero; _<_; _<ᵇ_; _<?_; _≟_; z≤n; s≤s; _+_; _⊔_; _∸_)
-open import Data.Nat.Properties using (≰⇒>)
+open import Data.Nat as ℕ using (ℕ; suc; zero; _<_; _<ᵇ_; _<?_; _≟_; z≤n; s≤s; _+_; _⊔_; _∸_; _≥_)
+open import Data.Nat.Properties using (≰⇒>; ≮⇒≥; ≤-reflexive; ≤-trans)
 open import Data.Product using (Σ; _,_; ∃; Σ-syntax; ∃-syntax)
 open import Data.Product using (_×_; proj₁; proj₂)
 import Data.String as String
@@ -201,13 +201,40 @@ applicable? {s} {e} INotify (Notify o)
 ... | inj₂ e = inj₂ e
 
 
-fixInterval : TimeInterval → State → IntervalResult
-fixInterval i@(mkInterval (mkPosixTime tₛ) Δₜ) s@(⟨ _ , _ , _ , mkPosixTime tₘ ⟩) =
-  if (tₛ + Δₜ) <ᵇ tₘ
-    then mkIntervalError (IntervalInPastError (mkPosixTime tₘ) i)
-    else IntervalTrimmed
-      (mkEnvironment (mkInterval (mkPosixTime (tₛ ⊔ tₘ)) (Δₜ ∸ (tₘ ∸ tₛ))))
-      (record s { minTime = mkPosixTime (tₛ ⊔ tₘ) })
+data _↝_ : Configuration → Configuration → Set where
+
+  trim-interval : ∀ {c as cs bs tₘ tₛ Δₜ ws ps }
+    → (tₛ + Δₜ) ≥ tₘ
+    → ⟪ c
+      , ⟨ as , cs , bs , mkPosixTime tₘ ⟩
+      , mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ)
+      , ws
+      , ps
+      ⟫
+      ↝
+      ⟪ c
+      , ⟨ as , cs , bs , mkPosixTime (tₛ ⊔ tₘ) ⟩
+      , mkEnvironment (mkInterval (mkPosixTime (tₛ ⊔ tₘ)) (Δₜ ∸ (tₘ ∸ tₛ)))
+      , ws
+      , ps
+      ⟫
+
+data FixInterval (B : Configuration) : Set where
+
+  trim : ∀ {C}
+    → B ↝ C
+      -------------
+    → FixInterval B
+
+  error :
+    interval-end (environment B) < getPosixTime (minTime (state B))
+    → FixInterval B
+
+
+fixInterval : ∀ (B : Configuration) → FixInterval B
+fixInterval ⟪ _ , ⟨ _ , _ , _ , mkPosixTime tₘ ⟩ , mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ) , _ , _ ⟫ with tₛ + Δₜ <? tₘ
+... | yes p = error p
+... | no p = trim (trim-interval (≮⇒≥ p))
 
 record Result : Set where
   constructor ⟦_,_,_⟧
@@ -237,19 +264,20 @@ data _⇓_ : Contract × State → Result → Set where
       ⟧
 
   apply-input :
-    ∀ {i D s cs t c sc e ws ps ws′ ps′}
-    → (tₑ<t : (interval-end e) < t)
-    → (waiting {cs} {t} {c} {sc} {e} {ws} {ps} tₑ<t , i) ⇒ D
+    ∀ {i cs t c s e ws ps C D ws′ ps′ s′}
+    → (tₑ<t : interval-end (environment C) < t)
+    → ⟪ When cs (mkTimeout (mkPosixTime t)) c , s , e , ws , ps ⟫ ↝ C
+    → (waiting {cs} {t} {c} {state C} {environment C} {ws} {ps} tₑ<t , i) ⇒ D
     → (contract D , state D) ⇓
       ⟦ ws′
       , ps′
-      , s
+      , s′
       ⟧
     -------------------------------------------
-    → (When cs (mkTimeout (mkPosixTime t)) c , sc) ⇓
+    → (When cs (mkTimeout (mkPosixTime t)) c , s) ⇓
       ⟦ ws′ ++ convertReduceWarnings (warnings D)
       , ps′ ++ payments D
-      , s
+      , s′
       ⟧
 
   done :
@@ -276,9 +304,13 @@ data _⇓_ : Contract × State → Result → Set where
 
 -- When
 ⇓-eval
-  (When cs (mkTimeout (mkPosixTime t)) _) s ((mkTransactionInput i@(mkInterval (mkPosixTime tₛ) Δₜ) _) ∷ is) with (tₛ + Δₜ) <? t
+  (When cs (mkTimeout (mkPosixTime t)) c) s@(⟨ _ , _ , _ , mkPosixTime tₘ ⟩) ((mkTransactionInput i@(mkInterval (mkPosixTime tₛ) Δₜ) _) ∷ is)
+    with fixInterval ⟪ When cs (mkTimeout (mkPosixTime t)) c , s , mkEnvironment i , [] , [] ⟫
+... | error _ = inj₂ (TEIntervalError (IntervalInPastError (mkPosixTime tₘ) i))
+... | trim {C} B↝C
+    with interval-end (environment C) <? t
 ... | no t≤tₑ
-    with ⇀-eval ⟪ When cs (mkTimeout (mkPosixTime t)) _ , s , mkEnvironment i , [] , [] ⟫
+    with ⇀-eval ⟪ When cs (mkTimeout (mkPosixTime t)) c , s , mkEnvironment i , [] , [] ⟫
 ... | _ , _ , inj₂ _ = inj₂ TEAmbiguousTimeIntervalError
 ... | D , C×i⇒D , inj₁ q
     with ⇓-eval (contract D) (state D) is
@@ -287,7 +319,7 @@ data _⇓_ : Contract × State → Result → Set where
 
 ⇓-eval
   (When cs (mkTimeout (mkPosixTime t)) c) s ((mkTransactionInput i@(mkInterval (mkPosixTime tₛ) Δₜ) []) ∷ is)
-    | yes tₑ<t
+    | trim B↝C | yes tₑ<t
     with ⇀-eval ⟪ When cs (mkTimeout (mkPosixTime t)) _ , s , mkEnvironment i , [] , [] ⟫
 ... | _ , _ , inj₂ _ = inj₂ TEAmbiguousTimeIntervalError
 ... | D , C×i⇒D , inj₁ q
@@ -296,16 +328,13 @@ data _⇓_ : Contract × State → Result → Set where
 ... | inj₂ e = inj₂ e
 
 ⇓-eval
-  (When cs (mkTimeout (mkPosixTime t)) c) s ((mkTransactionInput i@(mkInterval (mkPosixTime tₛ) Δₜ) (ts ∷ tss)) ∷ is)
-    | yes tₑ<t
-    with fixInterval i s
-... | mkIntervalError e = inj₂ (TEIntervalError e)
-... | IntervalTrimmed e′ s′
-    with ⇒-eval (waiting {cs} {t} {c} {s} {e = mkEnvironment i} {[]} {[]} tₑ<t) ts -- TODO: fixInterval in apply-input
+  (When cs (mkTimeout (mkPosixTime t)) c) (⟨ as , css , bs , mkPosixTime tₘ ⟩) ((mkTransactionInput i@(mkInterval (mkPosixTime tₛ) Δₜ) (ts ∷ tss)) ∷ is)
+    | trim {C} B↝C | yes tₑ<t
+    with ⇒-eval (waiting {cs} {t} {c} {state C} {environment C} {[]} {[]} tₑ<t) ts
 ... | inj₂ _ = inj₂ TEUselessTransaction
 ... | inj₁ (D , C×i⇒D)
     with ⇓-eval (contract D) (state D) is
-... | inj₁ (⟦ ws , ps , s ⟧ , d×s×is⇓r) = inj₁ (⟦ ws ++ convertReduceWarnings (warnings D) , ps ++ payments D , s ⟧ , apply-input tₑ<t C×i⇒D d×s×is⇓r)
+... | inj₁ (⟦ ws , ps , s′ ⟧ , d×s×is⇓r) = inj₁ (⟦ ws ++ convertReduceWarnings (warnings D) , ps ++ payments D , s′ ⟧ , apply-input {ts} {cs} {t} {c} {_} {e = mkEnvironment i} {[]} {[]} tₑ<t B↝C C×i⇒D d×s×is⇓r)
 ... | inj₂ e = inj₂ e
 
 -- Otherwise
@@ -373,7 +402,7 @@ private
     reduce-until-quiescent refl refl
       (⟪ c , s , e , [] , [] ⟫ ⇀⟨ AssertFalse refl ⟩ (⟪ d , s , e , [ ReduceAssertionFailed ] , [] ⟫ ∎))
       (waiting (s≤s (s≤s (s≤s z≤n))))
-      (apply-input {i = NormalInput (IDeposit a₁ p₂ t 1)} (s≤s (s≤s (s≤s z≤n)))
+      (apply-input {i = NormalInput (IDeposit a₁ p₂ t 1)} (s≤s (s≤s (s≤s z≤n))) (trim-interval z≤n)
         (Deposit (here refl) refl (s≤s (s≤s (s≤s z≤n))) close
           (⟪ Close , ⟨ [((a₁ , t) , 1)] , [] , [] , minTime s ⟩ , e , []  , [] ⟫
                  ⇀⟨ CloseRefund ⟩ (⟪ Close , ⟨ [] , [] , [] , (minTime s) ⟩ , e , [] , [ a₁ [ t , 1 ]↦ mkParty p₁ ] ⟫) ∎))
