@@ -1,5 +1,15 @@
-module Marlowe.Semantics.Reduce.Properties where
+---
+title: Marlowe.Semantics.Reduce.Properties
+layout: page
+---
 
+```
+module Marlowe.Semantics.Reduce.Properties where
+```
+
+## Imports
+
+```
 open import Contrib.Data.Nat.Properties
 open import Data.Integer using (∣_∣)
 open import Data.List using (List; _∷_; []; _++_; sum; filter; map)
@@ -29,26 +39,39 @@ open Configuration
 open Environment
 open TimeInterval
 open PosixTime
+```
 
--- Quiescent configurations do not reduce
+## Quiescent
+
+Quiescent configurations do not reduce
+
+```
 Quiescent¬⇀ :
-  ∀ {C₁ C₂ : Configuration}
+  ∀ {C₁ C₂}
   → Quiescent C₁
-  ---------------------------
+    ------------
   → ¬ (C₁ ⇀ C₂)
 Quiescent¬⇀ close ()
 Quiescent¬⇀ (waiting {t} {tₛ} {Δₜ} (x)) (WhenTimeout {_} {t} {tₛ} {Δₜ} y) =
   let ¬p = ≤⇒≯ (≤-trans y (m≤m+n tₛ Δₜ)) in ¬p x
+```
 
--- If a configuration reduces, it is not quiescent
+If a configuration reduces, it is not quiescent
+
+```
 ⇀¬Quiescent :
-  ∀ {C₁ C₂ : Configuration}
+  ∀ {C₁ C₂}
   → C₁ ⇀ C₂
-  ----------------
+    --------------
   → ¬ Quiescent C₁
 ⇀¬Quiescent C₁⇀C₂ q = Quiescent¬⇀ q C₁⇀C₂
+```
 
--- A reduction step preserves assets
+## Asset preservation
+
+A reduction step preserves assets
+
+```
 totalAmount : Token → Configuration → ℕ
 totalAmount t C = Σ-accounts t (accounts (state C)) + Σ-payments t (payments C)
 
@@ -98,7 +121,9 @@ totalAmount t C = Σ-accounts t (accounts (state C)) + Σ-payments t (payments C
 ⇀assetPreservation _ (LetNoShadow _) = refl
 ⇀assetPreservation _ (AssertTrue _) = refl
 ⇀assetPreservation _ (AssertFalse _) = refl
+```
 
+```
 ⇀⋆assetPreservation :
   ∀ {C₁ C₂ : Configuration}
   → (t : Token)
@@ -107,23 +132,33 @@ totalAmount t C = Σ-accounts t (accounts (state C)) + Σ-payments t (payments C
   → totalAmount t C₁ ≡ totalAmount t C₂
 ⇀⋆assetPreservation t (_ ∎) = refl
 ⇀⋆assetPreservation t (_ ⇀⟨ x ⟩ x₁) rewrite ⇀assetPreservation t x = ⇀⋆assetPreservation t x₁
+```
 
--- Reducing a closed contract does not produce any warning
+## Closing is safe
+
+Reducing a closed contract does not produce any warning
+
+```
 ⇀⋆Close-is-safe :
   ∀ {c₂} {s₁ s₂} {e₁ e₂} {ws₁ ws₂} {ps₁ ps₂}
   → ⟪ Close , s₁ , e₁ , ws₁ , ps₁ ⟫ ⇀⋆ ⟪ c₂ , s₂ , e₂ , ws₂ , ps₂ ⟫
   → ws₁ ≡ ws₂
 ⇀⋆Close-is-safe ((⟪ Close , _ , _ , _ , _ ⟫) ∎) = refl
 ⇀⋆Close-is-safe ((⟪ Close , _ , _ , _ , _ ⟫) ⇀⟨ CloseRefund ⟩ x) rewrite ⇀⋆Close-is-safe x = refl
+```
 
--- Close is a terminal contract
+Close is a terminal contract
+
+```
 ⇀⋆Close-is-terminal :
   ∀ {c₂} {s₁ s₂} {e₁ e₂} {ws₁ ws₂} {ps₁ ps₂}
   → ⟪ Close , s₁ , e₁ , ws₁ , ps₁ ⟫ ⇀⋆ ⟪ c₂ , s₂ , e₂ , ws₂ , ps₂ ⟫
   → c₂ ≡ Close
 ⇀⋆Close-is-terminal ((⟪ Close , _ , _ , _ , _ ⟫) ∎) = refl
 ⇀⋆Close-is-terminal ((⟪ Close , _ , _ , _ , _ ⟫) ⇀⟨ CloseRefund ⟩ x) rewrite ⇀⋆Close-is-terminal x = refl
+```
 
+```
 ⇀-env-not-modified :
   ∀ {C D}
   → C ⇀ D
@@ -140,14 +175,19 @@ totalAmount t C = Σ-accounts t (accounts (state C)) + Σ-payments t (payments C
 ⇀-env-not-modified (LetNoShadow _) = refl
 ⇀-env-not-modified (AssertTrue _) = refl
 ⇀-env-not-modified (AssertFalse _) = refl
+```
+## Finite contracts
 
+```
 ⇀⋆-env-not-modified :
   ∀ {C D}
   → C ⇀⋆ D
   → (environment C) ≡ (environment D)
 ⇀⋆-env-not-modified (_ ∎) = refl
 ⇀⋆-env-not-modified (_ ⇀⟨ x ⟩ y) rewrite ⇀-env-not-modified x = ⇀⋆-env-not-modified y
+```
 
+```
 ⇀-maxTimeout : ∀ {C D}
   → C ⇀ D
   → maxTimeout (contract D) ≤ maxTimeout (contract C)
@@ -167,13 +207,17 @@ totalAmount t C = Σ-accounts t (accounts (state C)) + Σ-payments t (payments C
 ⇀-maxTimeout (LetNoShadow _) = ≤-refl
 ⇀-maxTimeout (AssertTrue _) = ≤-refl
 ⇀-maxTimeout (AssertFalse _) = ≤-refl
+```
 
+```
 ⇀⋆-maxTimeout : ∀ {C D}
   → C ⇀⋆ D
   → maxTimeout (contract D) ≤ maxTimeout (contract C)
 ⇀⋆-maxTimeout (_ ∎) = ≤-refl
 ⇀⋆-maxTimeout (_ ⇀⟨ x ⟩ y) = ≤-trans (⇀⋆-maxTimeout y) (⇀-maxTimeout x)
+```
 
+```
 ⇀⋆-reduce-after-timeout-closes-contract : ∀ {C D}
   → C ⇀⋆ D
   → Quiescent D
@@ -197,4 +241,4 @@ totalAmount t C = Σ-accounts t (accounts (state C)) + Σ-payments t (payments C
       ≤-trans
         (timeout≤maxTimeout t cs c)
         (m≤n⊔m (maxTimeout x) (maxTimeout (When cs (mkTimeout (mkPosixTime t)) c)))
-
+```

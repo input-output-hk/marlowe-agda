@@ -14,45 +14,42 @@ module Marlowe.Semantics.Reduce where
 ## Imports
 
 ```
-open import Data.Bool using (Bool; if_then_else_; not; _∧_; _∨_; true; false)
+open import Data.Bool using (if_then_else_; true; false)
 open import Data.Bool.Properties using (_≟_; ¬-not)
-open import Data.Integer as ℤ using (ℤ; 0ℤ; _≤_; _>_; ∣_∣; _<?_; _≤?_)
+open import Data.Integer using (ℤ; 0ℤ; _>_; _≤_; ∣_∣; _<?_; _≤?_)
 open import Data.Integer.Properties as ℤ using ()
-open import Data.List using (List; []; _∷_; _++_; foldr; reverse; [_]; null; sum; filter; map)
+open import Data.List using (List; []; _∷_; [_])
 open import Data.List.Membership.Propositional using () renaming (_∈_ to _∈-List_)
-open import Data.List.Relation.Unary.Any using (Any; lookup; _─_; _∷=_; here; there)
+open import Data.List.Relation.Unary.Any using (lookup; _∷=_; here; there)
 open import Data.List.Relation.Unary.All.Properties using (¬Any⇒All¬; All¬⇒¬Any)
-open import Data.Maybe using (Maybe; just; nothing; fromMaybe)
-open import Data.Nat as ℕ using (ℕ; zero; suc; s≤s; _⊓_; _∸_; _+_; _<ᵇ_; _≤ᵇ_)
+open import Data.Nat as ℕ using (ℕ; zero; suc; s≤s; _⊓_; _∸_; _+_; _<ᵇ_; _≤ᵇ_; _<_; _≥_)
 open import Data.Nat.Properties using (1+n≰n; ≤-trans; +-identityʳ; +-comm; +-assoc; ≤⇒≯; m≤m+n; ≰⇒>; ≮⇒≥)
 open import Data.Product using (Σ; _,_; ∃; Σ-syntax; ∃-syntax)
 open import Data.Product using (_×_; proj₁; proj₂)
-import Data.String as String
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Function.Base using (case_of_; _∘_)
+
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; cong; sym)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 
+open import Contrib.Data.List.AssocList
 open import Marlowe.Language.Contract
 open import Marlowe.Language.Input
 open import Marlowe.Language.State
 open import Marlowe.Language.Transaction
 open import Marlowe.Semantics.Evaluate
 
-open import Contrib.Data.List.AssocList
-open Decidable _≟-AccountId×Token_ renaming (_↑_ to _↑-AccountId×Token_; _∈?_ to _∈?-AccountId×Token_)
-open Decidable _≟-ChoiceId_ renaming (_‼_default_ to _‼-ChoiceId_default_) using (_∈?_)
-open Decidable _≟-ValueId_ renaming (_‼_ to _‼-ValueId_; _‼_default_ to _‼-ValueId_default_; _∈?_ to _∈-ValueId?_) hiding (_↑_)
-
 open Environment using (timeInterval)
 open State using (accounts; boundValues; choices)
 open TimeInterval using (startTime)
+
+open Decidable _≟-AccountId×Token_ renaming (_∈?_ to _∈?-AccountId×Token_)
+open Decidable _≟-ValueId_ renaming (_∈?_ to _∈-ValueId?_)
 ```
 
-# Small step semantics
+# Small-step semantics
 
-## Configuration
+## Reduce warnings
 
 ```
 data ReduceWarning : Set where
@@ -60,7 +57,11 @@ data ReduceWarning : Set where
   ReducePartialPay : AccountId → Payee → Token → ℕ → ℕ → ReduceWarning
   ReduceShadowing : ValueId → ℤ → ℤ → ReduceWarning
   ReduceAssertionFailed : ReduceWarning
+```
 
+## Configuration
+
+```
 record Configuration : Set where
   constructor ⟪_,_,_,_,_⟫
   field contract : Contract
@@ -72,13 +73,13 @@ record Configuration : Set where
 open Configuration
 ```
 
-## Small step reduction rules
+## Small-step reduction rules
 
 ``` 
 data _⇀_ : Configuration → Configuration → Set where
 
   CloseRefund : ∀ {a t n s ws ps e}
-    --------------------------------
+      -----------------------------
     → ⟪ Close
       , record s
           { accounts =
@@ -96,8 +97,8 @@ data _⇀_ : Configuration → Configuration → Set where
       ⟫
 
   PayNonPositive : ∀ {s e v a p t c ws ps}
-    → ℰ⟦ v ⟧ e s ℤ.≤ 0ℤ
-    --------------------------------------
+    → ℰ⟦ v ⟧ e s ≤ 0ℤ
+      ------------------------------------
     → ⟪ Pay a p t v c
       , s
       , e
@@ -114,7 +115,7 @@ data _⇀_ : Configuration → Configuration → Set where
   PayNoAccount : ∀ {s e v a p t c ws ps}
     → ℰ⟦ v ⟧ e s > 0ℤ
     → (a , t) ∉ accounts s
-    ------------------------------------
+      ----------------------------------
     → ⟪ Pay a p t v c
       , s
       , e
@@ -131,7 +132,7 @@ data _⇀_ : Configuration → Configuration → Set where
   PayInternalTransfer : ∀ {s e v aₛ aₜ t c ws ps}
     → ℰ⟦ v ⟧ e s > 0ℤ
     → (aₛ×t∈as : (aₛ , t) ∈ accounts s)
-    --------------------------------------------
+      ------------------------------------------
     → let
         m = proj₂ (lookup aₛ×t∈as)
         n = ∣ ℰ⟦ v ⟧ e s ∣
@@ -157,7 +158,7 @@ data _⇀_ : Configuration → Configuration → Set where
   PayExternal : ∀ {s e v a t c ws ps p}
     → ℰ⟦ v ⟧ e s > 0ℤ
     → (a×t∈as : (a , t) ∈ accounts s)
-    -----------------------------------
+      ---------------------------------
     → let
         m = proj₂ (lookup a×t∈as)
         n = ∣ ℰ⟦ v ⟧ e s ∣
@@ -182,7 +183,7 @@ data _⇀_ : Configuration → Configuration → Set where
 
   IfTrue : ∀ {s e o c₁ c₂ ws ps}
     → 𝒪⟦ o ⟧ e s ≡ true
-    ----------------------------
+      --------------------------
     → ⟪ If o c₁ c₂
       , s
       , e
@@ -198,7 +199,7 @@ data _⇀_ : Configuration → Configuration → Set where
 
   IfFalse : ∀ {s e o c₁ c₂ ws ps}
     → 𝒪⟦ o ⟧ e s ≡ false
-    -----------------------------
+      ---------------------------
     → ⟪ If o c₁ c₂
       , s
       , e
@@ -214,7 +215,7 @@ data _⇀_ : Configuration → Configuration → Set where
 
   WhenTimeout : ∀ {s t tₛ Δₜ c ws ps cs}
     → t ℕ.≤ tₛ
-    -----------------------------------
+      ---------------------------------
     → let
         e = mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ)
       in
@@ -234,7 +235,7 @@ data _⇀_ : Configuration → Configuration → Set where
   LetShadow : ∀ {s e c i v vᵢ ws ws' ps}
     → (i , vᵢ) ∈-List boundValues s
     → ws' ≡ ReduceShadowing i vᵢ (ℰ⟦ v ⟧ e s) ∷ ws
-    ----------------------------------------------
+      --------------------------------------------
     → ⟪ Let i v c
       , s
       , e
@@ -250,7 +251,7 @@ data _⇀_ : Configuration → Configuration → Set where
 
   LetNoShadow : ∀ {s e c i v ws ps}
     → i ∉ boundValues s
-    --------------------
+      ------------------
     → ⟪ Let i v c
       , s
       , e
@@ -269,7 +270,7 @@ data _⇀_ : Configuration → Configuration → Set where
 
   AssertTrue : ∀ {s e o c ws ps}
     → 𝒪⟦ o ⟧ e s ≡ true
-    ----------------------------
+      --------------------------
     → ⟪ Assert o c
       , s
       , e
@@ -285,7 +286,7 @@ data _⇀_ : Configuration → Configuration → Set where
 
   AssertFalse : ∀ {s e o c ws ps}
     → 𝒪⟦ o ⟧ e s ≡ false
-    -----------------------------
+      ---------------------------
     → ⟪ Assert o c
       , s
       , e
@@ -298,9 +299,11 @@ data _⇀_ : Configuration → Configuration → Set where
       , ReduceAssertionFailed ∷ ws
       , ps
       ⟫
+```
 
+### Reflexive and transitive closure
 
--- reflexive and transitive closure
+```
 infix  2 _⇀⋆_
 infix  1 begin_
 infixr 2 _⇀⟨_⟩_
@@ -308,7 +311,7 @@ infix  3 _∎
 
 data _⇀⋆_ : Configuration → Configuration → Set where
   _∎ : ∀ M
-      ------
+      -------
     → M ⇀⋆ M
 
   _⇀⟨_⟩_ : ∀ L {M N}
@@ -319,7 +322,7 @@ data _⇀⋆_ : Configuration → Configuration → Set where
 
 begin_ : ∀ {M N}
   → M ⇀⋆ N
-    ------
+    -------
   → M ⇀⋆ N
 begin M⇀⋆N = M⇀⋆N
 ```
@@ -333,7 +336,7 @@ quiescent.
 data Quiescent : Configuration → Set where
 
   close : ∀ {e cs vs ws m ps}
-    -------------------------
+      -----------------------
     → Quiescent
         ⟪ Close
         , ⟨ [] , cs , vs , m ⟩
@@ -343,8 +346,8 @@ data Quiescent : Configuration → Set where
         ⟫
 
   waiting : ∀ {t tₛ Δₜ cs s c ws ps}
-    → (tₛ + Δₜ) ℕ.< t
-    -------------------------------
+    → tₛ + Δₜ < t
+      -----------------------------
     → Quiescent
         ⟪ When cs (mkTimeout (mkPosixTime t)) c
         , s
@@ -362,9 +365,9 @@ data Quiescent : Configuration → Set where
 data AmbiguousTimeInterval : Configuration → Set where
 
   AmbiguousTimeIntervalError : ∀ {t tₛ Δₜ cs c s ws ps}
-    → tₛ ℕ.< t
-    → (tₛ + Δₜ) ℕ.≥ t
-    --------------------------------------------------
+    → tₛ < t
+    → tₛ + Δₜ ≥ t
+      ------------------------------------------------
     → AmbiguousTimeInterval
         ⟪ When cs (mkTimeout (mkPosixTime t)) c
         , s
@@ -501,6 +504,9 @@ progress
 
 ### Examples
 
+The reduction steps of a contract until it is quiescent can be generated by Agda using
+`C-c C-n`.
+
 ```
 private
 
@@ -542,5 +548,9 @@ private
     , [ accountId₁ [ token₁ , 5 ]↦ mkParty (unAccountId accountId₁) ]
     ⟫
 
-  _ = ⇀-eval config₂ ≡ (config₀ , (config₂ ⇀⟨ IfTrue refl ⟩ config₁ ⇀⟨ CloseRefund ⟩ config₀ ∎) , inj₁ close)
+  _ = ⇀-eval config₂
+      ≡ ( config₀
+        , (config₂ ⇀⟨ IfTrue refl ⟩ config₁ ⇀⟨ CloseRefund ⟩ config₀ ∎)
+        , inj₁ close
+        )
 ```

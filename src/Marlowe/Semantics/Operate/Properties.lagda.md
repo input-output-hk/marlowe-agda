@@ -1,5 +1,15 @@
-module Marlowe.Semantics.Operate.Properties where
+---
+title: Marlowe.Semantics.Operate.Properties
+layout: page
+---
 
+```
+module Marlowe.Semantics.Operate.Properties where
+```
+
+## Imports
+
+```
 open import Data.List using (List; []; _∷_; _++_; map)
 open import Data.List.Relation.Unary.Any using (here; there)
 open import Data.List.Membership.Propositional using (_∈_)
@@ -22,13 +32,13 @@ open import Marlowe.Semantics.Operate
 
 open Configuration
 open TransactionInput
+```
 
-{-
-### Close is safe
+## Close is safe
 
-Computing a transaction on a Close contract does not produce any warnings.
--}
+Computing a transaction on a `Close` contract does not produce any warnings.
 
+```
 ⇓-Close-is-safe :
   ∀ {s r}
   → (Close , s) ⇓ r
@@ -37,8 +47,9 @@ Computing a transaction on a Close contract does not produce any warnings.
 ⇓-Close-is-safe (reduce-until-quiescent refl refl x q y)
   rewrite ⇀⋆Close-is-terminal x rewrite ⇓-Close-is-safe y =
     trans (cong convertReduceWarnings (sym (⇀⋆Close-is-safe x))) refl
+```
 
-
+```
 inputsToTransactions : TimeInterval → List Input → List TransactionInput
 inputsToTransactions ti []       = mkTransactionInput ti [] ∷ []
 inputsToTransactions ti (h ∷ []) = mkTransactionInput ti (h ∷ []) ∷ []
@@ -55,3 +66,4 @@ traceToSingleInputIsEquivalent :
 traceToSingleInputIsEquivalent {c} {s} {[]} = refl
 traceToSingleInputIsEquivalent {c} {s} {mkTransactionInput ti i ∷ is} = {!!}
 -}
+```

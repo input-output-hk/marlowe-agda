@@ -32,12 +32,16 @@ open Decidable _≟-ChoiceId_ renaming (_‼_default_ to _‼ᶜ_default_) using
 open Decidable _≟-ValueId_ renaming (_‼_default_ to _‼ᵛ_default_) using ()
 ```
 
-## Evaluate `Value` and `Observation`
+## Evaluation of `Value`s and `Observation`s
 
 ```
 ℰ⟦_⟧ : Value → Environment → State → ℤ
 𝒪⟦_⟧ : Observation → Environment → State → Bool
+```
 
+### Value
+
+```
 ℰ⟦ AvailableMoney a t ⟧ _ s = + ((a , t) ‼ᵃ accounts s default 0)
 ℰ⟦ Constant x ⟧ _ _ = x
 ℰ⟦ NegValue x ⟧ e s = - ℰ⟦ x ⟧ e s
@@ -55,7 +59,11 @@ open Decidable _≟-ValueId_ renaming (_‼_default_ to _‼ᵛ_default_) using 
 ℰ⟦ TimeIntervalEnd ⟧ e _ = + getPosixTime (endTime (timeInterval e))
 ℰ⟦ UseValue v ⟧ _ s = v ‼ᵛ boundValues s default 0ℤ
 ℰ⟦ Cond o x y ⟧ e s = if 𝒪⟦ o ⟧ e s then ℰ⟦ x ⟧ e s else ℰ⟦ y ⟧ e s
+```
 
+### Observation
+
+```
 𝒪⟦ AndObs x y ⟧ e s = 𝒪⟦ x ⟧ e s ∧ 𝒪⟦ y ⟧ e s
 𝒪⟦ OrObs x y ⟧ e s = 𝒪⟦ x ⟧ e s ∨ 𝒪⟦ y ⟧ e s
 𝒪⟦ NotObs x ⟧ e s = not (𝒪⟦ x ⟧ e s)

@@ -55,7 +55,7 @@ open PosixTime
 open TransactionInput
 ```
 
-# Mid step semantics
+# Mid-step semantics
 
 ## Waiting
 
@@ -67,8 +67,8 @@ can accept inputs.
 data Waiting : Configuration → Set where
 
   waiting : ∀ {cs t c s e ws ps}
-    → (interval-end e) < t
-    -----------------------------------------------
+    → interval-end e < t
+    -------------------------------------------
     → Waiting
         ⟪ When cs (mkTimeout (mkPosixTime t)) c
         , s
@@ -78,9 +78,9 @@ data Waiting : Configuration → Set where
         ⟫
 ```
 
-## Mid step reduction rules
+## Mid-step reduction rules
 
-Mid step reduction applies an input to a contract in the waiting state
+Mid-step reduction applies an input to a contract in the waiting state
 
 ```
 data _⇒_ : {C : Configuration} → Waiting C × Input → Configuration → Set where
@@ -178,7 +178,7 @@ applicable? {s} {e} INotify (Notify o)
 ... | no _  = nothing
 ```
 
-## Evaluator for mid step semantics
+## Evaluator for mid-step semantics
 
 ```
 {-# TERMINATING #-} -- TODO: use sized types instead
@@ -221,7 +221,7 @@ applicable? {s} {e} INotify (Notify o)
 ... | inj₂ e = inj₂ e
 ```
 
-# Big step semantics
+# Big-step semantics
 
 ```
 data _↝_ : Configuration → Configuration → Set where
@@ -280,7 +280,7 @@ convertReduceWarnings = map convertReduceWarning
     convertReduceWarning ReduceAssertionFailed = TransactionAssertionFailed
 ```
 
-## Big step reduction rules
+## Big-step reduction rules
 
 ```
 data _⇓_ : Contract × State → Result → Set where
@@ -331,7 +331,7 @@ data _⇓_ : Contract × State → Result → Set where
       ⟧
 ```
 
-## Evaluator for big step semantics
+## Evaluator for big step-semantics
 
 ```
 {-# TERMINATING #-} -- TODO: use sized types instead

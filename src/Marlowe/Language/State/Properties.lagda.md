@@ -1,5 +1,15 @@
-module Marlowe.Language.State.Properties where
+---
+title: Marlowe.Language.State.Properties
+layout: page
+---
 
+```
+module Marlowe.Language.State.Properties where
+```
+
+## Imports
+
+```
 open import Agda.Builtin.Int using (Int)
 open import Contrib.Data.Nat.Properties
 open import Data.Bool using (Bool; _∧_; true; false)
@@ -22,7 +32,9 @@ open PosixTime using (getPosixTime)
 
 open import Contrib.Data.List.AssocList
 open Decidable _≟-AccountId×Token_ renaming (_↑_ to _↑-AccountId×Token_)
+```
 
+```
 zero-projₜ : ∀ {a×t : AccountId × Token} {t : Token} → projₜ t (a×t , 0) ≡ 0
 zero-projₜ {a×t} {t} with ⌊ t ≟-Token (proj₂ a×t) ⌋
 ... | true = refl
@@ -125,3 +137,4 @@ linear-projₜ {a×t} {t} with ⌊ t ≟-Token (proj₂ a×t) ⌋
      (sym (cong (projₜ t x + Σ-accounts t xs ∸_) (⊓-projₜ {t} {a×t} {proj₂ x} {n})))
 Σ-accounts-↓ {a×t} {abs = x ∷ xs} n t (there p) rewrite Σ-accounts-↓ {a×t} {abs = xs} n t p =
   sym (+-∸-assoc (projₜ t x) (Σ-accounts-↓≤⊓ n t p))
+```
