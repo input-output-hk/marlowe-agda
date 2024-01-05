@@ -20,31 +20,15 @@ open import Data.Nat using (ℕ; _+_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Function.Base using (_∘_)
 
+open import Relation.Binary using (DecidableEquality)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Nullary.Decidable using (⌊_⌋)
 
-open import Marlowe.Language.Contract
-open PosixTime using (getPosixTime)
-
-open Decidable _≟-AccountId×Token_ renaming (_↑_ to _↑-AccountId×Token_)
+open import Marlowe.Language.Contract as Contract using (PosixTime; mkPosixTime)
 ```
 
-## State
 
-```
-record State : Set where
-  constructor ⟨_,_,_,_⟩
-  field
-    accounts : AssocList (AccountId × Token) ℕ
-    choices : AssocList ChoiceId ℤ
-    boundValues : AssocList ValueId ℤ
-    minTime : PosixTime
-
-emptyState : PosixTime → State
-emptyState m = ⟨ [] , [] , [] , m ⟩
-```
-
-## TimeInterval
+## Environment
 
 ```
 record TimeInterval : Set where
@@ -57,8 +41,6 @@ endTime : TimeInterval → PosixTime
 endTime (mkInterval (mkPosixTime s) o) = mkPosixTime (s + o)
 ```
 
-## Environment
-
 ```
 record Environment : Set where
   constructor mkEnvironment
@@ -70,22 +52,36 @@ interval-end (mkEnvironment (mkInterval (mkPosixTime s) o)) = s + o
 ```
 
 ```
-1ₜ : Token → Token × ℕ → ℕ
-1ₜ t₁ (t₂ , n) with ⌊ t₁ ≟-Token t₂ ⌋
-... | true = n
-... | false = 0
+module Domain
+  {Party : Set} (_≟-Party_ : DecidableEquality Party)
+  {Token : Set} (_≟-Token_ : DecidableEquality Token)
 
-projₜ : Token → (AccountId × Token) × ℕ → ℕ
-projₜ t ((_ , t′) , n) = 1ₜ t (t′ , n)
+  where
 
-Σ-accounts : Token → AssocList (AccountId × Token) ℕ → ℕ
-Σ-accounts t = sum ∘ map (projₜ t)
+  open Contract.Domain _≟-Party_ _≟-Token_
+  open Decidable _≟-AccountId×Token_
+```
 
-filter-accounts : Token → AssocList (AccountId × Token) ℕ → AssocList (AccountId × Token) ℕ
-filter-accounts t = filter ((t ≟-Token_) ∘ proj₂ ∘ proj₁)
+## State
 
-_↑-update_ : (p : (AccountId × Token) × ℕ) (abs : AssocList (AccountId × Token) ℕ) → AssocList (AccountId × Token) ℕ
-(a , b) ↑-update abs with a ∈? abs
-... | yes p = p ∷= (a , proj₂ (lookup p) + b)
-... | no _ = (a , b) ∷ abs
+```
+  record State : Set where
+    constructor ⟨_,_,_,_⟩
+    field
+      accounts : AssocList (AccountId × Token) ℕ
+      choices : AssocList ChoiceId ℤ
+      boundValues : AssocList ValueId ℤ
+      minTime : PosixTime
+
+  emptyState : PosixTime → State
+  emptyState m = ⟨ [] , [] , [] , m ⟩
+```
+
+### Account updates
+
+```
+  _↑-update_ : (p : (AccountId × Token) × ℕ) (abs : AssocList (AccountId × Token) ℕ) → AssocList (AccountId × Token) ℕ
+  (a , b) ↑-update abs with a ∈? abs
+  ... | yes p = p ∷= (a , proj₂ (lookup p) + b)
+  ... | no _ = (a , b) ∷ abs
 ```

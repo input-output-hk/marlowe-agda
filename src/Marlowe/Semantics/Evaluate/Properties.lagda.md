@@ -4,7 +4,12 @@ layout: page
 ---
 
 ```
-module Marlowe.Semantics.Evaluate.Properties where
+open import Relation.Binary using (DecidableEquality)
+
+module Marlowe.Semantics.Evaluate.Properties
+  {Party : Set} (_≟-Party_ : DecidableEquality Party)
+  {Token : Set} (_≟-Token_ : DecidableEquality Token)
+  where
 ```
 
 ## Imports
@@ -20,9 +25,12 @@ import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; cong; sym)
 open Eq.≡-Reasoning using (begin_; _≡⟨⟩_; step-≡; _∎)
 
-open import Marlowe.Language.Contract
-open import Marlowe.Language.State
-open import Marlowe.Semantics.Evaluate
+open import Marlowe.Language.Contract as C using (PosixTime)
+open import Marlowe.Language.State as S using (Environment; TimeInterval; endTime)
+
+open C.Domain _≟-Party_ _≟-Token_
+open S.Domain _≟-Party_ _≟-Token_
+open import Marlowe.Semantics.Evaluate _≟-Party_ _≟-Token_
 ```
 
 ```

@@ -6,48 +6,54 @@ layout: page
 The module contains the formalisation of mid-step and big-step semantics for Marlowe.
 
 ```
-module Marlowe.Semantics.Operate where
+open import Relation.Binary using (DecidableEquality)
+
+module Marlowe.Semantics.Operate
+  {Party : Set} (_≟-Party_ : DecidableEquality Party)
+  {Token : Set} (_≟-Token_ : DecidableEquality Token)
+  where
 ```
 
 ## Imports
 
 ```
-open import Agda.Builtin.Int using (Int)
 open import Data.Bool as 𝔹 using (Bool; if_then_else_; not; _∧_; _∨_; true; false)
 open import Data.Integer as ℤ using (∣_∣; +_)
 open import Data.List using (List; []; _∷_; _++_; foldr; reverse; [_]; null; map)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Membership.DecSetoid using () renaming (_∈?_ to _∈?-List_)
-open import Data.List.Membership.Setoid.Properties
 open import Data.List.Relation.Unary.Any using (Any; here; there; lookup; any?)
-open import Data.List.Relation.Unary.Any.Properties -- using (map⁻)
 open import Data.Maybe using (Maybe; just; nothing; fromMaybe)
 open import Data.Nat as ℕ using (ℕ; suc; zero; _<_; _<ᵇ_; _<?_; _≟_; z≤n; s≤s; _+_; _⊔_; _∸_; _≥_)
 open import Data.Nat.Properties using (≰⇒>; ≮⇒≥; ≤-reflexive; ≤-trans)
 open import Data.Product using (Σ; _,_; ∃; Σ-syntax; ∃-syntax)
 open import Data.Product using (_×_; proj₁; proj₂)
-import Data.String as String
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Function.Base using (_∘_ ;id)
+open import Function.Base using (_∘_ ; id)
+open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Relation.Nullary.Decidable using (⌊_⌋)
-open import Relation.Binary.Consequences
 
-open import Marlowe.Language.Contract
-open import Marlowe.Language.Input
-open import Marlowe.Language.State
-open import Marlowe.Language.Transaction
-open import Marlowe.Semantics.Evaluate
-open import Marlowe.Semantics.Reduce
+open import Relation.Binary using (Decidable; DecidableEquality)
+import Relation.Binary.PropositionalEquality as Eq
+open Eq using (_≡_; refl; cong; sym; trans)
+
+open import Marlowe.Language.Contract as C
+open import Marlowe.Language.Input as I
+open import Marlowe.Language.State as S
+open import Marlowe.Language.Transaction as T
+
+open C.Domain _≟-Party_ _≟-Token_
+open I.Domain _≟-Party_ _≟-Token_
+open S.Domain _≟-Party_ _≟-Token_
+open T.Domain _≟-Party_ _≟-Token_
+
+open import Marlowe.Semantics.Evaluate _≟-Party_ _≟-Token_
+open import Marlowe.Semantics.Reduce _≟-Party_ _≟-Token_
 
 open import Contrib.Data.List.AssocList renaming (_∈_ to _∈′_)
 open Decidable _≟-AccountId×Token_  renaming (_‼_default_ to _‼-AccountId×Token_default_; _↑_ to _↑-AccountId×Token_) hiding (_∈?_)
 open Decidable _≟-ChoiceId_ renaming (_‼_default_ to _‼-ChoiceId_default_;  _↑_ to _↑-ChoiceId_) using (_∈?_)
 open Decidable _≟-ValueId_ renaming (_‼_ to _‼_ValueId_; _‼_default_ to _‼-ValueId_default_; _∈?_ to _∈-ValueId?_; _↑_ to _↑-ValueId_)
-open import Relation.Binary using (Decidable; DecidableEquality; WeaklyDecidable)
-import Relation.Binary.PropositionalEquality as Eq
-open Eq using (_≡_; refl; cong; sym; trans)
-open import Relation.Nullary.Decidable using (⌊_⌋)
-open import Relation.Nullary using (Dec; yes; no; ¬_)
 
 open Configuration
 open State
@@ -141,8 +147,9 @@ data _⇒_ : {C : Configuration} → Waiting C × Input → Configuration → Se
     → ( waiting {cs} {tₒ} {c} {s} {e} {ws} {ps} tₑ<tₒ
       , NormalInput INotify
       ) ⇒ D
+```
 
-
+```
 data _↦_ {s : State} {e : Environment} : InputContent → Action → Set where
 
   deposit-input : ∀ {a p t v n}
@@ -156,7 +163,9 @@ data _↦_ {s : State} {e : Environment} : InputContent → Action → Set where
   notify-input : ∀ {o}
     → 𝒪⟦ o ⟧ e s ≡ true
     → INotify ↦ Notify o
+```
 
+```
 applicable? : ∀ {s : State} {e : Environment} → (i : InputContent) → (a : Action) → Maybe (_↦_ {s} {e} i a)
 applicable? {s} {e} (IDeposit a₁ p₁ t₁ n) (Deposit a₂ p₂ t₂ v)
   with a₁ ≟-AccountId a₂ | p₁ ≟-Party p₂ | t₁ ≟-Token t₂ | ℰ⟦ v ⟧ e s  ℤ.≟ + n
@@ -191,8 +200,9 @@ applicable? {s} {e} INotify (Notify o)
 
 ⇒-eval (waiting {mkCase a cₐ ∷ cs} {t} {c} {s} {e} {ws} {ps} tₑ<t) (NormalInput ic)
   with applicable? {s} {e} ic a
-
--- here
+```
+here
+```
 ⇒-eval (waiting {mkCase _ cₐ ∷ cs} {_} {_} {s} {e} {ws} {ps} tₑ<t) (NormalInput ic) | just (deposit-input {a} {p} {t} {_} {n} ℰ⟦v⟧≡+n)
   with ⇀-eval ⟪ cₐ , record s { accounts = ((a , t) , n) ↑-update (accounts s) } , e , ws , ps ⟫
 ... | D , C⇀⋆D , inj₁ q = inj₁ (D , Deposit (here refl) ℰ⟦v⟧≡+n tₑ<t q C⇀⋆D)
@@ -205,8 +215,9 @@ applicable? {s} {e} INotify (Notify o)
   with ⇀-eval ⟪ cₐ , s , e , ws , ps ⟫
 ... | D , C⇀⋆D , inj₁ q = inj₁ (D , Notify {s = s} {o = o} {e = e} (here refl) o≡true tₑ<t q C⇀⋆D)
 ... | _ , _    , inj₂ _ = inj₂ TEAmbiguousTimeIntervalError
-
--- there
+```
+there
+```
 ⇒-eval (waiting {(_ ∷ cs)} {_} {c} tₑ<t) i@(NormalInput (IDeposit x x₁ x₂ x₃)) | nothing
   with ⇒-eval (waiting {cs} {_} {c} tₑ<t) i
 ... | inj₁ (D , (Deposit x x₁ x₂ x₃ x₄)) = inj₁ (D , (Deposit (there x) x₁ x₂ x₃ x₄))
@@ -395,69 +406,4 @@ data _⇓_ : Contract × State → Result → Set where
     with ⇓-eval (contract D) (state D) is
 ... | inj₁ (⟦ ws , ps , s ⟧ , d×s×is⇓r) = inj₁ (⟦ ws ++ convertReduceWarnings (warnings D) , ps ++ payments D , s ⟧ , reduce-until-quiescent refl refl C×i⇒D q d×s×is⇓r)
 ... | inj₂ e = inj₂ e
-```
-
-### Example
-
-```
-private
-
-  tₒ : PosixTime
-  tₒ = mkPosixTime 100
-
-  p₁ : Party
-  p₁ = Role (mkByteString "role1")
-
-  p₂ : Party
-  p₂ = Role (mkByteString "role2")
-
-  a₁ : AccountId
-  a₁ = mkAccountId p₁
-
-  a₂ : AccountId
-  a₂ = mkAccountId p₂
-
-  t : Token
-  t = mkToken (mkByteString "") (mkByteString "")
-
-  v : Value
-  v = Constant (+ 1)
-
-  d : Contract
-  d = When ([ mkCase (Deposit a₁ p₂ t v) Close ]) (mkTimeout tₒ) Close
-
-  c : Contract
-  c = Assert FalseObs d
-
-  s : State
-  s = emptyState (mkPosixTime 0)
-
-  i : TransactionInput
-  i = mkTransactionInput (mkInterval (mkPosixTime 0) 10) [ NormalInput (IDeposit a₁ p₂ t 1) ]
-
-  e : Environment
-  e = mkEnvironment (mkInterval (mkPosixTime 0) 2)
-
-  reduction-steps :
-    (c , s)
-    ⇓ ⟦ [ TransactionAssertionFailed ]
-      , [ a₁ [ t , 1 ]↦ mkParty p₁ ]
-      , s
-      ⟧
-  reduction-steps =
-    reduce-until-quiescent refl refl
-      (⟪ c , s , e , [] , [] ⟫ ⇀⟨ AssertFalse refl ⟩ (⟪ d , s , e , [ ReduceAssertionFailed ] , [] ⟫ ∎))
-      (waiting (s≤s (s≤s (s≤s z≤n))))
-      (apply-input {i = NormalInput (IDeposit a₁ p₂ t 1)} (s≤s (s≤s (s≤s z≤n))) (trim-interval z≤n)
-        (Deposit (here refl) refl (s≤s (s≤s (s≤s z≤n))) close
-          (⟪ Close , ⟨ [((a₁ , t) , 1)] , [] , [] , minTime s ⟩ , e , []  , [] ⟫
-                 ⇀⟨ CloseRefund ⟩ (⟪ Close , ⟨ [] , [] , [] , (minTime s) ⟩ , e , [] , [ a₁ [ t , 1 ]↦ mkParty p₁ ] ⟫) ∎))
-        (done refl))
-
-  _ = ⇓-eval c s (i ∷ []) ≡
-       inj₁ (
-         ⟦ [ TransactionAssertionFailed ]
-         , [ a₁ [ t , 1 ]↦ mkParty p₁ ]
-         , s
-         ⟧ , reduction-steps)
 ```

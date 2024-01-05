@@ -4,7 +4,12 @@ layout: page
 ---
 
 ```
-module Marlowe.Language.State.Properties where
+open import Relation.Binary using (DecidableEquality)
+
+module Marlowe.Language.State.Properties
+  {Party : Set} (_≟-Party_ : DecidableEquality Party)
+  {Token : Set} (_≟-Token_ : DecidableEquality Token)
+  where
 ```
 
 ## Imports
@@ -26,12 +31,36 @@ open import Relation.Nullary.Decidable using (⌊_⌋)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; cong; sym; trans)
 
-open import Marlowe.Language.Contract
-open import Marlowe.Language.State
+open import Contrib.Data.List.AssocList
+open import Marlowe.Language.Contract as C
+open import Marlowe.Language.State as S
+open import Marlowe.Language.Transaction as T
 open PosixTime using (getPosixTime)
 
-open import Contrib.Data.List.AssocList
+open C.Domain _≟-Party_ _≟-Token_
+open S.Domain _≟-Party_ _≟-Token_
+open T.Domain _≟-Party_ _≟-Token_
+
 open Decidable _≟-AccountId×Token_ renaming (_↑_ to _↑-AccountId×Token_)
+```
+
+```
+1ₜ : Token → Token × ℕ → ℕ
+1ₜ t₁ (t₂ , n) with ⌊ t₁ ≟-Token t₂ ⌋
+... | true = n
+... | false = 0
+
+projₜ : Token → (AccountId × Token) × ℕ → ℕ
+projₜ t ((_ , t′) , n) = 1ₜ t (t′ , n)
+
+Σ-accounts : Token → AssocList (AccountId × Token) ℕ → ℕ
+Σ-accounts t = sum ∘ map (projₜ t)
+
+projₚ : Token → Payment → ℕ
+projₚ t (a [ t′ , n ]↦ _) = 1ₜ t (t′ , n)
+
+Σ-payments : Token → List Payment → ℕ
+Σ-payments t = sum ∘ map (projₚ t)
 ```
 
 ```

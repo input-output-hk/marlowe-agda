@@ -12,7 +12,7 @@ open import Data.Bool using (Bool; _∧_)
 open import Data.Integer using (_≤?_)
 open import Data.Nat using (ℕ)
 open import Data.List using (any)
-open import Marlowe.Language.Contract using (AccountId; Bound; ChoiceId; Party; Token)
+open import Relation.Binary using (DecidableEquality)
 open import Relation.Nullary.Decidable using (⌊_⌋)
 
 data ChosenNum : Set where
@@ -21,21 +21,30 @@ data ChosenNum : Set where
 unChosenNum : ChosenNum → Int
 unChosenNum (mkChosenNum num) = num
 
-_inBounds_ : ChosenNum → List Bound → Bool
-_inBounds_ (mkChosenNum num) bounds =
-  any inBound bounds
-    where
-      inBound : Bound → Bool
-      inBound (Bound.mkBound l u) = ⌊ l ≤? num ⌋ ∧ ⌊ num ≤? u ⌋
+module Domain
+  {Party : Set} (_≟-Party_ : DecidableEquality Party)
+  {Token : Set} (_≟-Token_ : DecidableEquality Token)
 
-data InputContent : Set where
-  IDeposit : AccountId → Party → Token → ℕ → InputContent
-  IChoice : ChoiceId → ChosenNum → InputContent
-  INotify : InputContent
+  where
 
-data Input : Set where
-  NormalInput : InputContent → Input
+  import Marlowe.Language.Contract as Contract
+  open Contract.Domain _≟-Party_ _≟-Token_
 
-getInputContent : Input → InputContent
-getInputContent (NormalInput input) = input where open Input
+  _inBounds_ : ChosenNum → List Bound → Bool
+  _inBounds_ (mkChosenNum num) bounds =
+    any inBound bounds
+      where
+        inBound : Bound → Bool
+        inBound (Bound.mkBound l u) = ⌊ l ≤? num ⌋ ∧ ⌊ num ≤? u ⌋
+
+  data InputContent : Set where
+    IDeposit : AccountId → Party → Token → ℕ → InputContent
+    IChoice : ChoiceId → ChosenNum → InputContent
+    INotify : InputContent
+
+  data Input : Set where
+    NormalInput : InputContent → Input
+
+  getInputContent : Input → InputContent
+  getInputContent (NormalInput input) = input where open Input
 ```

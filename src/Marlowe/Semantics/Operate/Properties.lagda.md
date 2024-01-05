@@ -4,7 +4,12 @@ layout: page
 ---
 
 ```
-module Marlowe.Semantics.Operate.Properties where
+open import Relation.Binary using (DecidableEquality)
+
+module Marlowe.Semantics.Operate.Properties
+  {Party : Set} (_≟-Party_ : DecidableEquality Party)
+  {Token : Set} (_≟-Token_ : DecidableEquality Token)
+  where
 ```
 
 ## Imports
@@ -21,17 +26,24 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; cong; sym; trans)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
-open import Marlowe.Language.Contract
-open import Marlowe.Language.State
-open import Marlowe.Language.Input
-open import Marlowe.Language.Transaction
 
-open import Marlowe.Semantics.Reduce
-open import Marlowe.Semantics.Reduce.Properties
-open import Marlowe.Semantics.Operate
+open import Marlowe.Language.Contract as C
+open import Marlowe.Language.State as S
+open import Marlowe.Language.Input as I
+open import Marlowe.Language.Transaction as T
+
+open C.Domain _≟-Party_ _≟-Token_
+open S.Domain _≟-Party_ _≟-Token_
+open I.Domain _≟-Party_ _≟-Token_
+open T.Domain _≟-Party_ _≟-Token_
+
+open import Marlowe.Semantics.Operate _≟-Party_ _≟-Token_
+open import Marlowe.Semantics.Reduce _≟-Party_ _≟-Token_
 
 open Configuration
 open TransactionInput
+
+open import Marlowe.Semantics.Reduce.Properties _≟-Party_ _≟-Token_
 ```
 
 ## Close is safe

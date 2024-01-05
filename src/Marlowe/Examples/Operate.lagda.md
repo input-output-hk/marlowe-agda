@@ -1,0 +1,113 @@
+---
+title: Marlowe.Examples.Operate
+layout: page
+---
+
+```
+module Marlowe.Examples.Operate where
+```
+
+## Imports
+
+```
+open import Data.Integer as ℤ using (+_)
+open import Data.List using (List; []; _∷_; _++_; foldr; reverse; [_]; null; map)
+open import Data.List.Relation.Unary.Any using (here)
+open import Data.Nat using (z≤n; s≤s)
+open import Data.Product using (Σ; _,_; ∃; Σ-syntax; ∃-syntax)
+open import Data.String as String
+open import Data.Sum using (inj₁; inj₂)
+open import Relation.Binary using (Decidable; DecidableEquality)
+import Relation.Binary.PropositionalEquality as Eq
+open Eq using (_≡_; refl)
+
+open import Marlowe.Language.Contract as C
+open import Marlowe.Language.Input as I
+open import Marlowe.Language.State as S 
+open import Marlowe.Language.Transaction as T
+```
+
+### Token and Party
+
+`Token` and `Party` here are just strings.
+
+```
+Party = String
+_≟-Party_ = String._≟_
+
+Token = String
+_≟-Token_ = String._≟_
+```
+
+```
+open C.Domain _≟-Party_ _≟-Token_
+open I.Domain _≟-Party_ _≟-Token_
+open S.Domain _≟-Party_ _≟-Token_
+open T.Domain _≟-Party_ _≟-Token_ 
+
+open import Marlowe.Semantics.Reduce _≟-Party_ _≟-Token_
+open import Marlowe.Semantics.Operate _≟-Party_ _≟-Token_
+```
+
+### Example
+
+```
+tₒ : PosixTime
+tₒ = mkPosixTime 100
+
+p₁ : Party
+p₁ = "party₁"
+
+p₂ : Party
+p₂ = "party₂"
+
+a₁ : AccountId
+a₁ = mkAccountId p₁
+
+a₂ : AccountId
+a₂ = mkAccountId p₂
+
+t : Token
+t = "token"
+
+v : Value
+v = Constant (+ 1)
+
+d : Contract
+d = When ([ mkCase (Deposit a₁ p₂ t v) Close ]) (mkTimeout tₒ) Close
+
+c : Contract
+c = Assert FalseObs d
+
+s : State
+s = emptyState (mkPosixTime 0)
+
+i : TransactionInput
+i = mkTransactionInput (mkInterval (mkPosixTime 0) 10) [ NormalInput (IDeposit a₁ p₂ t 1) ]
+
+e : Environment
+e = mkEnvironment (mkInterval (mkPosixTime 0) 2)
+
+reduction-steps :
+  (c , s)
+  ⇓ ⟦ [ TransactionAssertionFailed ]
+    , [ a₁ [ t , 1 ]↦ mkParty p₁ ]
+    , s
+    ⟧
+reduction-steps =
+  reduce-until-quiescent refl refl
+    (⟪ c , s , e , [] , [] ⟫ ⇀⟨ AssertFalse refl ⟩ (⟪ d , s , e , [ ReduceAssertionFailed ] , [] ⟫ ∎))
+    (waiting (s≤s (s≤s (s≤s z≤n))))
+    (apply-input {i = NormalInput (IDeposit a₁ p₂ t 1)} (s≤s (s≤s (s≤s z≤n))) (trim-interval z≤n)
+      (Deposit (here refl) refl (s≤s (s≤s (s≤s z≤n))) close
+        (⟪ Close , ⟨ [((a₁ , t) , 1)] , [] , [] , mkPosixTime 0 ⟩ , e , []  , [] ⟫
+               ⇀⟨ CloseRefund ⟩ (⟪ Close , ⟨ [] , [] , [] , mkPosixTime 0 ⟩ , e , [] , [ a₁ [ t , 1 ]↦ mkParty p₁ ] ⟫) ∎))
+      (done refl))
+
+_ = ⇓-eval c s (i ∷ []) ≡
+     inj₁ (
+       ⟦ [ TransactionAssertionFailed ]
+       , [ a₁ [ t , 1 ]↦ mkParty p₁ ]
+       , s
+       ⟧ , reduction-steps)
+```

@@ -1,5 +1,5 @@
 ---
-title: Marlowe.Semantics.Evaluate.Properties
+title: Marlowe.Examples.Escrow
 layout: page
 ---
 
@@ -13,19 +13,74 @@ module Marlowe.Examples.Escrow where
 open import Agda.Builtin.Int using (Int)
 open import Agda.Builtin.String using (String)
 open import Data.Integer using (0ℤ; 1ℤ; +_)
-open import Data.Nat as ℕ 
+open import Data.Nat as ℕ
 open import Data.List using (List; []; _∷_)
 open import Data.Product using (_×_) renaming (_,_ to ⟨_,_⟩ )
-open import Marlowe.Language.Contract
-open import Marlowe.Language.Input
-open import Marlowe.Language.State
-open import Marlowe.Language.Transaction
+open import Data.String as String
+open import Relation.Binary using (DecidableEquality)
+open import Relation.Binary.PropositionalEquality using (cong; cong₂)
+open import Relation.Nullary using (yes; no)
+
+open import Marlowe.Language.Contract as C
+open import Marlowe.Language.Input as I
+open import Marlowe.Language.State as S
+open import Marlowe.Language.Transaction as T
 ```
 
 ```
 pattern [_] z = z ∷ []
 pattern [_,_] y z = y ∷ z ∷ []
 ```
+
+## Party
+
+```
+data Party : Set where
+  Address : String → Party
+  Role : String → Party
+
+unParty : Party → String
+unParty (Address x) = x
+unParty (Role x) = x
+
+_≟-Party_ : DecidableEquality Party
+Address b₁ ≟-Party Address b₂ with b₁ String.≟ b₂
+... | yes p = yes (cong Address p)
+... | no ¬p = no λ x → let y = cong unParty x in ¬p y
+Role b₁ ≟-Party Role b₂ with b₁ String.≟ b₂
+... | yes p = yes (cong Role p)
+... | no ¬p = no λ x → let y = cong unParty x in ¬p y
+Role _ ≟-Party Address _ = no λ ()
+Address _ ≟-Party Role _ = no λ ()
+```
+
+## Token
+
+```
+data Token : Set where
+  mkToken : String → String → Token
+
+getCurrencySymbol : Token → String
+getCurrencySymbol (mkToken c _) = c
+
+getTokenName : Token → String
+getTokenName (mkToken _ n) = n
+
+_≟-Token_ : DecidableEquality Token
+mkToken c₁ n₁ ≟-Token mkToken c₂ n₂ with c₁ String.≟ c₂ | n₁ String.≟ n₂
+... | yes p | yes q = yes (cong₂ mkToken p q)
+... | _ | no ¬q = no λ x → ¬q (cong getTokenName x)
+... | no ¬p | _ = no λ x → ¬p (cong getCurrencySymbol x)
+```
+
+```
+open C.Domain _≟-Party_ _≟-Token_
+open S.Domain _≟-Party_ _≟-Token_
+open T.Domain _≟-Party_ _≟-Token_
+open I.Domain _≟-Party_ _≟-Token_
+```
+
+## Escrow
 
 ```
 escrow : Party → Party → Party → Token → ℕ → Timeout → Timeout → Timeout → Timeout → Contract
@@ -77,17 +132,17 @@ escrow seller buyer mediator token price paymentDeadline complaintDeadline respo
     price' : Value
     price' = Constant (+ price)
     makeChoice : String → Party → Int → Action
-    makeChoice name party value = Choice (mkChoiceId (mkChoiceName (mkByteString name)) party) [(mkBound value value)]
+    makeChoice name party value = Choice (mkChoiceId (mkChoiceName name) party) [(mkBound value value)]
 ```
 
 ```
 escrowExample : PosixTime × Contract × (List TransactionInput)
 escrowExample =
   let
-    seller = Role (mkByteString "Seller")
-    buyer = Role (mkByteString "Buyer")
-    mediator = Role (mkByteString "Mediator")
-    token = mkToken (mkByteString "") (mkByteString"")
+    seller = Role "Seller"
+    buyer = Role "Buyer"
+    mediator = Role "Mediator"
+    token = mkToken "" ""
     price = 1000
     interval = mkInterval (mkPosixTime 0) 5
   in
@@ -99,7 +154,7 @@ escrowExample =
           (mkTimeout (mkPosixTime 40))
       , [
         mkTransactionInput interval [(NormalInput (IDeposit (mkAccountId seller) buyer token price))]
-      , mkTransactionInput interval [(NormalInput (IChoice (mkChoiceId (mkChoiceName (mkByteString "Everything is alright")) buyer) (mkChosenNum 0ℤ)))]
+      , mkTransactionInput interval [(NormalInput (IChoice (mkChoiceId (mkChoiceName "Everything is alright") buyer) (mkChosenNum 0ℤ)))]
       ]
     ⟩ ⟩
 ```

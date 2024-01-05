@@ -4,7 +4,12 @@ layout: page
 ---
 
 ```
-module Marlowe.Semantics.Reduce.Properties where
+open import Relation.Binary using (DecidableEquality)
+
+module Marlowe.Semantics.Reduce.Properties
+  {Party : Set} (_≟-Party_ : DecidableEquality Party)
+  {Token : Set} (_≟-Token_ : DecidableEquality Token)
+  where
 ```
 
 ## Imports
@@ -23,18 +28,22 @@ open import Relation.Nullary.Negation using (contradiction)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; _≢_; refl; cong; sym; subst; trans)
 
-open import Marlowe.Language.Contract
-open import Marlowe.Language.State
-open import Marlowe.Language.State.Properties
-open import Marlowe.Language.Transaction
-open import Marlowe.Semantics.Evaluate
-open import Marlowe.Semantics.Reduce
+open import Marlowe.Language.Contract as C
+open import Marlowe.Language.State as S
+open import Marlowe.Language.Transaction as T
+
+open C.Domain _≟-Party_ _≟-Token_
+open S.Domain _≟-Party_ _≟-Token_
+open T.Domain _≟-Party_ _≟-Token_
+
+open import Marlowe.Language.State.Properties _≟-Party_ _≟-Token_
+open import Marlowe.Semantics.Evaluate _≟-Party_ _≟-Token_
+open import Marlowe.Semantics.Reduce _≟-Party_ _≟-Token_
 
 open import Contrib.Data.List.AssocList
 open Decidable _≟-AccountId×Token_ renaming (_∈?_ to _∈?-AccountId×Token_)
 
-open State using (accounts; boundValues; choices)
-
+open State
 open Configuration
 open Environment
 open TimeInterval
@@ -176,6 +185,7 @@ Close is a terminal contract
 ⇀-env-not-modified (AssertTrue _) = refl
 ⇀-env-not-modified (AssertFalse _) = refl
 ```
+
 ## Finite contracts
 
 ```
