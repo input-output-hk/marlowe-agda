@@ -37,9 +37,9 @@ open import Marlowe.Language.State as S
 open import Marlowe.Language.Transaction as T
 open PosixTime using (getPosixTime)
 
-open C.Domain _≟-Party_ _≟-Token_
-open S.Domain _≟-Party_ _≟-Token_
-open T.Domain _≟-Party_ _≟-Token_
+open C.Parameterized _≟-Party_ _≟-Token_
+open S.Parameterized _≟-Party_ _≟-Token_
+open T.Parameterized _≟-Party_ _≟-Token_
 
 open Decidable _≟-AccountId×Token_ renaming (_↑_ to _↑-AccountId×Token_)
 ```

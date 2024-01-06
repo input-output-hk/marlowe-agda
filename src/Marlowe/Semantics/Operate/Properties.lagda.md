@@ -32,10 +32,10 @@ open import Marlowe.Language.State as S
 open import Marlowe.Language.Input as I
 open import Marlowe.Language.Transaction as T
 
-open C.Domain _≟-Party_ _≟-Token_
-open S.Domain _≟-Party_ _≟-Token_
-open I.Domain _≟-Party_ _≟-Token_
-open T.Domain _≟-Party_ _≟-Token_
+open C.Parameterized _≟-Party_ _≟-Token_
+open S.Parameterized _≟-Party_ _≟-Token_
+open I.Parameterized _≟-Party_ _≟-Token_
+open T.Parameterized _≟-Party_ _≟-Token_
 
 open import Marlowe.Semantics.Operate _≟-Party_ _≟-Token_
 open import Marlowe.Semantics.Reduce _≟-Party_ _≟-Token_

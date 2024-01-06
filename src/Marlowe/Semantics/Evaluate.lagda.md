@@ -20,6 +20,7 @@ open import Data.Integer using (ℤ; -_; _-_; +_; _+_; _*_; _≟_; _<?_; _≤?_;
 open import Data.Integer.DivMod using (_div_)
 open import Data.Nat as ℕ using ()
 open import Data.Product using (_,_; _×_; proj₁; proj₂)
+open import Data.Product.Properties using (≡-dec)
 open import Relation.Nullary using (yes; no)
 open import Relation.Nullary.Decidable using (⌊_⌋; fromWitnessFalse)
 
@@ -28,15 +29,15 @@ open import Contrib.Data.List.AssocList
 open import Marlowe.Language.Contract as C using (PosixTime)
 open import Marlowe.Language.State as S using (Environment; TimeInterval; endTime)
 
-open C.Domain _≟-Party_ _≟-Token_
-open S.Domain _≟-Party_ _≟-Token_
+open C.Parameterized _≟-Party_ _≟-Token_
+open S.Parameterized _≟-Party_ _≟-Token_
 
 open Environment using (timeInterval)
 open TimeInterval using (startTime; offset)
 open PosixTime using (getPosixTime)
 open State using (accounts; boundValues; choices)
 
-open Decidable _≟-AccountId×Token_ renaming (_‼_default_ to _‼ᵃ_default_) using ()
+open Decidable (≡-dec _≟-AccountId_ _≟-Token_) renaming (_‼_default_ to _‼ᵃ_default_) using ()
 open Decidable _≟-ChoiceId_ renaming (_‼_default_ to _‼ᶜ_default_) using (_∈?_)
 open Decidable _≟-ValueId_ renaming (_‼_default_ to _‼ᵛ_default_) using ()
 ```

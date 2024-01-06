@@ -19,20 +19,24 @@ open import Relation.Binary using (DecidableEquality)
 open import Function.Base using (_∘_)
 ```
 
+## Parameterized domain
+
+The domain model used for building the transaction related
+data types is parameterized by `Party` and `Token`.
+
 ```
-module Domain
+module Parameterized
   {Party : Set} (_≟-Party_ : DecidableEquality Party)
   {Token : Set} (_≟-Token_ : DecidableEquality Token)
-
   where
 
   open import Marlowe.Language.Contract as Contract
   open import Marlowe.Language.Input as Input
   open import Marlowe.Language.State as State
 
-  open Contract.Domain _≟-Party_ _≟-Token_
-  open Input.Domain _≟-Party_ _≟-Token_
-  open State.Domain _≟-Party_ _≟-Token_
+  open Contract.Parameterized _≟-Party_ _≟-Token_
+  open Input.Parameterized _≟-Party_ _≟-Token_
+  open State.Parameterized _≟-Party_ _≟-Token_
 ```
 
 ## Payment

@@ -28,8 +28,8 @@ open Eq.≡-Reasoning using (begin_; _≡⟨⟩_; step-≡; _∎)
 open import Marlowe.Language.Contract as C using (PosixTime)
 open import Marlowe.Language.State as S using (Environment; TimeInterval; endTime)
 
-open C.Domain _≟-Party_ _≟-Token_
-open S.Domain _≟-Party_ _≟-Token_
+open C.Parameterized _≟-Party_ _≟-Token_
+open S.Parameterized _≟-Party_ _≟-Token_
 open import Marlowe.Semantics.Evaluate _≟-Party_ _≟-Token_
 ```
 

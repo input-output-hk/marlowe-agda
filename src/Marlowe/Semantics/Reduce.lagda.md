@@ -29,8 +29,8 @@ open import Data.List.Relation.Unary.Any using (lookup; _∷=_; here; there)
 open import Data.List.Relation.Unary.All.Properties using (¬Any⇒All¬; All¬⇒¬Any)
 open import Data.Nat as ℕ using (ℕ; zero; suc; s≤s; _⊓_; _∸_; _+_; _<ᵇ_; _≤ᵇ_; _<_; _≥_)
 open import Data.Nat.Properties using (1+n≰n; ≤-trans; +-identityʳ; +-comm; +-assoc; ≤⇒≯; m≤m+n; ≰⇒>; ≮⇒≥)
-open import Data.Product using (Σ; _,_; ∃; Σ-syntax; ∃-syntax)
-open import Data.Product using (_×_; proj₁; proj₂)
+open import Data.Product using (Σ; _,_; ∃; Σ-syntax; ∃-syntax; _×_; proj₁; proj₂)
+open import Data.Product.Properties using (≡-dec)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 
 import Relation.Binary.PropositionalEquality as Eq
@@ -41,23 +41,23 @@ open import Contrib.Data.List.AssocList
 
 open import Marlowe.Language.State using (Environment; mkEnvironment; TimeInterval; mkInterval)
 
-open import Marlowe.Language.Contract as C
-import Marlowe.Language.Input as I
-import Marlowe.Language.State as S
-import Marlowe.Language.Transaction as T
+open import Marlowe.Language.Contract as Contract
+import Marlowe.Language.Input as Input
+import Marlowe.Language.State as State
+import Marlowe.Language.Transaction as Transaction
 
-open C.Domain _≟-Party_ _≟-Token_
-open I.Domain _≟-Party_ _≟-Token_
-open S.Domain _≟-Party_ _≟-Token_
-open T.Domain _≟-Party_ _≟-Token_
+open Contract.Parameterized _≟-Party_ _≟-Token_
+open Input.Parameterized _≟-Party_ _≟-Token_
+open State.Parameterized _≟-Party_ _≟-Token_
+open Transaction.Parameterized _≟-Party_ _≟-Token_
 
 open import Marlowe.Semantics.Evaluate _≟-Party_ _≟-Token_
 
 open Environment using (timeInterval)
-open S.Domain.State using (accounts; boundValues; choices)
+open State.Parameterized.State using (accounts; boundValues; choices)
 open TimeInterval using (startTime)
 
-open Decidable _≟-AccountId×Token_ renaming (_∈?_ to _∈?-AccountId×Token_)
+open Decidable (≡-dec _≟-AccountId_ _≟-Token_) renaming (_∈?_ to _∈?-AccountId×Token_)
 open Decidable _≟-ValueId_ renaming (_∈?_ to _∈-ValueId?_)
 ```
 

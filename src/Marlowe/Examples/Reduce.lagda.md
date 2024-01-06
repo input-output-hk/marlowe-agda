@@ -12,34 +12,26 @@ module Marlowe.Examples.Reduce where
 ```
 open import Data.List using (List; []; _∷_; [_])
 open import Data.Product using (Σ; _,_; ∃; Σ-syntax; ∃-syntax)
-open import Data.String as String
+open import Data.String using (_≟_)
 open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary using (DecidableEquality)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Contrib.Data.List.AssocList
-open import Marlowe.Language.Contract as C 
-open import Marlowe.Language.State as S
-import Marlowe.Language.Transaction as T
+open import Marlowe.Language.Contract as Contract
+open import Marlowe.Language.State as State
+import Marlowe.Language.Transaction as Transaction
 ```
 
 ### Token and Party
 
-`Token` and `Party` here are just strings.
+`Token` and `Party` here are simply strings.
 
 ```
-Party = String
-_≟-Party_ = String._≟_
-
-Token = String
-_≟-Token_ = String._≟_
-```
-
-```
-open C.Domain _≟-Party_ _≟-Token_
-open S.Domain _≟-Party_ _≟-Token_
-open T.Domain _≟-Party_ _≟-Token_ 
-open import Marlowe.Semantics.Reduce _≟-Party_ _≟-Token_
+open Contract.Parameterized _≟_ _≟_
+open State.Parameterized _≟_ _≟_
+open Transaction.Parameterized _≟_ _≟_
+open import Marlowe.Semantics.Reduce _≟_ _≟_
 ```
 
 ### Examples

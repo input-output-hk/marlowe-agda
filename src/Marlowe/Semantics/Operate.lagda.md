@@ -26,8 +26,7 @@ open import Data.List.Relation.Unary.Any using (Any; here; there; lookup; any?)
 open import Data.Maybe using (Maybe; just; nothing; fromMaybe)
 open import Data.Nat as ℕ using (ℕ; suc; zero; _<_; _<ᵇ_; _<?_; _≟_; z≤n; s≤s; _+_; _⊔_; _∸_; _≥_)
 open import Data.Nat.Properties using (≰⇒>; ≮⇒≥; ≤-reflexive; ≤-trans)
-open import Data.Product using (Σ; _,_; ∃; Σ-syntax; ∃-syntax)
-open import Data.Product using (_×_; proj₁; proj₂)
+open import Data.Product using (Σ; _,_; ∃; Σ-syntax; ∃-syntax; _×_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Function.Base using (_∘_ ; id)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
@@ -37,26 +36,24 @@ open import Relation.Binary using (Decidable; DecidableEquality)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; cong; sym; trans)
 
-open import Marlowe.Language.Contract as C
-open import Marlowe.Language.Input as I
-open import Marlowe.Language.State as S
-open import Marlowe.Language.Transaction as T
+open import Marlowe.Language.Contract as Contract
+open import Marlowe.Language.Input as Input
+open import Marlowe.Language.State as State
+open import Marlowe.Language.Transaction as Transaction
 
-open C.Domain _≟-Party_ _≟-Token_
-open I.Domain _≟-Party_ _≟-Token_
-open S.Domain _≟-Party_ _≟-Token_
-open T.Domain _≟-Party_ _≟-Token_
+open Contract.Parameterized _≟-Party_ _≟-Token_
+open Input.Parameterized _≟-Party_ _≟-Token_
+open State.Parameterized _≟-Party_ _≟-Token_
+open Transaction.Parameterized _≟-Party_ _≟-Token_
 
 open import Marlowe.Semantics.Evaluate _≟-Party_ _≟-Token_
 open import Marlowe.Semantics.Reduce _≟-Party_ _≟-Token_
 
 open import Contrib.Data.List.AssocList renaming (_∈_ to _∈′_)
-open Decidable _≟-AccountId×Token_  renaming (_‼_default_ to _‼-AccountId×Token_default_; _↑_ to _↑-AccountId×Token_) hiding (_∈?_)
-open Decidable _≟-ChoiceId_ renaming (_‼_default_ to _‼-ChoiceId_default_;  _↑_ to _↑-ChoiceId_) using (_∈?_)
-open Decidable _≟-ValueId_ renaming (_‼_ to _‼_ValueId_; _‼_default_ to _‼-ValueId_default_; _∈?_ to _∈-ValueId?_; _↑_ to _↑-ValueId_)
+open Decidable _≟-ChoiceId_
 
 open Configuration
-open State
+open State.Parameterized.State
 open PosixTime
 open TransactionInput
 ```
@@ -119,7 +116,7 @@ data _⇒_ : {C : Configuration} → Waiting C × Input → Configuration → Se
     → ( ⟪ cₐ
         , record s
             { choices =
-              (i , unChosenNum n) ↑-ChoiceId (choices s)
+              (i , unChosenNum n) ↑ (choices s)
             }
         , e
         , ws
@@ -208,7 +205,7 @@ here
 ... | D , C⇀⋆D , inj₁ q = inj₁ (D , Deposit (here refl) ℰ⟦v⟧≡+n tₑ<t q C⇀⋆D)
 ... | _ , _    , inj₂ _ = inj₂ TEAmbiguousTimeIntervalError
 ⇒-eval (waiting {mkCase _ cₐ ∷ cs} {_} {_} {s} {e} {ws} {ps} tₑ<t) (NormalInput ic) | just (choice-input {i} {n} {bs} p)
-  with ⇀-eval ⟪ cₐ , record s { choices = (i , unChosenNum n) ↑-ChoiceId (choices s) } , e , ws , ps ⟫
+  with ⇀-eval ⟪ cₐ , record s { choices = (i , unChosenNum n) ↑ (choices s) } , e , ws , ps ⟫
 ... | D , C⇀⋆D , inj₁ q = inj₁ (D , Choice (here refl) p tₑ<t q C⇀⋆D)
 ... | _ , _    , inj₂ q = inj₂ TEAmbiguousTimeIntervalError
 ⇒-eval (waiting {mkCase _ cₐ ∷ cs} {_} {_} {s} {e} {ws} {ps} tₑ<t) (NormalInput ic) | just (notify-input {o} o≡true)

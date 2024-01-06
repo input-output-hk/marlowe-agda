@@ -18,6 +18,7 @@ open import Data.List using (List; []; _∷_; sum; filter; map)
 open import Data.List.Relation.Unary.Any using (lookup; _∷=_)
 open import Data.Nat using (ℕ; _+_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Product.Properties using (≡-dec)
 open import Function.Base using (_∘_)
 
 open import Relation.Binary using (DecidableEquality)
@@ -52,14 +53,13 @@ interval-end (mkEnvironment (mkInterval (mkPosixTime s) o)) = s + o
 ```
 
 ```
-module Domain
+module Parameterized
   {Party : Set} (_≟-Party_ : DecidableEquality Party)
   {Token : Set} (_≟-Token_ : DecidableEquality Token)
-
   where
 
-  open Contract.Domain _≟-Party_ _≟-Token_
-  open Decidable _≟-AccountId×Token_
+  open Contract.Parameterized _≟-Party_ _≟-Token_
+  open Decidable (≡-dec _≟-AccountId_ _≟-Token_)
 ```
 
 ## State

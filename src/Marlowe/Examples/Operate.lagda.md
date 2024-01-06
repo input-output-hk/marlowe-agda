@@ -15,7 +15,7 @@ open import Data.List using (List; []; _∷_; _++_; foldr; reverse; [_]; null; m
 open import Data.List.Relation.Unary.Any using (here)
 open import Data.Nat using (z≤n; s≤s)
 open import Data.Product using (Σ; _,_; ∃; Σ-syntax; ∃-syntax)
-open import Data.String as String
+open import Data.String using (String; _≟_)
 open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary using (Decidable; DecidableEquality)
 import Relation.Binary.PropositionalEquality as Eq
@@ -23,30 +23,22 @@ open Eq using (_≡_; refl)
 
 open import Marlowe.Language.Contract as C
 open import Marlowe.Language.Input as I
-open import Marlowe.Language.State as S 
+open import Marlowe.Language.State as S
 open import Marlowe.Language.Transaction as T
 ```
 
 ### Token and Party
 
-`Token` and `Party` here are just strings.
+`Token` and `Party` here are simply strings.
 
 ```
-Party = String
-_≟-Party_ = String._≟_
+open C.Parameterized _≟_ _≟_
+open I.Parameterized _≟_ _≟_
+open S.Parameterized _≟_ _≟_
+open T.Parameterized _≟_ _≟_
 
-Token = String
-_≟-Token_ = String._≟_
-```
-
-```
-open C.Domain _≟-Party_ _≟-Token_
-open I.Domain _≟-Party_ _≟-Token_
-open S.Domain _≟-Party_ _≟-Token_
-open T.Domain _≟-Party_ _≟-Token_ 
-
-open import Marlowe.Semantics.Reduce _≟-Party_ _≟-Token_
-open import Marlowe.Semantics.Operate _≟-Party_ _≟-Token_
+open import Marlowe.Semantics.Reduce _≟_ _≟_
+open import Marlowe.Semantics.Operate _≟_ _≟_
 ```
 
 ### Example
@@ -55,10 +47,10 @@ open import Marlowe.Semantics.Operate _≟-Party_ _≟-Token_
 tₒ : PosixTime
 tₒ = mkPosixTime 100
 
-p₁ : Party
+p₁ : String
 p₁ = "party₁"
 
-p₂ : Party
+p₂ : String
 p₂ = "party₂"
 
 a₁ : AccountId
@@ -67,7 +59,7 @@ a₁ = mkAccountId p₁
 a₂ : AccountId
 a₂ = mkAccountId p₂
 
-t : Token
+t : String
 t = "token"
 
 v : Value
