@@ -21,10 +21,10 @@ open import Relation.Binary using (DecidableEquality)
 open import Relation.Binary.PropositionalEquality using (cong; cong₂)
 open import Relation.Nullary using (yes; no)
 
-open import Marlowe.Language.Contract as C
-open import Marlowe.Language.Input as I
-open import Marlowe.Language.State as S
-open import Marlowe.Language.Transaction as T
+open import Marlowe.Language.Contract as Contract
+open import Marlowe.Language.Input as Input
+open import Marlowe.Language.State as State
+open import Marlowe.Language.Transaction as Transaction
 ```
 
 ```
@@ -74,10 +74,10 @@ mkToken c₁ n₁ ≟-Token mkToken c₂ n₂ with c₁ ≟ c₂ | n₁ ≟ n₂
 ```
 
 ```
-open C.Parameterized _≟-Party_ _≟-Token_
-open S.Parameterized _≟-Party_ _≟-Token_
-open T.Parameterized _≟-Party_ _≟-Token_
-open I.Parameterized _≟-Party_ _≟-Token_
+open Contract.Parameterized _≟-Party_ _≟-Token_
+open State.Parameterized _≟-Party_ _≟-Token_
+open Transaction.Parameterized _≟-Party_ _≟-Token_
+open Input.Parameterized _≟-Party_ _≟-Token_
 ```
 
 ## Escrow

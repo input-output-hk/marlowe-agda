@@ -22,6 +22,7 @@ open import Data.List.Relation.Unary.Any using (lookup; _∷=_)
 open import Data.Nat as ℕ
 open import Data.Nat.Properties as ℕ
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Product.Properties using (≡-dec)
 open import Function.Base using (_∘_; _$_; _|>_)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Relation.Nullary.Negation using (contradiction)
@@ -41,7 +42,7 @@ open import Marlowe.Semantics.Evaluate _≟-Party_ _≟-Token_
 open import Marlowe.Semantics.Reduce _≟-Party_ _≟-Token_
 
 open import Contrib.Data.List.AssocList
-open Decidable _≟-AccountId×Token_ renaming (_∈?_ to _∈?-AccountId×Token_)
+open Decidable (≡-dec _≟-AccountId_ _≟-Token_) renaming (_∈?_ to _∈?-AccountId×Token_)
 
 open State
 open Configuration

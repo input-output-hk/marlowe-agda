@@ -231,11 +231,13 @@ there
 
 # Big-step semantics
 
+## Fix interval
+
 ```
 data _↝_ : Configuration → Configuration → Set where
 
   trim-interval : ∀ {c as cs bs tₘ tₛ Δₜ ws ps }
-    → (tₛ + Δₜ) ≥ tₘ
+    → tₛ + Δₜ ≥ tₘ
     → ⟪ c
       , ⟨ as , cs , bs , mkPosixTime tₘ ⟩
       , mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ)
@@ -266,15 +268,7 @@ fixInterval : ∀ (B : Configuration) → FixInterval B
 fixInterval ⟪ _ , ⟨ _ , _ , _ , mkPosixTime tₘ ⟩ , mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ) , _ , _ ⟫ with tₛ + Δₜ <? tₘ
 ... | yes p = error p
 ... | no p = trim (trim-interval (≮⇒≥ p))
-
-record Result : Set where
-  constructor ⟦_,_,_⟧
-  field
-    warnings : List TransactionWarning
-    payments : List Payment
-    state : State
 ```
-
 ### Warnings
 
 ```
@@ -289,6 +283,15 @@ convertReduceWarnings = map convertReduceWarning
 ```
 
 ## Big-step reduction rules
+
+```
+record Result : Set where
+  constructor ⟦_,_,_⟧
+  field
+    warnings : List TransactionWarning
+    payments : List Payment
+    state : State
+```
 
 ```
 data _⇓_ : Contract × State → Result → Set where
@@ -348,11 +351,17 @@ data _⇓_ : Contract × State → Result → Set where
   → (s : State)
   → List TransactionInput
   → (Σ[ r ∈ Result ] (c , s) ⇓ r) ⊎ TransactionError
+```
 
--- Close
+Close
+
+```
 ⇓-eval Close s@(⟨ [] , _ , _ , _ ⟩) [] = inj₁ (⟦ [] , [] , s ⟧ , done refl)
+```
 
--- When
+When
+
+```
 ⇓-eval
   (When cs (mkTimeout (mkPosixTime t)) c) s@(⟨ _ , _ , _ , mkPosixTime tₘ ⟩) ((mkTransactionInput i@(mkInterval (mkPosixTime tₛ) Δₜ) _) ∷ is)
     with fixInterval ⟪ When cs (mkTimeout (mkPosixTime t)) c , s , mkEnvironment i , [] , [] ⟫
@@ -386,8 +395,11 @@ data _⇓_ : Contract × State → Result → Set where
     with ⇓-eval (contract D) (state D) is
 ... | inj₁ (⟦ ws , ps , s′ ⟧ , d×s×is⇓r) = inj₁ (⟦ ws ++ convertReduceWarnings (warnings D) , ps ++ payments D , s′ ⟧ , apply-input {ts} {cs} {t} {c} {_} {e = mkEnvironment i} {[]} {[]} tₑ<t B↝C C×i⇒D d×s×is⇓r)
 ... | inj₂ e = inj₂ e
+```
 
--- Otherwise
+Otherwise
+
+```
 ⇓-eval c s []
     with ⇀-eval ⟪ c , s , mkEnvironment (mkInterval (mkPosixTime 0) 0) , [] , [] ⟫
 ... | _ , _ , inj₂ _ = inj₂ TEAmbiguousTimeIntervalError

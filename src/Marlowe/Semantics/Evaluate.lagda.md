@@ -16,8 +16,8 @@ module Marlowe.Semantics.Evaluate
 
 ```
 open import Data.Bool using (Bool; false; true; _∧_; _∨_; if_then_else_; not)
-open import Data.Integer using (ℤ; -_; _-_; +_; _+_; _*_; _≟_; _<?_; _≤?_; ∣_∣; 0ℤ; 1ℤ; NonZero)
-open import Data.Integer.DivMod using (_div_)
+open import Data.Integer as ℤ using (ℤ; -_; _-_; +_; _+_; _*_; _≟_; _<?_; _≤?_; ∣_∣; 0ℤ; 1ℤ; NonZero)
+open import Data.Integer.DivMod as ℤ using ()
 open import Data.Nat as ℕ using ()
 open import Data.Product using (_,_; _×_; proj₁; proj₂)
 open import Data.Product.Properties using (≡-dec)
@@ -61,9 +61,9 @@ open Decidable _≟-ValueId_ renaming (_‼_default_ to _‼ᵛ_default_) using 
 ℰ⟦ DivValue x y ⟧ e s = ℰ⟦ x ⟧ e s / ℰ⟦ y ⟧ e s
   where
     _/_ : ℤ → ℤ → ℤ
-    _/_ num den with ∣ den ∣ ℕ.≟ 0
+    _/_ num den with den ℤ.≟ 0ℤ
     ... | yes _ = 0ℤ
-    ... | no ¬p = (num div den) { fromWitnessFalse ¬p }
+    ... | no ¬p = (num ℤ./ den) {{ ℤ.≢-nonZero ¬p }}
 ℰ⟦ ChoiceValue c ⟧ _ s = c ‼ᶜ choices s default 0ℤ
 ℰ⟦ TimeIntervalStart ⟧ e _ = + getPosixTime (startTime (timeInterval e))
 ℰ⟦ TimeIntervalEnd ⟧ e _ = + getPosixTime (endTime (timeInterval e))

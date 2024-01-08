@@ -299,11 +299,12 @@ library
     MAlonzo.Code.Relation.Unary
     MAlonzo.Code.Relation.Binary
     MAlonzo.Code.Algebra
-    MAlonzo.Code.Marlowe.Examples.Escrow
+    MAlonzo.Code.Marlowe.Examples.Operate
     MAlonzo.Code.Marlowe.Semantics.Reduce.Properties
     MAlonzo.Code.Marlowe.Semantics.Operate
     MAlonzo.Code.Marlowe.Semantics.Reduce
     MAlonzo.Code.Marlowe.Semantics.Evaluate
+    MAlonzo.Code.Marlowe.Semantics.Evaluate.Properties
     MAlonzo.Code.Marlowe.Semantics.Operate.Properties
     MAlonzo.Code.Marlowe.Language.State.Properties
     MAlonzo.Code.Marlowe.Language.State
@@ -311,7 +312,6 @@ library
     MAlonzo.Code.Marlowe.Language.Contract
     MAlonzo.Code.Marlowe.Language.Input
     MAlonzo.Code.Contrib.Data.List.AssocList
-    MAlonzo.Code.Contrib.Data.List.Membership
     MAlonzo.Code.Contrib.Data.Nat.Properties
     MAlonzo.Code.Induction
     MAlonzo.RTE
@@ -551,11 +551,12 @@ library
     MAlonzo.Code.Relation.Unary
     MAlonzo.Code.Relation.Binary
     MAlonzo.Code.Algebra
-    MAlonzo.Code.Marlowe.Examples.Escrow
+    MAlonzo.Code.Marlowe.Examples.Operate
     MAlonzo.Code.Marlowe.Semantics.Reduce.Properties
     MAlonzo.Code.Marlowe.Semantics.Operate
     MAlonzo.Code.Marlowe.Semantics.Reduce
     MAlonzo.Code.Marlowe.Semantics.Evaluate
+    MAlonzo.Code.Marlowe.Semantics.Evaluate.Properties
     MAlonzo.Code.Marlowe.Semantics.Operate.Properties
     MAlonzo.Code.Marlowe.Language.State.Properties
     MAlonzo.Code.Marlowe.Language.State
@@ -563,7 +564,6 @@ library
     MAlonzo.Code.Marlowe.Language.Contract
     MAlonzo.Code.Marlowe.Language.Input
     MAlonzo.Code.Contrib.Data.List.AssocList
-    MAlonzo.Code.Contrib.Data.List.Membership
     MAlonzo.Code.Contrib.Data.Nat.Properties
     MAlonzo.Code.Induction
     MAlonzo.RTE

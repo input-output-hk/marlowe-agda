@@ -21,10 +21,10 @@ open import Relation.Binary using (Decidable; DecidableEquality)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl)
 
-open import Marlowe.Language.Contract as C
-open import Marlowe.Language.Input as I
-open import Marlowe.Language.State as S
-open import Marlowe.Language.Transaction as T
+open import Marlowe.Language.Contract as Contract
+open import Marlowe.Language.Input as Input
+open import Marlowe.Language.State as State
+open import Marlowe.Language.Transaction as Transaction
 ```
 
 ### Token and Party
@@ -32,10 +32,10 @@ open import Marlowe.Language.Transaction as T
 `Token` and `Party` here are simply strings.
 
 ```
-open C.Parameterized _≟_ _≟_
-open I.Parameterized _≟_ _≟_
-open S.Parameterized _≟_ _≟_
-open T.Parameterized _≟_ _≟_
+open Contract.Parameterized _≟_ _≟_
+open Input.Parameterized _≟_ _≟_
+open State.Parameterized _≟_ _≟_
+open Transaction.Parameterized _≟_ _≟_
 
 open import Marlowe.Semantics.Reduce _≟_ _≟_
 open import Marlowe.Semantics.Operate _≟_ _≟_

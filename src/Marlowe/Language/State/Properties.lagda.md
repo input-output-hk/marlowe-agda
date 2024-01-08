@@ -40,8 +40,6 @@ open PosixTime using (getPosixTime)
 open C.Parameterized _≟-Party_ _≟-Token_
 open S.Parameterized _≟-Party_ _≟-Token_
 open T.Parameterized _≟-Party_ _≟-Token_
-
-open Decidable _≟-AccountId×Token_ renaming (_↑_ to _↑-AccountId×Token_)
 ```
 
 ```
