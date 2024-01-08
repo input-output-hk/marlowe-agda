@@ -74,10 +74,10 @@ mkToken c₁ n₁ ≟-Token mkToken c₂ n₂ with c₁ ≟ c₂ | n₁ ≟ n₂
 ```
 
 ```
-open Contract.Parameterized _≟-Party_ _≟-Token_
-open State.Parameterized _≟-Party_ _≟-Token_
-open Transaction.Parameterized _≟-Party_ _≟-Token_
-open Input.Parameterized _≟-Party_ _≟-Token_
+open Contract.Parameterized {Party} {Token}
+open State.Parameterized {Party} {Token}
+open Transaction.Parameterized {Party} {Token}
+open Input.Parameterized {Party} {Token}
 ```
 
 ## Escrow

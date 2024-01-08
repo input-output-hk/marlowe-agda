@@ -7,7 +7,7 @@ layout: page
 open import Relation.Binary using (DecidableEquality)
 
 module Marlowe.Language.State.Properties
-  {Party : Set} (_≟-Party_ : DecidableEquality Party)
+  {Party : Set}
   {Token : Set} (_≟-Token_ : DecidableEquality Token)
   where
 ```
@@ -32,14 +32,14 @@ import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; cong; sym; trans)
 
 open import Contrib.Data.List.AssocList
-open import Marlowe.Language.Contract as C
-open import Marlowe.Language.State as S
-open import Marlowe.Language.Transaction as T
+open import Marlowe.Language.Contract as Contract
+open import Marlowe.Language.State as State
+open import Marlowe.Language.Transaction as Transaction
 open PosixTime using (getPosixTime)
 
-open C.Parameterized _≟-Party_ _≟-Token_
-open S.Parameterized _≟-Party_ _≟-Token_
-open T.Parameterized _≟-Party_ _≟-Token_
+open Contract.Parameterized {Party} {Token}
+open State.Parameterized {Party} {Token}
+open Transaction.Parameterized {Party} {Token}
 ```
 
 ```

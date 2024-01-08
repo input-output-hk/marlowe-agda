@@ -32,12 +32,12 @@ unChosenNum (mkChosenNum num) = num
 
 ```
 module Parameterized
-  {Party : Set} (_≟-Party_ : DecidableEquality Party)
-  {Token : Set} (_≟-Token_ : DecidableEquality Token)
+  {Party : Set}
+  {Token : Set}
   where
 
   open import Marlowe.Language.Contract as Contract
-  open Contract.Parameterized _≟-Party_ _≟-Token_
+  open Contract.Parameterized {Party} {Token}
 ```
 
 In order to determine, if a `ChosenNum` is within the inclusive bounds list,

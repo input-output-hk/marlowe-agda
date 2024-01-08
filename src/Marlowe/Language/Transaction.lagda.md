@@ -26,17 +26,17 @@ data types is parameterized by `Party` and `Token`.
 
 ```
 module Parameterized
-  {Party : Set} (_≟-Party_ : DecidableEquality Party)
-  {Token : Set} (_≟-Token_ : DecidableEquality Token)
+  {Party : Set}
+  {Token : Set}
   where
 
   open import Marlowe.Language.Contract as Contract
   open import Marlowe.Language.Input as Input
   open import Marlowe.Language.State as State
 
-  open Contract.Parameterized _≟-Party_ _≟-Token_
-  open Input.Parameterized _≟-Party_ _≟-Token_
-  open State.Parameterized _≟-Party_ _≟-Token_
+  open Contract.Parameterized {Party} {Token}
+  open Input.Parameterized {Party} {Token}
+  open State.Parameterized {Party} {Token}
 ```
 
 ## Payment

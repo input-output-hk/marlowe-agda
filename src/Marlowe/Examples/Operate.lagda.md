@@ -32,10 +32,10 @@ open import Marlowe.Language.Transaction as Transaction
 `Token` and `Party` here are simply strings.
 
 ```
-open Contract.Parameterized _≟_ _≟_
-open Input.Parameterized _≟_ _≟_
-open State.Parameterized _≟_ _≟_
-open Transaction.Parameterized _≟_ _≟_
+open Contract.Parameterized {String} {String}
+open Input.Parameterized {String} {String}
+open State.Parameterized {String} {String}
+open Transaction.Parameterized {String} {String}
 
 open import Marlowe.Semantics.Reduce _≟_ _≟_
 open import Marlowe.Semantics.Operate _≟_ _≟_

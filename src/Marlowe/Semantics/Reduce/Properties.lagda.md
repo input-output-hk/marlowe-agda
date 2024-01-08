@@ -29,22 +29,22 @@ open import Relation.Nullary.Negation using (contradiction)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; _≢_; refl; cong; sym; subst; trans)
 
-open import Marlowe.Language.Contract as C
-open import Marlowe.Language.State as S
-open import Marlowe.Language.Transaction as T
+open import Marlowe.Language.Contract as Contract
+open import Marlowe.Language.State as State
+open import Marlowe.Language.Transaction as Transaction
 
-open C.Parameterized _≟-Party_ _≟-Token_
-open S.Parameterized _≟-Party_ _≟-Token_
-open T.Parameterized _≟-Party_ _≟-Token_
+open Contract.Parameterized {Party} {Token}
+open State.Parameterized {Party} {Token}
+open Transaction.Parameterized {Party} {Token}
 
-open import Marlowe.Language.State.Properties _≟-Party_ _≟-Token_
+open import Marlowe.Language.State.Properties {Party} _≟-Token_
 open import Marlowe.Semantics.Evaluate _≟-Party_ _≟-Token_
 open import Marlowe.Semantics.Reduce _≟-Party_ _≟-Token_
 
 open import Contrib.Data.List.AssocList
 open Decidable (≡-dec _≟-AccountId_ _≟-Token_) renaming (_∈?_ to _∈?-AccountId×Token_)
 
-open State
+open State.Parameterized.State
 open Configuration
 open Environment
 open TimeInterval

@@ -46,10 +46,10 @@ import Marlowe.Language.Input as Input
 import Marlowe.Language.State as State
 import Marlowe.Language.Transaction as Transaction
 
-open Contract.Parameterized _≟-Party_ _≟-Token_
-open Input.Parameterized _≟-Party_ _≟-Token_
-open State.Parameterized _≟-Party_ _≟-Token_
-open Transaction.Parameterized _≟-Party_ _≟-Token_
+open Contract.Parameterized {Party} {Token}
+open Input.Parameterized {Party} {Token}
+open State.Parameterized {Party} {Token}
+open Transaction.Parameterized {Party} {Token}
 
 open import Marlowe.Semantics.Evaluate _≟-Party_ _≟-Token_
 
@@ -59,6 +59,15 @@ open TimeInterval using (startTime)
 
 open Decidable (≡-dec _≟-AccountId_ _≟-Token_) renaming (_∈?_ to _∈?-AccountId×Token_)
 open Decidable _≟-ValueId_ renaming (_∈?_ to _∈-ValueId?_)
+```
+
+### Account updates
+
+```
+_↑-update_ : (p : (AccountId × Token) × ℕ) (abs : AssocList (AccountId × Token) ℕ) → AssocList (AccountId × Token) ℕ
+(a , b) ↑-update abs with a ∈?-AccountId×Token abs
+... | yes p = p ∷= (a , proj₂ (lookup p) + b)
+... | no _ = (a , b) ∷ abs
 ```
 
 # Small-step semantics

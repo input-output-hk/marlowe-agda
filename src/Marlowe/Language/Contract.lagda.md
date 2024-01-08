@@ -12,16 +12,11 @@ module Marlowe.Language.Contract where
 ## Imports
 
 ```
-open import Data.Bool using (Bool; false; _∧_)
 open import Data.Integer using (ℤ)
 open import Data.List using (List; []; _∷_)
-open import Data.Nat as ℕ using (ℕ; _⊔_)
+open import Data.Nat using (ℕ; _⊔_)
 open import Data.Product using (_×_; _,_)
-open import Data.String using (String; _≟_)
-open import Function.Base using (_∘_)
-open import Relation.Binary using (DecidableEquality)
-open import Relation.Binary.PropositionalEquality using (cong; cong₂; _≡_; _≢_)
-open import Relation.Nullary using (yes; no)
+open import Data.String using (String)
 ```
 
 ## PosixTime and Timeout
@@ -38,6 +33,33 @@ data Timeout : Set where
   mkTimeout : PosixTime → Timeout
 ```
 
+### ValueId
+
+The `ValueId` is used to store and reference `Value`s in the state of the
+contract.
+
+```
+data ValueId : Set where
+  mkValueId : String → ValueId
+```
+
+### ChoiceName
+
+```
+data ChoiceName : Set where
+  mkChoiceName : String → ChoiceName
+```
+
+### Bound
+
+`Choice`s are bound. The `Bound` data type is a tuple of
+integers that represents an inclusive lower and upper bound.
+
+```
+data Bound : Set where
+  mkBound : ℤ → ℤ → Bound
+```
+
 ## Parameterized domain
 
 The domain model used for building the `Contract` data type is
@@ -45,16 +67,15 @@ parameterized by `Party` and `Token`.
 
 ```
 module Parameterized
-  {Party : Set} (_≟-Party_ : DecidableEquality Party)
-  {Token : Set} (_≟-Token_ : DecidableEquality Token)
+  {Party : Set}
+  {Token : Set}
   where
 ```
 
 ### AccountId
 
 Local accounts for parties of a contract are identified by the
-`AccountId`. In order to allow lookups by `AccountId` we need
-to provide an instance of `DecidableEquality` as well.
+`AccountId`.
 
 ```
   data AccountId : Set where
@@ -62,11 +83,6 @@ to provide an instance of `DecidableEquality` as well.
 
   unAccountId : AccountId → Party
   unAccountId (mkAccountId p) = p
-
-  _≟-AccountId_ : DecidableEquality AccountId
-  mkAccountId p₁ ≟-AccountId mkAccountId p₂ with p₁ ≟-Party p₂
-  ... | yes p = yes (cong mkAccountId p)
-  ... | no ¬p = no (¬p ∘ cong unAccountId)
 ```
 
 ### ChoiceId
@@ -75,43 +91,13 @@ Choices are identified by a `ChoiceId` which is defined by a
 canonical name and the `Party` that has to make the choice.
 
 ```
-  data ChoiceName : Set where
-    mkChoiceName : String → ChoiceName
-
-  _≟-ChoiceName_ : DecidableEquality ChoiceName
-  mkChoiceName s₁ ≟-ChoiceName mkChoiceName s₂ with s₁ ≟ s₂
-  ... | yes p = yes (cong mkChoiceName p)
-  ... | no ¬p = no (¬p ∘ cong λ {(mkChoiceName s) → s})
-
   record ChoiceId : Set where
     constructor mkChoiceId
     field
       name : ChoiceName
       party : Party
-
-  open ChoiceId
-
-  _≟-ChoiceId_ : DecidableEquality ChoiceId
-  mkChoiceId n₁ p₁ ≟-ChoiceId mkChoiceId n₂ p₂ with n₁ ≟-ChoiceName n₂ | p₁ ≟-Party p₂
-  ... | yes p | yes q = yes (cong₂ mkChoiceId p q)
-  ... | _ | no ¬q = no (¬q ∘ cong party)
-  ... | no ¬p | _ = no (¬p ∘ cong name)
 ```
 
-### ValueId
-
-The `ValueId` is used to store and reference `Value`s in the state of the
-contract.
-
-```
-  data ValueId : Set where
-    mkValueId : String → ValueId
-
-  _≟-ValueId_ : DecidableEquality ValueId
-  mkValueId s₁ ≟-ValueId mkValueId s₂ with s₁ ≟ s₂
-  ... | yes p = yes (cong mkValueId p)
-  ... | no ¬p = no (¬p ∘ cong λ {(mkValueId s) → s})
-```
 
 ## Values and observations
 
@@ -159,15 +145,6 @@ a boolean respectively. They are defined mutually recursive.
     FalseObs : Observation
 ```
 
-## Bound
-
-`Choice`s are bound. The `Bound` data type is a tuple of
-integers that represents an inclusive lower and upper bound.
-
-```
-  data Bound : Set where
-    mkBound : ℤ → ℤ → Bound
-```
 
 ## Actions
 
@@ -233,4 +210,27 @@ the maximum of all timeouts in the contract.
   maxTimeout (When ((mkCase _ cₐ) ∷ cs) t c) = maxTimeout cₐ ⊔ maxTimeout (When cs t c)
   maxTimeout (Let _ _ c) = maxTimeout c
   maxTimeout (Assert _ c) = maxTimeout c
+```
+
+## Export to Haskell
+
+```
+{-
+
+{-# FOREIGN GHC import Marlowe.Core.Contract #-}
+{-# COMPILE GHC PosixTime = data PosixTime (PosixTime) #-}
+{-# COMPILE GHC Timeout = data Timeout (Timeout) #-}
+{-# COMPILE GHC Parameterized.AccountId = data AccountId (AccountId) #-}
+{-# COMPILE GHC ChoiceName = data ChoiceName (ChoiceName)  #-}
+{-# COMPILE GHC Parameterized.ChoiceId = data ChoiceId (ChoiceId) #-}
+{-# COMPILE GHC ValueId = data ValueId (ValueId) #-}
+{-# COMPILE GHC Parameterized.Payee = data Payee (Account | Party) #-}
+{-# COMPILE GHC Parameterized.Observation = data Observation (AndObs | OrObs | NotObs | ChoseSomething | ValueGE | ValueGT | ValueLT | ValueLE | ValueEQ | TrueObs | FalseObs) #-}
+{-# COMPILE GHC Parameterized.Value = data Value (AvailableMoney | Constant | NegValue | AddValue | SubValue | MulValue | DivValue | ChoiceValue | TimeIntervalStart | TimeIntervalEnd | UseValue | Cond) #-}
+{-# COMPILE GHC Bound = data Bound (Bound) #-}
+{-# COMPILE GHC Parameterized.Action = data Action (Deposit | Choice | Notify) #-}
+{-# COMPILE GHC Parameterized.Case = data Case (Case) #-}
+{-# COMPILE GHC Parameterized.Contract = data Contract (Close | Pay | If | When | Let | Assert) #-}
+
+-}
 ```

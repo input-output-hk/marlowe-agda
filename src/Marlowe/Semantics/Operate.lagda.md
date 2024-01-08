@@ -41,10 +41,10 @@ open import Marlowe.Language.Input as Input
 open import Marlowe.Language.State as State
 open import Marlowe.Language.Transaction as Transaction
 
-open Contract.Parameterized _≟-Party_ _≟-Token_
-open Input.Parameterized _≟-Party_ _≟-Token_
-open State.Parameterized _≟-Party_ _≟-Token_
-open Transaction.Parameterized _≟-Party_ _≟-Token_
+open Contract.Parameterized {Party} {Token}
+open Input.Parameterized {Party} {Token}
+open State.Parameterized {Party} {Token}
+open Transaction.Parameterized {Party} {Token}
 
 open import Marlowe.Semantics.Evaluate _≟-Party_ _≟-Token_
 open import Marlowe.Semantics.Reduce _≟-Party_ _≟-Token_
