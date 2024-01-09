@@ -1,12 +1,12 @@
 ---
-title: Marlowe.Language.State.Properties
+title: Marlowe.Language.Properties
 layout: page
 ---
 
 ```
 open import Relation.Binary using (DecidableEquality)
 
-module Marlowe.Language.State.Properties
+module Marlowe.Language.Properties
   {Party : Set}
   {Token : Set} (_≟-Token_ : DecidableEquality Token)
   where
@@ -32,14 +32,11 @@ import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; cong; sym; trans)
 
 open import Contrib.Data.List.AssocList
-open import Marlowe.Language.Contract as Contract
-open import Marlowe.Language.State as State
-open import Marlowe.Language.Transaction as Transaction
-open PosixTime using (getPosixTime)
 
-open Contract.Parameterized {Party} {Token}
-open State.Parameterized {Party} {Token}
-open Transaction.Parameterized {Party} {Token}
+open import Marlowe.Language
+open PartyParam Party
+open TokenParam Token
+open PosixTime using (getPosixTime)
 ```
 
 ```

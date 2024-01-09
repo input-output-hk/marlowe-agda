@@ -1,22 +1,19 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module Marlowe.Core.Contract where
 
 import Data.Text
--- import qualified Data.Aeson as JSON
--- import qualified Data.Aeson.Types as JSON
 
 data PosixTime = PosixTime Integer
   deriving (Show, Eq)
 data Party = Address Text
            | Role Text
   deriving (Show, Eq)
-
-data AccountId p t = AccountId p
+data AccountId p = AccountId p
   deriving (Show, Eq)
 data ChoiceName = ChoiceName Text
   deriving (Show, Eq)
-data ChoiceId p t = ChoiceId ChoiceName p
+data ChoiceId p = ChoiceId ChoiceName p
   deriving (Show, Eq)
 data ValueId = ValueId Text
   deriving (Show, Eq)
@@ -28,7 +25,7 @@ data Timeout = Timeout PosixTime
 data Observation p t = AndObs (Observation p t) (Observation p t)
                  | OrObs (Observation p t) (Observation p t)
                  | NotObs (Observation p t)
-                 | ChoseSomething (ChoiceId p t)
+                 | ChoseSomething (ChoiceId p)
                  | ValueGE (Value p t) (Value p t)
                  | ValueGT (Value p t) (Value p t)
                  | ValueLT (Value p t) (Value p t)
@@ -38,14 +35,14 @@ data Observation p t = AndObs (Observation p t) (Observation p t)
                  | FalseObs
   deriving (Show, Eq)
 
-data Value p t = AvailableMoney (AccountId p t) t
+data Value p t = AvailableMoney (AccountId p) t
            | Constant Integer
            | NegValue (Value p t)
            | AddValue (Value p t) (Value p t)
            | SubValue (Value p t) (Value p t)
            | MulValue (Value p t) (Value p t)
            | DivValue (Value p t) (Value p t)
-           | ChoiceValue (ChoiceId p t)
+           | ChoiceValue (ChoiceId p)
            | TimeIntervalStart
            | TimeIntervalEnd
            | UseValue ValueId
@@ -55,17 +52,17 @@ data Value p t = AvailableMoney (AccountId p t) t
 data Bound = Bound Integer Integer
   deriving (Show, Eq)
 
-data Action p t = Deposit (AccountId p t) p t (Value p t)
-            | Choice (ChoiceId p t) [Bound]
+data Action p t = Deposit (AccountId p) p t (Value p t)
+            | Choice (ChoiceId p) [Bound]
             | Notify (Observation p t)
   deriving (Show, Eq)
 
-data Payee p t = Account (AccountId p t)
+data Payee p = Account (AccountId p)
            | Party p
   deriving (Show, Eq)
 
 data Contract p t = Close
-              | Pay (AccountId p t) (Payee p t) t (Value p t) (Contract p t)
+              | Pay (AccountId p) (Payee p) t (Value p t) (Contract p t)
               | If (Observation p t) (Contract p t) (Contract p t)
               | When [Case p t] Timeout (Contract p t)
               | Let ValueId (Value p t) (Contract p t)
@@ -75,46 +72,5 @@ data Contract p t = Close
 data Case p t = Case (Action p t) (Contract p t)
   deriving (Show, Eq)
 
-    {-
-instance JSON.ToJSON Contract where
-   toJSON Close = JSON.String $ pack "close"
-   toJSON _ = JSON.String $ pack "not-close"
-
-instance JSON.FromJSON Contract where
-  parseJSON (JSON.String "close") = return Close
-  parseJSON (Object v) =
-    ( Pay
-        <$> (v .: "from_account")
-        <*> (v .: "to")
-        <*> (v .: "token")
-        <*> (v .: "pay")
-        <*> (v .: "then")
-    )
-      <|> ( If
-              <$> (v .: "if")
-              <*> (v .: "then")
-              <*> (v .: "else")
-          )
-      <|> ( When
-              <$> ( (v .: "when")
-                      >>= withArray
-                        "Case list"
-                        ( \cl ->
-                            mapM parseJSON (F.toList cl)
-                        )
-                  )
-              <*> (POSIXTime <$> (withInteger "when timeout" =<< (v .: "timeout")))
-              <*> (v .: "timeout_continuation")
-          )
-      <|> ( Let
-              <$> (v .: "let")
-              <*> (v .: "be")
-              <*> (v .: "then")
-          )
-      <|> ( Assert
-              <$> (v .: "assert")
-              <*> (v .: "then")
-          )
-  parseJSON _ = fail "Contract must be either an object or a the string \"close\""
-          -}
-
+printContract :: (Show p, Show t) => Contract p t -> Text
+printContract = pack . show

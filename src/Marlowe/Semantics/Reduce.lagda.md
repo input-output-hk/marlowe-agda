@@ -39,22 +39,14 @@ open import Relation.Nullary using (Dec; yes; no; ¬_)
 
 open import Contrib.Data.List.AssocList
 
-open import Marlowe.Language.State using (Environment; mkEnvironment; TimeInterval; mkInterval)
-
-open import Marlowe.Language.Contract as Contract
-import Marlowe.Language.Input as Input
-import Marlowe.Language.State as State
-import Marlowe.Language.Transaction as Transaction
-
-open Contract.Parameterized {Party} {Token}
-open Input.Parameterized {Party} {Token}
-open State.Parameterized {Party} {Token}
-open Transaction.Parameterized {Party} {Token}
+open import Marlowe.Language
+open PartyParam Party
+open TokenParam Token
 
 open import Marlowe.Semantics.Evaluate _≟-Party_ _≟-Token_
 
 open Environment using (timeInterval)
-open State.Parameterized.State using (accounts; boundValues; choices)
+open TokenParam.State using (accounts; boundValues; choices)
 open TimeInterval using (startTime)
 
 open Decidable (≡-dec _≟-AccountId_ _≟-Token_) renaming (_∈?_ to _∈?-AccountId×Token_)

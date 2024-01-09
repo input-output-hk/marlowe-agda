@@ -20,11 +20,6 @@ open import Data.String using (_≟_)
 open import Relation.Binary using (DecidableEquality)
 open import Relation.Binary.PropositionalEquality using (cong; cong₂)
 open import Relation.Nullary using (yes; no)
-
-open import Marlowe.Language.Contract as Contract
-open import Marlowe.Language.Input as Input
-open import Marlowe.Language.State as State
-open import Marlowe.Language.Transaction as Transaction
 ```
 
 ```
@@ -74,10 +69,15 @@ mkToken c₁ n₁ ≟-Token mkToken c₂ n₂ with c₁ ≟ c₂ | n₁ ≟ n₂
 ```
 
 ```
-open Contract.Parameterized {Party} {Token}
-open State.Parameterized {Party} {Token}
-open Transaction.Parameterized {Party} {Token}
-open Input.Parameterized {Party} {Token}
+open import Marlowe.Language
+open PartyParam Party
+open TokenParam Token
+```
+
+```
+{-# FOREIGN GHC import Marlowe.Core.Contract #-}
+{-# COMPILE GHC Party = data Party (Address | Role) #-}
+{-# COMPILE GHC Token = data Token (Token) #-}
 ```
 
 ## Escrow

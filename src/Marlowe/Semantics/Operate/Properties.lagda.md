@@ -27,15 +27,9 @@ import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; cong; sym; trans)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 
-open import Marlowe.Language.Contract as Contract
-open import Marlowe.Language.State as State
-open import Marlowe.Language.Input as Input
-open import Marlowe.Language.Transaction as Transaction
-
-open Contract.Parameterized {Party} {Token}
-open State.Parameterized {Party} {Token}
-open Input.Parameterized {Party} {Token}
-open Transaction.Parameterized {Party} {Token}
+open import Marlowe.Language
+open PartyParam Party
+open TokenParam Token
 
 open import Marlowe.Semantics.Operate _≟-Party_ _≟-Token_
 open import Marlowe.Semantics.Reduce _≟-Party_ _≟-Token_

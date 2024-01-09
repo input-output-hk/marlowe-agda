@@ -60,7 +60,7 @@ library
     , transformers
 
   exposed-modules:
-    -- Marlowe.Core.Contract
+    Marlowe.Core.Contract
 
   -- WARNING: Order is important! MAlonzo modules must be listed last.
   -- But cabal-fmt reorders modules alphabetically, so we use two 
@@ -68,14 +68,17 @@ library
   exposed-modules:
     MAlonzo.RTE
     MAlonzo.RTE.Float
+    MAlonzo.Code.Marlowe.Examples.Reduce
     MAlonzo.Code.Marlowe.Examples.Operate
-    MAlonzo.Code.Marlowe.Language.State
-    MAlonzo.Code.Marlowe.Language.Input
-    MAlonzo.Code.Marlowe.Language.Transaction
-    MAlonzo.Code.Marlowe.Language.Contract
+    MAlonzo.Code.Marlowe.Examples.Escrow
+    MAlonzo.Code.Marlowe.Language
+    MAlonzo.Code.Marlowe.Language.Properties
     MAlonzo.Code.Marlowe.Semantics.Reduce
+    MAlonzo.Code.Marlowe.Semantics.Reduce.Properties
     MAlonzo.Code.Marlowe.Semantics.Operate
+    MAlonzo.Code.Marlowe.Semantics.Operate.Properties
     MAlonzo.Code.Marlowe.Semantics.Evaluate
+    MAlonzo.Code.Marlowe.Semantics.Evaluate.Properties
     MAlonzo.Code.Induction.WellFounded
     MAlonzo.Code.Level
     MAlonzo.Code.Contrib.Data.List.AssocList
@@ -114,6 +117,7 @@ library
     MAlonzo.Code.Agda.Builtin.String
     MAlonzo.Code.Agda.Builtin.Sigma
     MAlonzo.Code.Agda.Builtin.Bool
+    MAlonzo.Code.Agda.Builtin.IO
     MAlonzo.Code.Agda.Builtin.Int
     MAlonzo.Code.Agda.Builtin.Equality
     MAlonzo.Code.Agda.Builtin.List
@@ -329,18 +333,22 @@ library
     MAlonzo.Code.Data.Digit
     MAlonzo.Code.Data.Maybe
     MAlonzo.Code.Function
+    MAlonzo.Code.Qmain
 
   autogen-modules:
     MAlonzo.RTE
     MAlonzo.RTE.Float
+    MAlonzo.Code.Marlowe.Examples.Reduce
     MAlonzo.Code.Marlowe.Examples.Operate
-    MAlonzo.Code.Marlowe.Language.State
-    MAlonzo.Code.Marlowe.Language.Input
-    MAlonzo.Code.Marlowe.Language.Transaction
-    MAlonzo.Code.Marlowe.Language.Contract
+    MAlonzo.Code.Marlowe.Examples.Escrow
+    MAlonzo.Code.Marlowe.Language
+    MAlonzo.Code.Marlowe.Language.Properties
     MAlonzo.Code.Marlowe.Semantics.Reduce
+    MAlonzo.Code.Marlowe.Semantics.Reduce.Properties
     MAlonzo.Code.Marlowe.Semantics.Operate
+    MAlonzo.Code.Marlowe.Semantics.Operate.Properties
     MAlonzo.Code.Marlowe.Semantics.Evaluate
+    MAlonzo.Code.Marlowe.Semantics.Evaluate.Properties
     MAlonzo.Code.Induction.WellFounded
     MAlonzo.Code.Level
     MAlonzo.Code.Contrib.Data.List.AssocList
@@ -379,6 +387,7 @@ library
     MAlonzo.Code.Agda.Builtin.String
     MAlonzo.Code.Agda.Builtin.Sigma
     MAlonzo.Code.Agda.Builtin.Bool
+    MAlonzo.Code.Agda.Builtin.IO
     MAlonzo.Code.Agda.Builtin.Int
     MAlonzo.Code.Agda.Builtin.Equality
     MAlonzo.Code.Agda.Builtin.List
@@ -594,15 +603,13 @@ library
     MAlonzo.Code.Data.Digit
     MAlonzo.Code.Data.Maybe
     MAlonzo.Code.Function
+    MAlonzo.Code.Qmain
 
 executable marlowe-agda
   import:         lang
-  hs-source-dirs: app
-  other-modules:  Serialization
+  hs-source-dirs: exe
   main-is:        Main.hs
   build-depends:
-    , aeson
-    , aeson-pretty
     , base
     , ghc-prim
     , marlowe-agda

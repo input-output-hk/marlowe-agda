@@ -23,13 +23,12 @@ open import Relation.Nullary.Decidable using (⌊_⌋)
 
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; cong; sym)
-open Eq.≡-Reasoning using (begin_; _≡⟨⟩_; step-≡; _∎)
+open Eq.≡-Reasoning
 
-open import Marlowe.Language.Contract as C using (PosixTime)
-open import Marlowe.Language.State as S using (Environment; TimeInterval; endTime)
+open import Marlowe.Language
+open PartyParam Party
+open TokenParam Token
 
-open C.Parameterized _≟-Party_ _≟-Token_
-open S.Parameterized _≟-Party_ _≟-Token_
 open import Marlowe.Semantics.Evaluate _≟-Party_ _≟-Token_
 ```
 

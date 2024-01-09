@@ -31,16 +31,14 @@ open import Relation.Nullary.Decidable using (⌊_⌋; fromWitnessFalse)
 
 open import Contrib.Data.List.AssocList
 
-open import Marlowe.Language.Contract as Contract using (PosixTime; ChoiceName; mkChoiceName; ValueId; mkValueId)
-open import Marlowe.Language.State as State using (Environment; TimeInterval; endTime)
-
-open Contract.Parameterized {Party} {Token}
-open State.Parameterized {Party} {Token}
+open import Marlowe.Language
+open PartyParam Party
+open TokenParam Token
 
 open Environment using (timeInterval)
 open TimeInterval using (startTime; offset)
 open PosixTime using (getPosixTime)
-open State.Parameterized.State using (accounts; boundValues; choices)
+open TokenParam.State using (accounts; boundValues; choices)
 
 _≟-AccountId_ : DecidableEquality AccountId
 mkAccountId p₁ ≟-AccountId mkAccountId p₂ with p₁ ≟-Party p₂

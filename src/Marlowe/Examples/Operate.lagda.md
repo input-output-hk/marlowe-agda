@@ -20,11 +20,6 @@ open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary using (Decidable; DecidableEquality)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl)
-
-open import Marlowe.Language.Contract as Contract
-open import Marlowe.Language.Input as Input
-open import Marlowe.Language.State as State
-open import Marlowe.Language.Transaction as Transaction
 ```
 
 ### Token and Party
@@ -32,11 +27,9 @@ open import Marlowe.Language.Transaction as Transaction
 `Token` and `Party` here are simply strings.
 
 ```
-open Contract.Parameterized {String} {String}
-open Input.Parameterized {String} {String}
-open State.Parameterized {String} {String}
-open Transaction.Parameterized {String} {String}
-
+open import Marlowe.Language
+open PartyParam String
+open TokenParam String
 open import Marlowe.Semantics.Reduce _≟_ _≟_
 open import Marlowe.Semantics.Operate _≟_ _≟_
 ```
