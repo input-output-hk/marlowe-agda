@@ -14,11 +14,12 @@ module main where
 
 ```
 open import IO
-open import Data.Unit
+open import Data.List
 open import Data.Product
 open import Data.String
 open import Data.Sum using (inj₁; inj₂)
-open import Function.Base using (case_of_)
+open import Data.Unit
+open import Function.Base using (case_of_; _∘_)
 
 open import Marlowe.Examples.Escrow
 open import Marlowe.Language
@@ -36,7 +37,9 @@ The reference implementation in Haskell is used for serialization
 
 postulate
   printContract : Contract → String
+  printPayment : Payment → String
 {-# COMPILE GHC printContract = printContract #-}
+{-# COMPILE GHC printPayment = printPayment #-}
 ```
 
 ## Main
@@ -49,7 +52,9 @@ main =
     r = ⇓-eval contract (emptyState minTime) inputs
   in run (
     case r of
-      λ { (inj₁ (⟦ ws , ps , s ⟧ , steps)) → putStrLn (printContract contract)
+      λ { (inj₁ (⟦ ws , ps , s ⟧ , steps)) →
+          putStrLn (printContract contract) >>
+          IO.List.forM′ ps (putStrLn ∘ printPayment)
         ; (inj₂ e) → putStrLn "error"
         }
     )

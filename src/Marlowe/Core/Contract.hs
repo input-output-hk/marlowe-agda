@@ -74,3 +74,9 @@ data Case p t = Case (Action p t) (Contract p t)
 
 printContract :: (Show p, Show t) => Contract p t -> Text
 printContract = pack . show
+
+data Payment p t = Payment (AccountId p) t Integer (Payee p)
+  deriving (Show, Eq)
+
+printPayment :: (Show p, Show t) => Payment p t -> Text
+printPayment = pack . show

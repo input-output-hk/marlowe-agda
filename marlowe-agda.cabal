@@ -71,6 +71,9 @@ library
   exposed-modules:
     MAlonzo.RTE
     MAlonzo.RTE.Float
+    MAlonzo.Code.IO
+    MAlonzo.Code.Codata.Musical.Colist.Base
+    MAlonzo.Code.Codata.Musical.Conat.Base
     MAlonzo.Code.Marlowe.Examples.Reduce
     MAlonzo.Code.Marlowe.Examples.Operate
     MAlonzo.Code.Marlowe.Examples.Escrow
@@ -346,6 +349,9 @@ library
   autogen-modules:
     MAlonzo.RTE
     MAlonzo.RTE.Float
+    MAlonzo.Code.IO
+    MAlonzo.Code.Codata.Musical.Colist.Base
+    MAlonzo.Code.Codata.Musical.Conat.Base
     MAlonzo.Code.Marlowe.Examples.Reduce
     MAlonzo.Code.Marlowe.Examples.Operate
     MAlonzo.Code.Marlowe.Examples.Escrow

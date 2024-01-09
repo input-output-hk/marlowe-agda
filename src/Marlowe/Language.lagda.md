@@ -414,4 +414,5 @@ open TokenParam
 {-# COMPILE GHC Action = data Action (Deposit | Choice | Notify) #-}
 {-# COMPILE GHC Case = data Case (Case) #-}
 {-# COMPILE GHC Contract = data Contract (Close | Pay | If | When | Let | Assert) #-}
+{-# COMPILE GHC Payment = data Payment (Payment) #-}
 ```
