@@ -10,9 +10,8 @@ cabalProject:
   # welcomeMessage = null;
 
   packages = [
-    repoRoot.nix.agda2hs-project.hsPkgs.Agda.components.exes.agda 
-    repoRoot.nix.agda2hs-project.hsPkgs.Agda.components.exes.agda-mode 
-    repoRoot.nix.agda2hs-project.hsPkgs.agda2hs.components.exes.agda2hs 
+    repoRoot.nix.agda-with-stdlib
+    repoRoot.nix.agda2hs
     repoRoot.nix.emacs-with-packages
   ];
 

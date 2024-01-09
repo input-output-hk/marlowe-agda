@@ -74,7 +74,8 @@ agdaProgramStatus = unsafePerformIO (newIORef NotRun)
 
 
 main :: IO ()
-main = D.defaultMainWithHooks userHooks
+main = 
+  D.defaultMainWithHooks userHooks
   where
     userHooks :: D.UserHooks
     userHooks = D.simpleUserHooks { D.hookedPreProcessors = preProcessors }
@@ -92,6 +93,7 @@ agdaPreProcessor _ lbi _ = D.PreProcessor
   where
     preProcessors :: FilePath -> FilePath -> D.Verbosity -> IO ()
     preProcessors _ _ verb = do
+      putStrLn "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       status <- readIORef agdaProgramStatus
       case status of
         NotRun -> do
