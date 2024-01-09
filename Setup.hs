@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP                 #-}
 {-# LANGUAGE ImportQualifiedPost #-}
 
+import Distribution.ModuleName qualified as D
 import Distribution.Simple qualified as D
 import Distribution.Simple.PreProcess qualified as D
 import Distribution.Simple.Program qualified as D
@@ -12,6 +13,7 @@ import Distribution.Types.LocalBuildInfo qualified as D
 import Distribution.Verbosity qualified as D
 
 import Data.IORef (IORef, newIORef, readIORef, writeIORef)
+import Data.List (isPrefixOf, sortBy)
 import System.IO.Unsafe (unsafePerformIO)
 
 {- Note: This file was copied from plutus/plutus-metatheory -}
@@ -47,20 +49,18 @@ Finally, the order in which the modules are listed in exposed-modules matters a 
 The MAlonzo.Code files must be listed last, otherwise cabal will fail with:
 setup: can't find source for MAlonzo/Code/* in src
 
-TODO Newer (> 3.6.3.0) versions of the cabal library introduced a ppOrdering field in
+Newer (> 3.6.3.0) versions of the cabal library introduced a ppOrdering field in
 PreProcessor which can reorder all modules.
 https://hackage.haskell.org/package/Cabal-3.8.1.0/docs/Distribution-Simple-PreProcess.html
-Until we upgrade cabal, we just have to be careful to expose our modules in the right order.
-Once cabal is upgraded, we can implement ppOrdering as reorderModules:
-
-reorderModules :: Verbosity -> [FilePath] -> [ModuleName] -> IO [ModuleName]
-reorderModules _ _ = sortBy malonzoCodeOrdering
-  where
-    malonzoCodeOrdering :: ModuleName -> ModuleName -> Ordering
-    malonzoCodeOrdering name _
-      | "MAlonzo.Code" `isPrefixOf` name = GT
-      | otherwise = EQ
 -}
+
+reorderModules :: D.Verbosity -> [FilePath] -> [D.ModuleName] -> IO [D.ModuleName]
+reorderModules _ _ = pure . sortBy malonzoCodeOrdering
+  where
+    malonzoCodeOrdering :: D.ModuleName -> D.ModuleName -> Ordering
+    malonzoCodeOrdering name _
+      | "MAlonzo.Code" `isPrefixOf` (show name) = GT
+      | otherwise = EQ
 
 data AgdaProgramStatus
   = Run
@@ -87,9 +87,7 @@ agdaPreProcessor :: D.BuildInfo -> D.LocalBuildInfo -> D.ComponentLocalBuildInfo
 agdaPreProcessor _ lbi _ = D.PreProcessor
   { D.platformIndependent = True
   , D.runPreProcessor = D.mkSimplePreProcessor preProcessors
-#if MIN_VERSION_Cabal(3,8,0)
-  , D.ppOrdering = D.unsorted
-#endif
+  , D.ppOrdering = reorderModules
   }
   where
     preProcessors :: FilePath -> FilePath -> D.Verbosity -> IO ()

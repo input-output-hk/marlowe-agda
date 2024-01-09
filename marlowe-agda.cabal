@@ -10,6 +10,9 @@ maintainer:         yves.hauser@iohk.io
 category:           Development
 extra-source-files:
   marlowe.agda-lib
+  src/**/*.lagda
+  src/**/*.lagda.md
+
 
 -- This makes cabal rebuild if any of these files change, which allow the
 -- custom setup to fire and rebuild the Haskell sources
