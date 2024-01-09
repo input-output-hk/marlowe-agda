@@ -11,9 +11,9 @@ cabalProject:
 
   packages = [
     repoRoot.nix.agda2hs-project.hsPkgs.Agda.components.exes.agda 
+    repoRoot.nix.agda2hs-project.hsPkgs.Agda.components.exes.agda-mode 
     repoRoot.nix.agda2hs-project.hsPkgs.agda2hs.components.exes.agda2hs 
-
-    (pkgs.emacsWithPackages (epkgs: [epkgs.agda2-mode]))
+    repoRoot.nix.emacs-with-packages
   ];
 
   # scripts = {};
