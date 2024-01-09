@@ -80,7 +80,7 @@ main = D.defaultMainWithHooks userHooks
     userHooks = D.simpleUserHooks { D.hookedPreProcessors = preProcessors }
 
     preProcessors :: [D.PPSuffixHandler]
-    preProcessors = [("lagda", agdaPreProcessor)]
+    preProcessors = [("lagda.md", agdaPreProcessor)]
 
 
 agdaPreProcessor :: D.BuildInfo -> D.LocalBuildInfo -> D.ComponentLocalBuildInfo -> D.PreProcessor
@@ -109,7 +109,7 @@ agdaPreProcessor _ lbi _ = D.PreProcessor
       , "--compile"
       , "--ghc-dont-call-ghc"
       , "--local-interfaces"
-      , "src/Main.lagda"
+      , "src/main.lagda.md"
       ]
 
     agdaProgram :: D.ConfiguredProgram
