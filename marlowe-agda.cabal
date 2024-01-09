@@ -117,6 +117,7 @@ library
     MAlonzo.Code.Function.Construct.Composition
     MAlonzo.Code.Function.Construct.Identity
     MAlonzo.Code.Agda.Primitive
+    MAlonzo.Code.Agda.Builtin.Coinduction
     MAlonzo.Code.Agda.Builtin.String
     MAlonzo.Code.Agda.Builtin.Sigma
     MAlonzo.Code.Agda.Builtin.Bool
@@ -336,6 +337,10 @@ library
     MAlonzo.Code.Data.Digit
     MAlonzo.Code.Data.Maybe
     MAlonzo.Code.Function
+    MAlonzo.Code.IO.Base
+    MAlonzo.Code.IO.Finite
+    MAlonzo.Code.IO.Primitive
+    MAlonzo.Code.IO.Primitive.Finite
     MAlonzo.Code.Qmain
 
   autogen-modules:
@@ -387,6 +392,7 @@ library
     MAlonzo.Code.Function.Construct.Composition
     MAlonzo.Code.Function.Construct.Identity
     MAlonzo.Code.Agda.Primitive
+    MAlonzo.Code.Agda.Builtin.Coinduction
     MAlonzo.Code.Agda.Builtin.String
     MAlonzo.Code.Agda.Builtin.Sigma
     MAlonzo.Code.Agda.Builtin.Bool
@@ -606,6 +612,10 @@ library
     MAlonzo.Code.Data.Digit
     MAlonzo.Code.Data.Maybe
     MAlonzo.Code.Function
+    MAlonzo.Code.IO.Base
+    MAlonzo.Code.IO.Finite
+    MAlonzo.Code.IO.Primitive
+    MAlonzo.Code.IO.Primitive.Finite
     MAlonzo.Code.Qmain
 
 executable marlowe-agda
