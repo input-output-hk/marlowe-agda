@@ -32,6 +32,7 @@ open Eq using (_≡_; _≢_; refl; cong; sym; subst; trans)
 open import Marlowe.Language
 open PartyParam Party
 open TokenParam Token
+open Equality _≟-Party_ _≟-Token_
 
 open import Marlowe.Language.Properties {Party} _≟-Token_
 open import Marlowe.Semantics.Evaluate _≟-Party_ _≟-Token_
