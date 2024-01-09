@@ -65,7 +65,7 @@ open Decidable _≟-ValueId_ renaming (_‼_default_ to _‼ᵛ_default_) using 
     _/_ : ℤ → ℤ → ℤ
     _/_ num den with den ℤ.≟ 0ℤ
     ... | yes _ = 0ℤ
-    ... | no ¬p = (num ℤ./ den) {{ ℤ.≢-nonZero ¬p }}
+    ... | no ¬p = (num ℤ./ den) ⦃ ℤ.≢-nonZero ¬p ⦄
 ℰ⟦ ChoiceValue c ⟧ _ s = c ‼ᶜ choices s default 0ℤ
 ℰ⟦ TimeIntervalStart ⟧ e _ = + getPosixTime (startTime (timeInterval e))
 ℰ⟦ TimeIntervalEnd ⟧ e _ = + getPosixTime (endTime (timeInterval e))
