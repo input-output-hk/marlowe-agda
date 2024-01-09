@@ -24,8 +24,6 @@ open import Data.List.Relation.Unary.Any using (lookup; _∷=_)
 open import Data.Product using (_,_; _×_; proj₁; proj₂)
 open import Data.Product.Properties using (≡-dec)
 open import Data.String as String using ()
-open import Function.Base using (_∘_)
-open import Relation.Binary.PropositionalEquality using (cong; cong₂)
 open import Relation.Nullary using (yes; no)
 open import Relation.Nullary.Decidable using (⌊_⌋; fromWitnessFalse)
 
@@ -34,32 +32,12 @@ open import Contrib.Data.List.AssocList
 open import Marlowe.Language
 open PartyParam Party
 open TokenParam Token
+open Equality _≟-Party_ _≟-Token_
 
 open Environment using (timeInterval)
 open TimeInterval using (startTime; offset)
 open PosixTime using (getPosixTime)
 open TokenParam.State using (accounts; boundValues; choices)
-
-_≟-AccountId_ : DecidableEquality AccountId
-mkAccountId p₁ ≟-AccountId mkAccountId p₂ with p₁ ≟-Party p₂
-... | yes p = yes (cong mkAccountId p)
-... | no ¬p = no (¬p ∘ cong unAccountId)
-
-_≟-ChoiceName_ : DecidableEquality ChoiceName
-mkChoiceName s₁ ≟-ChoiceName mkChoiceName s₂ with s₁ String.≟ s₂
-... | yes p = yes (cong mkChoiceName p)
-... | no ¬p = no (¬p ∘ cong λ {(mkChoiceName s) → s})
-
-_≟-ChoiceId_ : DecidableEquality ChoiceId
-mkChoiceId n₁ p₁ ≟-ChoiceId mkChoiceId n₂ p₂ with n₁ ≟-ChoiceName n₂ | p₁ ≟-Party p₂
-... | yes p | yes q = yes (cong₂ mkChoiceId p q)
-... | _ | no ¬q = no (¬q ∘ cong ChoiceId.party)
-... | no ¬p | _ = no (¬p ∘ cong ChoiceId.name)
-
-_≟-ValueId_ : DecidableEquality ValueId
-mkValueId s₁ ≟-ValueId mkValueId s₂ with s₁ String.≟ s₂
-... | yes p = yes (cong mkValueId p)
-... | no ¬p = no (¬p ∘ cong λ {(mkValueId s) → s})
 
 open Decidable (≡-dec _≟-AccountId_ _≟-Token_) renaming (_‼_default_ to _‼ᵃ_default_) using ()
 open Decidable _≟-ChoiceId_ renaming (_‼_default_ to _‼ᶜ_default_) using (_∈?_)

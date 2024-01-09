@@ -42,6 +42,7 @@ open import Contrib.Data.List.AssocList
 open import Marlowe.Language
 open PartyParam Party
 open TokenParam Token
+open Equality _≟-Party_ _≟-Token_
 
 open import Marlowe.Semantics.Evaluate _≟-Party_ _≟-Token_
 

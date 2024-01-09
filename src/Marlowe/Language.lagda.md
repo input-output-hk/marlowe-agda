@@ -18,8 +18,12 @@ open import Data.Integer using (ℤ; _≤?_)
 open import Data.List using (List; []; _∷_; any)
 open import Data.Nat using (ℕ; _⊔_; _+_)
 open import Data.Product using (_×_; _,_)
-open import Data.String using (String)
+open import Data.String using (String; _≟_)
+open import Function.Base using (_∘_)
+open import Relation.Nullary using (yes; no)
 open import Relation.Nullary.Decidable using (⌊_⌋)
+open import Relation.Binary using (DecidableEquality)
+open import Relation.Binary.PropositionalEquality using (cong; cong₂)
 ```
 
 ## PosixTime and Timeout
@@ -355,6 +359,39 @@ the maximum of all timeouts in the contract.
     maxTimeout (When ((mkCase _ cₐ) ∷ cs) t c) = maxTimeout cₐ ⊔ maxTimeout (When cs t c)
     maxTimeout (Let _ _ c) = maxTimeout c
     maxTimeout (Assert _ c) = maxTimeout c
+```
+
+## DecidableEquality
+
+```
+module Equality
+  {Party : Set} (_≟-Party_ : DecidableEquality Party)
+  {Token : Set} (_≟-Token_ : DecidableEquality Token)
+  where
+
+  open PartyParam Party
+  open TokenParam Token
+
+  _≟-AccountId_ : DecidableEquality AccountId
+  mkAccountId p₁ ≟-AccountId mkAccountId p₂ with p₁ ≟-Party p₂
+  ... | yes p = yes (cong mkAccountId p)
+  ... | no ¬p = no (¬p ∘ cong unAccountId)
+
+  _≟-ChoiceName_ : DecidableEquality ChoiceName
+  mkChoiceName s₁ ≟-ChoiceName mkChoiceName s₂ with s₁ ≟ s₂
+  ... | yes p = yes (cong mkChoiceName p)
+  ... | no ¬p = no (¬p ∘ cong λ {(mkChoiceName s) → s})
+
+  _≟-ChoiceId_ : DecidableEquality ChoiceId
+  mkChoiceId n₁ p₁ ≟-ChoiceId mkChoiceId n₂ p₂ with n₁ ≟-ChoiceName n₂ | p₁ ≟-Party p₂
+  ... | yes p | yes q = yes (cong₂ mkChoiceId p q)
+  ... | _ | no ¬q = no (¬q ∘ cong ChoiceId.party)
+  ... | no ¬p | _ = no (¬p ∘ cong ChoiceId.name)
+
+  _≟-ValueId_ : DecidableEquality ValueId
+  mkValueId s₁ ≟-ValueId mkValueId s₂ with s₁ ≟ s₂
+  ... | yes p = yes (cong mkValueId p)
+  ... | no ¬p = no (¬p ∘ cong λ {(mkValueId s) → s})
 ```
 
 ## Export to Haskell
