@@ -225,14 +225,16 @@ Close is a terminal contract
 ⇀⋆-maxTimeout (_ ⇀⟨ x ⟩ y) = ≤-trans (⇀⋆-maxTimeout y) (⇀-maxTimeout x)
 ```
 
+## Timed-out transaction closes contract
+
 ```
-⇀⋆-reduce-after-timeout-closes-contract : ∀ {C D}
+⇀⋆-after-timeout-closes-contract : ∀ {C D}
   → C ⇀⋆ D
   → Quiescent D
   → maxTimeout (contract C) < getPosixTime (startTime (timeInterval (environment C)))
   → (contract D) ≡ Close
-⇀⋆-reduce-after-timeout-closes-contract _ close _ = refl
-⇀⋆-reduce-after-timeout-closes-contract x (waiting {t} {tₛ} {Δₜ} {cs} {s} {c} x₁) x₂ rewrite ⇀⋆-env-not-modified x =
+⇀⋆-after-timeout-closes-contract _ close _ = refl
+⇀⋆-after-timeout-closes-contract x (waiting {t} {tₛ} {Δₜ} {cs} {s} {c} x₁) x₂ rewrite ⇀⋆-env-not-modified x =
   contradiction
     (≤-trans
       (timeout≤maxTimeout t cs c)
