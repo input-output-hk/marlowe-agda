@@ -238,7 +238,7 @@ Close is a terminal contract
       (timeout≤maxTimeout t cs c)
       (⇀⋆-maxTimeout x))
     (<⇒≱ (≤-trans
-           (≤-stepsʳ (suc Δₜ) x₂)
+           (m≤n⇒m≤n+o (suc Δₜ) x₂)
            (≤-trans
              (≤-reflexive (+-suc tₛ Δₜ))
              x₁)))
