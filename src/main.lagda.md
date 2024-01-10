@@ -14,11 +14,10 @@ module main where
 
 ```
 open import IO
-open import Data.List
-open import Data.Product
-open import Data.String
+open List using (forM′)
+open import Data.Product using (_,_)
+open import Data.String using (String)
 open import Data.Sum using (inj₁; inj₂)
-open import Data.Unit
 open import Function.Base using (case_of_; _∘_)
 
 open import Marlowe.Examples.Escrow
@@ -53,8 +52,8 @@ main =
   in run (
     case r of
       λ { (inj₁ (⟦ ws , ps , s ⟧ , steps)) →
-          putStrLn (printContract contract) >>
-          IO.List.forM′ ps (putStrLn ∘ printPayment)
+             putStrLn (printContract contract)
+          >> forM′ ps (putStrLn ∘ printPayment)
         ; (inj₂ e) → putStrLn "error"
         }
     )
