@@ -27,7 +27,7 @@ open TokenParam Token
 open import Marlowe.Semantics.Operate _≟-Party_ _≟-Token_
 ```
 
-### Haskell reference implemenation
+### Haskell reference implementation
 
 The reference implementation in Haskell is used for serialization 
 
@@ -35,10 +35,10 @@ The reference implementation in Haskell is used for serialization
 {-# FOREIGN GHC import Marlowe.Core.Contract #-}
 
 postulate
-  printContract : Contract → String
-  printPayment : Payment → String
-{-# COMPILE GHC printContract = printContract #-}
-{-# COMPILE GHC printPayment = printPayment #-}
+  showContract : Contract → String
+  showPayment : Payment → String
+{-# COMPILE GHC showContract = showContract #-}
+{-# COMPILE GHC showPayment = showPayment #-}
 ```
 
 ## Main
@@ -52,8 +52,8 @@ main =
   in run (
     case r of
       λ { (inj₁ (⟦ ws , ps , s ⟧ , steps)) →
-             putStrLn (printContract contract)
-          >> forM′ ps (putStrLn ∘ printPayment)
+             putStrLn (showContract contract)
+          >> forM′ ps (putStrLn ∘ showPayment)
         ; (inj₂ e) → putStrLn "error"
         }
     )
