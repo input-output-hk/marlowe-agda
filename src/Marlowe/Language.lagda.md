@@ -248,8 +248,6 @@ continuation for a given action as another contract.
       Assert : Observation → Contract → Contract
 ```
 
-The `When` constructor allows for applying inputs before a specified timeout.
-
 ## State
 
 ```

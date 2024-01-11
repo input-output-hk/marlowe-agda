@@ -141,6 +141,12 @@ data _⇒_ : {C : Configuration} → Waiting C × Input → Configuration → Se
       ) ⇒ D
 ```
 
+The following data type relates `InputContent` with `Action`. This is necessary,
+as an `Action` can contain `Observation`s and `Value`s as opposed to the
+`InputContent` that has 𝔹 and ℕ.
+
+Evaluation of `Observation` and `Value` requires `State` and `Environment`.
+
 ```
 data _↦_ {s : State} {e : Environment} : InputContent → Action → Set where
 
@@ -157,20 +163,32 @@ data _↦_ {s : State} {e : Environment} : InputContent → Action → Set where
     → INotify ↦ Notify o
 ```
 
+The function `applicable?` checks, if an `InputContent` can trigger a given `Action`. If
+this is the case, the relation is returned.
+
 ```
 applicable? : ∀ {s : State} {e : Environment} → (i : InputContent) → (a : Action) → Maybe (_↦_ {s} {e} i a)
+```
+* IDeposit
+```
 applicable? {s} {e} (IDeposit a₁ p₁ t₁ n) (Deposit a₂ p₂ t₂ v)
   with a₁ ≟-AccountId a₂ | p₁ ≟-Party p₂ | t₁ ≟-Token t₂ | ℰ⟦ v ⟧ e s  ℤ.≟ + n
 ... | yes refl | yes refl | yes refl | yes p = just (deposit-input {_} {_} {a₁} {p₁} {t₁} {v} {n} p)
 ... | _        | _        | _        | _     = nothing
 applicable? (IDeposit _ _ _ _) (Choice _ _ ) = nothing
 applicable? (IDeposit _ _ _ _) (Notify _) = nothing
+```
+* IChoice
+```
 applicable? (IChoice _ _ ) (Deposit _ _ _ _ ) = nothing
 applicable? (IChoice i₁ n) (Choice i₂ b)
   with i₁ ≟-ChoiceId i₂ | n inBounds b 𝔹.≟ true
 ... | yes refl | yes p = (just (choice-input {_} {_} {i₁} {n} {b} p))
 ... | _        | _     = nothing
 applicable? (IChoice _ _) (Notify _) = nothing
+```
+* INotify
+```
 applicable? INotify (Deposit _ _ _ _) = nothing
 applicable? INotify (Choice _ _) = nothing
 applicable? {s} {e} INotify (Notify o)
@@ -193,7 +211,7 @@ applicable? {s} {e} INotify (Notify o)
 ⇒-eval (waiting {mkCase a cₐ ∷ cs} {t} {c} {s} {e} {ws} {ps} tₑ<t) (NormalInput ic)
   with applicable? {s} {e} ic a
 ```
-here
+* here
 ```
 ⇒-eval (waiting {mkCase _ cₐ ∷ cs} {_} {_} {s} {e} {ws} {ps} tₑ<t) (NormalInput ic) | just (deposit-input {a} {p} {t} {_} {n} ℰ⟦v⟧≡+n)
   with ⇀-eval ⟪ cₐ , record s { accounts = ((a , t) , n) ↑-update (accounts s) } , e , ws , ps ⟫
@@ -208,7 +226,7 @@ here
 ... | D , C⇀⋆D , inj₁ q = inj₁ (D , Notify {s = s} {o = o} {e = e} (here refl) o≡true tₑ<t q C⇀⋆D)
 ... | _ , _    , inj₂ _ = inj₂ TEAmbiguousTimeIntervalError
 ```
-there
+* there
 ```
 ⇒-eval (waiting {(_ ∷ cs)} {_} {c} tₑ<t) i@(NormalInput (IDeposit x x₁ x₂ x₃)) | nothing
   with ⇒-eval (waiting {cs} {_} {c} tₑ<t) i
@@ -246,7 +264,9 @@ data _↝_ : Configuration → Configuration → Set where
       , ws
       , ps
       ⟫
+```
 
+```
 data FixInterval (B : Configuration) : Set where
 
   trim : ∀ {C}
@@ -255,16 +275,18 @@ data FixInterval (B : Configuration) : Set where
     → FixInterval B
 
   error :
-    interval-end (environment B) < getPosixTime (minTime (state B))
+      interval-end (environment B) < getPosixTime (minTime (state B))
     → FixInterval B
+```
 
-
+```
 fixInterval : ∀ (B : Configuration) → FixInterval B
 fixInterval ⟪ _ , ⟨ _ , _ , _ , mkPosixTime tₘ ⟩ , mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ) , _ , _ ⟫ with tₛ + Δₜ <? tₘ
 ... | yes p = error p
 ... | no p = trim (trim-interval (≮⇒≥ p))
 ```
-### Warnings
+
+## Warnings
 
 ```
 convertReduceWarnings : List ReduceWarning -> List TransactionWarning
@@ -279,6 +301,12 @@ convertReduceWarnings = map convertReduceWarning
 
 ## Big-step reduction rules
 
+### Result
+
+The result of a big-step includes all the transaction warnings,
+all the payments triggered during the execution of the contract
+together with the final state.
+
 ```
 record Result : Set where
   constructor ⟦_,_,_⟧
@@ -288,11 +316,17 @@ record Result : Set where
     state : State
 ```
 
+### Rules
+
+The rules for big-step semantics cover the following steps
+* Reduce a contract until quiescent
+* Applying an input to a contract
+* Closing the contract
+
 ```
 data _⇓_ : Contract × State → Result → Set where
 
-  reduce-until-quiescent :
-    ∀ {C D ws ps s}
+  reduce-until-quiescent : ∀ {C D ws ps s}
     → warnings C ≡ []
     → payments C ≡ []
     → C ⇀⋆ D
@@ -302,15 +336,14 @@ data _⇓_ : Contract × State → Result → Set where
       , ps
       , s
       ⟧
-    -------------------------------------------
+      -----------------------------------------
     → (contract C , state C) ⇓
       ⟦ ws ++ convertReduceWarnings (warnings D)
       , ps ++ payments D
       , s
       ⟧
 
-  apply-input :
-    ∀ {i cs t c s e ws ps C D ws′ ps′ s′}
+  apply-input : ∀ {i cs t c s e ws ps C D ws′ ps′ s′}
     → (tₑ<t : interval-end (environment C) < t)
     → ⟪ When cs (mkTimeout (mkPosixTime t)) c , s , e , ws , ps ⟫ ↝ C
     → (waiting {cs} {t} {c} {state C} {environment C} {ws} {ps} tₑ<t , i) ⇒ D
@@ -319,17 +352,16 @@ data _⇓_ : Contract × State → Result → Set where
       , ps′
       , s′
       ⟧
-    -------------------------------------------
+      ---------------------------------------------
     → (When cs (mkTimeout (mkPosixTime t)) c , s) ⇓
       ⟦ ws′ ++ convertReduceWarnings (warnings D)
       , ps′ ++ payments D
       , s′
       ⟧
 
-  done :
-    ∀ {s}
+  done : ∀ {s}
     → accounts s ≡ []
-    -----------------
+      ---------------
     → (Close , s) ⇓
       ⟦ []
       , []
@@ -348,13 +380,13 @@ data _⇓_ : Contract × State → Result → Set where
   → (Σ[ r ∈ Result ] (c , s) ⇓ r) ⊎ TransactionError
 ```
 
-Close
+* Close
 
 ```
 ⇓-eval Close s@(⟨ [] , _ , _ , _ ⟩) [] = inj₁ (⟦ [] , [] , s ⟧ , done refl)
 ```
 
-When
+* When
 
 ```
 ⇓-eval
@@ -392,7 +424,7 @@ When
 ... | inj₂ e = inj₂ e
 ```
 
-Otherwise
+* Otherwise
 
 ```
 ⇓-eval c s []
