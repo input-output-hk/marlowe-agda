@@ -88,16 +88,16 @@ data _⇒_ : {C : Configuration} → Waiting C × Input → Configuration → Se
     → ℰ⟦ v ⟧ e s ≡ + n
     → (tₑ<tₒ : interval-end e < tₒ)
     → Quiescent D
-    → ( ⟪ cₐ
-        , record s
-            { accounts =
-              ((a , t) , n) ↑-update (accounts s)
-            }
-        , e
-        , ws
-        , ps
-        ⟫
-      ) ⇀⋆ D
+    → ⟪ cₐ
+      , record s
+          { accounts =
+            ((a , t) , n) ↑-update (accounts s)
+          }
+      , e
+      , ws
+      , ps
+      ⟫
+      ⇀⋆ D
     -------------------------------------------------
     → ( waiting {cs} {tₒ} {c} {s} {e} {ws} {ps} tₑ<tₒ
       , NormalInput (IDeposit a p t n)
@@ -108,16 +108,16 @@ data _⇒_ : {C : Configuration} → Waiting C × Input → Configuration → Se
     → n inBounds bs ≡ true
     → (tₑ<tₒ : interval-end e < tₒ)
     → Quiescent D
-    → ( ⟪ cₐ
-        , record s
-            { choices =
-              (i , unChosenNum n) ↑ (choices s)
-            }
-        , e
-        , ws
-        , ps
-        ⟫
-      ) ⇀⋆ D
+    → ⟪ cₐ
+      , record s
+          { choices =
+            (i , unChosenNum n) ↑ (choices s)
+          }
+      , e
+      , ws
+      , ps
+      ⟫
+      ⇀⋆ D
     -------------------------------------------------
     → ( waiting {cs} {tₒ} {c} {s} {e} {ws} {ps} tₑ<tₒ
       , NormalInput (IChoice i n)
@@ -128,13 +128,7 @@ data _⇒_ : {C : Configuration} → Waiting C × Input → Configuration → Se
     → 𝒪⟦ o ⟧ e s ≡ true
     → (tₑ<tₒ : interval-end e < tₒ)
     → Quiescent D
-    → ( ⟪ cₐ
-        , s
-        , e
-        , ws
-        , ps
-        ⟫
-      ) ⇀⋆ D
+    → ⟪ cₐ , s , e , ws , ps ⟫ ⇀⋆ D
     -------------------------------------------------
     → ( waiting {cs} {tₒ} {c} {s} {e} {ws} {ps} tₑ<tₒ
       , NormalInput INotify
