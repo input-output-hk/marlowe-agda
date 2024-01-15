@@ -289,6 +289,7 @@ convertReduceWarnings = map convertReduceWarning
     convertReduceWarning : ReduceWarning → TransactionWarning
     convertReduceWarning (ReduceNonPositivePay a p t v) = TransactionNonPositivePay a p t v
     convertReduceWarning (ReducePartialPay a p t v e) = TransactionPartialPay a p t v e
+    convertReduceWarning (ReducePayNoAccount a p t v) = TransactionPayNoAccount a p t v
     convertReduceWarning (ReduceShadowing i o n) = TransactionShadowing i o n
     convertReduceWarning ReduceAssertionFailed = TransactionAssertionFailed
 ```

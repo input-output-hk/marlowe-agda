@@ -323,6 +323,7 @@ of a list of inputs (possibly empty) to be applied within a TimeInterval
       TransactionNonPositiveDeposit : Party → AccountId → Token → ℤ → TransactionWarning
       TransactionNonPositivePay : AccountId → Payee → Token → ℤ → TransactionWarning
       TransactionPartialPay : AccountId → Payee → Token → ℕ → ℕ → TransactionWarning
+      TransactionPayNoAccount : AccountId → Payee → Token → ℤ → TransactionWarning
       TransactionShadowing : ValueId → ℤ → ℤ → TransactionWarning
       TransactionAssertionFailed : TransactionWarning
 
