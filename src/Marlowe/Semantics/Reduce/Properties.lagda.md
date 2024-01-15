@@ -16,9 +16,10 @@ module Marlowe.Semantics.Reduce.Properties
 
 ```
 open import Contrib.Data.Nat.Properties
+open import Data.Bool.Properties using (not-¬)
 open import Data.Integer using (∣_∣)
 open import Data.List using (List; _∷_; []; _++_; sum; filter; map)
-open import Data.List.Relation.Unary.Any using (lookup; _∷=_)
+open import Data.List.Relation.Unary.Any using (lookup; _∷=_; here; there)
 open import Data.Nat as ℕ
 open import Data.Nat.Properties as ℕ
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
@@ -53,8 +54,7 @@ open PosixTime
 Quiescent configurations do not reduce
 
 ```
-Quiescent¬⇀ :
-  ∀ {C₁ C₂}
+Quiescent¬⇀ : ∀ {C₁ C₂}
   → Quiescent C₁
     ------------
   → ¬ (C₁ ⇀ C₂)
@@ -66,8 +66,7 @@ Quiescent¬⇀ (waiting {t} {tₛ} {Δₜ} (x)) (WhenTimeout {_} {t} {tₛ} {Δ�
 If a configuration reduces, it is not quiescent
 
 ```
-⇀¬Quiescent :
-  ∀ {C₁ C₂}
+⇀¬Quiescent : ∀ {C₁ C₂}
   → C₁ ⇀ C₂
     --------------
   → ¬ Quiescent C₁
@@ -124,7 +123,7 @@ totalAmount t C = Σ-accounts t (accounts (state C)) + Σ-payments t (payments C
 ⇀assetPreservation _ (IfTrue _) = refl
 ⇀assetPreservation _ (IfFalse _) = refl
 ⇀assetPreservation _ (WhenTimeout _) = refl
-⇀assetPreservation _ (LetShadow _ _) = refl
+⇀assetPreservation _ (LetShadow _) = refl
 ⇀assetPreservation _ (LetNoShadow _) = refl
 ⇀assetPreservation _ (AssertTrue _) = refl
 ⇀assetPreservation _ (AssertFalse _) = refl
@@ -178,7 +177,7 @@ Close is a terminal contract
 ⇀-env-not-modified (IfTrue _) = refl
 ⇀-env-not-modified (IfFalse _) = refl
 ⇀-env-not-modified (WhenTimeout _) = refl
-⇀-env-not-modified (LetShadow _ _) = refl
+⇀-env-not-modified (LetShadow _) = refl
 ⇀-env-not-modified (LetNoShadow _) = refl
 ⇀-env-not-modified (AssertTrue _) = refl
 ⇀-env-not-modified (AssertFalse _) = refl
@@ -211,7 +210,7 @@ Close is a terminal contract
   ≤-trans
     (⇀-maxTimeout (WhenTimeout {s} {t} {tₛ} {Δₜ} {c} {ws} {ps} {cs} x))
     (m≤n⊔m (maxTimeout c₁) (maxTimeout (When cs (mkTimeout (mkPosixTime t)) c)))
-⇀-maxTimeout (LetShadow _ _) = ≤-refl
+⇀-maxTimeout (LetShadow _) = ≤-refl
 ⇀-maxTimeout (LetNoShadow _) = ≤-refl
 ⇀-maxTimeout (AssertTrue _) = ≤-refl
 ⇀-maxTimeout (AssertFalse _) = ≤-refl

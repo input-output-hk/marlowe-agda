@@ -248,10 +248,9 @@ data _⇀_ : Configuration → Configuration → Set where
       , ps
       ⟫
 
-  LetShadow : ∀ {s e c i v vᵢ ws ws' ps}
-    → (i , vᵢ) ∈-List boundValues s
-    → ws' ≡ ReduceShadowing i vᵢ (ℰ⟦ v ⟧ e s) ∷ ws
-      --------------------------------------------
+  LetShadow : ∀ {s e c i v ws ps}
+    → (i∈bs : i ∈ boundValues s)
+      ---------------------------
     → ⟪ Let i v c
       , s
       , e
@@ -261,7 +260,7 @@ data _⇀_ : Configuration → Configuration → Set where
       ⟪ c
       , s
       , e
-      , ws'
+      , ReduceShadowing i (proj₂ (lookup i∈bs)) (ℰ⟦ v ⟧ e s) ∷ ws
       , ps
       ⟫
 
@@ -483,15 +482,7 @@ progress
   , ws
   , ps
   ⟫ with i ∈-ValueId? vs
-... | yes i∈vs =
-  let vᵢ = proj₂ (lookup i∈vs)
-  in step (LetShadow {s} {e} {c} {i} {v} {vᵢ} {ws} {ReduceShadowing i vᵢ (ℰ⟦ v ⟧ e s) ∷ ws} {ps} (lookup∈-L i∈vs) refl)
-  where
-    lookup∈-L : ∀ {A B : Set} {a : A} {abs : AssocList A B}
-      → (a∈abs : a ∈ abs)
-      → (a , proj₂ (lookup a∈abs)) ∈-List abs
-    lookup∈-L (here refl) = here refl
-    lookup∈-L (there a∈abs) = there (lookup∈-L a∈abs)
+... | yes i∈vs = step (LetShadow {s} {e} {c} {i} {v} {ws} {ps} i∈vs)
 ... | no ¬a∈abs = step (LetNoShadow (¬Any⇒All¬ vs ¬a∈abs))
 progress
   ⟪ Assert o c
