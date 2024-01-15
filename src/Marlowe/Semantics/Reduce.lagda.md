@@ -71,6 +71,7 @@ _↑-update_ : (p : (AccountId × Token) × ℕ) (abs : AssocList (AccountId × 
 data ReduceWarning : Set where
   ReduceNonPositivePay : AccountId → Payee → Token → ℤ → ReduceWarning
   ReducePartialPay : AccountId → Payee → Token → ℕ → ℕ → ReduceWarning
+  ReducePayNoAccount : AccountId → Payee → Token → ℤ → ReduceWarning
   ReduceShadowing : ValueId → ℤ → ℤ → ReduceWarning
   ReduceAssertionFailed : ReduceWarning
 ```
@@ -141,7 +142,7 @@ data _⇀_ : Configuration → Configuration → Set where
       ⟪ c
       , s
       , e
-      , ReducePartialPay a p t 0 ∣ ℰ⟦ v ⟧ e s ∣ ∷ ws -- TODO: proper warning?
+      , ReducePayNoAccount a p t (ℰ⟦ v ⟧ e s) ∷ ws
       , ps
       ⟫
 
