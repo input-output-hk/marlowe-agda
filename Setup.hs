@@ -74,7 +74,7 @@ agdaProgramStatus = unsafePerformIO (newIORef NotRun)
 
 
 main :: IO ()
-main = 
+main =
   D.defaultMainWithHooks userHooks
   where
     userHooks :: D.UserHooks
@@ -87,8 +87,8 @@ main =
 agdaPreProcessor :: D.BuildInfo -> D.LocalBuildInfo -> D.ComponentLocalBuildInfo -> D.PreProcessor
 agdaPreProcessor _ lbi _ = D.PreProcessor
   { D.platformIndependent = True
-  , D.runPreProcessor = D.mkSimplePreProcessor preProcessors
   , D.ppOrdering = reorderModules
+  , D.runPreProcessor = D.mkSimplePreProcessor preProcessors
   }
   where
     preProcessors :: FilePath -> FilePath -> D.Verbosity -> IO ()
