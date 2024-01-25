@@ -31,8 +31,8 @@ import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; _≢_; refl; cong; sym; subst; trans)
 
 open import Marlowe.Language
-open PartyParam Party
-open TokenParam Token
+open Entities-Parameterized-by-Party {Party}
+open Entities-Parameterized-by-Token {Token}
 open Equality _≟-Party_ _≟-Token_
 
 open import Marlowe.Language.Properties {Party} _≟-Token_
@@ -42,7 +42,7 @@ open import Marlowe.Semantics.Reduce _≟-Party_ _≟-Token_
 open import Contrib.Data.List.AssocList
 open Decidable (≡-dec _≟-AccountId_ _≟-Token_) renaming (_∈?_ to _∈?-AccountId×Token_)
 
-open TokenParam.State
+open Entities-Parameterized-by-Token.State
 open Configuration
 open Environment
 open TimeInterval

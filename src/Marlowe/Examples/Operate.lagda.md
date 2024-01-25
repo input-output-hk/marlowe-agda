@@ -28,8 +28,8 @@ open Eq using (_≡_; refl)
 
 ```
 open import Marlowe.Language
-open PartyParam String
-open TokenParam String
+open Entities-Parameterized-by-Party {String}
+open Entities-Parameterized-by-Token {String}
 open import Marlowe.Semantics.Reduce _≟_ _≟_
 open import Marlowe.Semantics.Operate _≟_ _≟_
 ```

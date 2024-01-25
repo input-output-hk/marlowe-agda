@@ -34,8 +34,8 @@ open Eq using (_≡_; refl; cong; sym; trans)
 open import Contrib.Data.List.AssocList
 
 open import Marlowe.Language
-open PartyParam Party
-open TokenParam Token
+open Entities-Parameterized-by-Party {Party}
+open Entities-Parameterized-by-Token {Token}
 open PosixTime using (getPosixTime)
 ```
 

@@ -70,8 +70,8 @@ mkToken c₁ n₁ ≟-Token mkToken c₂ n₂ with c₁ ≟ c₂ | n₁ ≟ n₂
 
 ```
 open import Marlowe.Language
-open PartyParam Party
-open TokenParam Token
+open Entities-Parameterized-by-Party {Party}
+open Entities-Parameterized-by-Token {Token}
 ```
 
 ```

@@ -25,8 +25,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 ```
 open import Marlowe.Language
-open PartyParam String
-open TokenParam String
+open Entities-Parameterized-by-Party
+open Entities-Parameterized-by-Token
 open import Marlowe.Semantics.Reduce _≟_ _≟_
 ```
 

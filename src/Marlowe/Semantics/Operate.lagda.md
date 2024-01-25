@@ -37,8 +37,8 @@ import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; cong; sym; trans)
 
 open import Marlowe.Language
-open PartyParam Party
-open TokenParam Token
+open Entities-Parameterized-by-Party {Party}
+open Entities-Parameterized-by-Token {Token}
 open Equality _≟-Party_ _≟-Token_
 
 open import Marlowe.Semantics.Evaluate _≟-Party_ _≟-Token_
@@ -48,7 +48,7 @@ open import Contrib.Data.List.AssocList renaming (_∈_ to _∈′_)
 open Decidable _≟-ChoiceId_
 
 open Configuration
-open TokenParam.State
+open Entities-Parameterized-by-Token.State
 open PosixTime
 open TransactionInput
 ```

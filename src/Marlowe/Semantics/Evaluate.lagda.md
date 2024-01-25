@@ -30,14 +30,14 @@ open import Relation.Nullary.Decidable using (⌊_⌋; fromWitnessFalse)
 open import Contrib.Data.List.AssocList
 
 open import Marlowe.Language
-open PartyParam Party
-open TokenParam Token
+open Entities-Parameterized-by-Party
+open Entities-Parameterized-by-Token
 open Equality _≟-Party_ _≟-Token_
 
 open Environment using (timeInterval)
 open TimeInterval using (startTime; offset)
 open PosixTime using (getPosixTime)
-open TokenParam.State using (accounts; boundValues; choices)
+open Entities-Parameterized-by-Token.State using (accounts; boundValues; choices)
 
 open Decidable (≡-dec _≟-AccountId_ _≟-Token_) renaming (_‼_default_ to _‼ᵃ_default_) using ()
 open Decidable _≟-ChoiceId_ renaming (_‼_default_ to _‼ᶜ_default_) using (_∈?_)

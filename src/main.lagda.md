@@ -22,8 +22,8 @@ open import Function.Base using (case_of_; _∘_)
 
 open import Marlowe.Examples.Escrow
 open import Marlowe.Language
-open PartyParam Party
-open TokenParam Token
+open Entities-Parameterized-by-Party {Party}
+open Entities-Parameterized-by-Token {Token}
 open import Marlowe.Semantics.Operate _≟-Party_ _≟-Token_
 ```
 

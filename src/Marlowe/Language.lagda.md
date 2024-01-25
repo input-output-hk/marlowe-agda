@@ -119,7 +119,7 @@ _inBounds_ (mkChosenNum num) bounds =
 ## Parameterized by Party
 
 ```
-module PartyParam (Party : Set) where
+module Entities-Parameterized-by-Party {Party : Set} where
 ```
 
 ### AccountId
@@ -162,7 +162,7 @@ canonical name and the `Party` that has to make the choice.
 ## Parameterized by Token
 
 ```
-  module TokenParam (Token : Set) where
+  module Entities-Parameterized-by-Token {Token : Set} where
 ```
 
 ## Values and observations
@@ -368,8 +368,8 @@ module Equality
   {Token : Set} (_≟-Token_ : DecidableEquality Token)
   where
 
-  open PartyParam Party
-  open TokenParam Token
+  open Entities-Parameterized-by-Party
+  open Entities-Parameterized-by-Token
 
   _≟-AccountId_ : DecidableEquality AccountId
   mkAccountId p₁ ≟-AccountId mkAccountId p₂ with p₁ ≟-Party p₂
@@ -396,8 +396,8 @@ module Equality
 ## Export to Haskell
 
 ```
-open PartyParam
-open TokenParam
+open Entities-Parameterized-by-Party
+open Entities-Parameterized-by-Token
 
 {-# FOREIGN GHC import Marlowe.Core.Contract #-}
 {-# COMPILE GHC PosixTime = data PosixTime (PosixTime) #-}

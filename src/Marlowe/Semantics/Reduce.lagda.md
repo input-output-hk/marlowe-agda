@@ -40,14 +40,14 @@ open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Contrib.Data.List.AssocList
 
 open import Marlowe.Language
-open PartyParam Party
-open TokenParam Token
+open Entities-Parameterized-by-Party {Party}
+open Entities-Parameterized-by-Token {Token}
 open Equality _≟-Party_ _≟-Token_
 
 open import Marlowe.Semantics.Evaluate _≟-Party_ _≟-Token_
 
 open Environment using (timeInterval)
-open TokenParam.State using (accounts; boundValues; choices)
+open Entities-Parameterized-by-Token.State using (accounts; boundValues; choices)
 open TimeInterval using (startTime)
 
 open Decidable (≡-dec _≟-AccountId_ _≟-Token_) renaming (_∈?_ to _∈?-AccountId×Token_)

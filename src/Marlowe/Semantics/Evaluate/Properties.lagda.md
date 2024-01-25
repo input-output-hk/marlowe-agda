@@ -26,8 +26,8 @@ open Eq using (_≡_; refl; cong; sym)
 open Eq.≡-Reasoning
 
 open import Marlowe.Language
-open PartyParam Party
-open TokenParam Token
+open Entities-Parameterized-by-Party {Party}
+open Entities-Parameterized-by-Token {Token}
 
 open import Marlowe.Semantics.Evaluate _≟-Party_ _≟-Token_
 ```
