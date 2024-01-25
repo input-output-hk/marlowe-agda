@@ -54,6 +54,7 @@ PreProcessor which can reorder all modules.
 https://hackage.haskell.org/package/Cabal-3.8.1.0/docs/Distribution-Simple-PreProcess.html
 -}
 
+{-
 reorderModules :: D.Verbosity -> [FilePath] -> [D.ModuleName] -> IO [D.ModuleName]
 reorderModules _ _ = pure . sortBy malonzoCodeOrdering
   where
@@ -61,6 +62,7 @@ reorderModules _ _ = pure . sortBy malonzoCodeOrdering
     malonzoCodeOrdering name _
       | "MAlonzo.Code" `isPrefixOf` (show name) = GT
       | otherwise = EQ
+-}
 
 data AgdaProgramStatus
   = Run
@@ -87,7 +89,7 @@ main =
 agdaPreProcessor :: D.BuildInfo -> D.LocalBuildInfo -> D.ComponentLocalBuildInfo -> D.PreProcessor
 agdaPreProcessor _ lbi _ = D.PreProcessor
   { D.platformIndependent = True
-  , D.ppOrdering = reorderModules
+  -- , D.ppOrdering = reorderModules
   , D.runPreProcessor = D.mkSimplePreProcessor preProcessors
   }
   where
