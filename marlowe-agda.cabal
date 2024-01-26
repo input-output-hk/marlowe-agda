@@ -10,7 +10,7 @@ maintainer:         yves.hauser@iohk.io
 category:           Development
 data-files:
   marlowe.agda-lib
-  src/**/*.lagda
+  src/**/*.agda
   src/**/*.lagda.md
 
 
