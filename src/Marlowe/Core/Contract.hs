@@ -4,6 +4,7 @@ module Marlowe.Core.Contract where
 
 import Data.Text
 
+
 data PosixTime = PosixTime Integer
   deriving (Show, Eq)
 data Party = Address Text

@@ -14,6 +14,7 @@ module Marlowe.Language.Properties
 
 ## Imports
 
+
 ```
 open import Agda.Builtin.Int using (Int)
 open import Contrib.Data.Nat.Properties
@@ -41,6 +42,7 @@ open PosixTime using (getPosixTime)
 
 ```
 1ₜ : Token → Token × ℕ → ℕ
+
 1ₜ t₁ (t₂ , n) with ⌊ t₁ ≟-Token t₂ ⌋
 ... | true = n
 ... | false = 0

@@ -8,9 +8,9 @@ license-files:      LICENSE
 author:             Yves Hauser
 maintainer:         yves.hauser@iohk.io
 category:           Development
-extra-source-files:
+data-files:
   marlowe.agda-lib
-  src/**/*.agda
+  src/**/*.lagda
   src/**/*.lagda.md
 
 
