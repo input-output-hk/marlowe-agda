@@ -74,6 +74,7 @@ library
     MAlonzo.Code.IO
     MAlonzo.Code.Codata.Musical.Colist.Base
     MAlonzo.Code.Codata.Musical.Conat.Base
+    MAlonzo.Code.Marlowe.Examples.Cardano
     MAlonzo.Code.Marlowe.Examples.Reduce
     MAlonzo.Code.Marlowe.Examples.Operate
     MAlonzo.Code.Marlowe.Examples.Escrow
@@ -352,6 +353,7 @@ library
     MAlonzo.Code.IO
     MAlonzo.Code.Codata.Musical.Colist.Base
     MAlonzo.Code.Codata.Musical.Conat.Base
+    MAlonzo.Code.Marlowe.Examples.Cardano
     MAlonzo.Code.Marlowe.Examples.Reduce
     MAlonzo.Code.Marlowe.Examples.Operate
     MAlonzo.Code.Marlowe.Examples.Escrow
