@@ -1,14 +1,8 @@
----
-title: main
-layout: page
----
-
 ```agda
 {-# OPTIONS --guardedness #-}
 
 module main where
 ```
-
 
 ## Imports
 

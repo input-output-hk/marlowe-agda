@@ -1,8 +1,3 @@
----
-title: Marlowe.Examples.Reduce
-layout: page
----
-
 ```agda
 module Marlowe.Examples.Reduce where
 ```

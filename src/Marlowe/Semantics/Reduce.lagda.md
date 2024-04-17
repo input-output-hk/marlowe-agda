@@ -1,12 +1,3 @@
----
-title: Marlowe.Semantics.Reduce
-layout: page
----
-
-This module contains the formalisation of small step reduction semantics for Marlowe.
-The formalization was initially proposed by the Faustus team at University of Wyoming, see
-Appendix A in "Developing Faustus: A Formally Verified Smart Contract Programming Language"
-
 ```agda
 open import Relation.Binary using (DecidableEquality)
 
@@ -15,6 +6,10 @@ module Marlowe.Semantics.Reduce
   {Token : Set} (_≟-Token_ : DecidableEquality Token)
   where
 ```
+
+This module contains the formalisation of small step reduction semantics for Marlowe.
+The formalization was initially proposed by the Faustus team at University of Wyoming, see
+Appendix A in "Developing Faustus: A Formally Verified Smart Contract Programming Language"
 
 <!--
 ## Imports

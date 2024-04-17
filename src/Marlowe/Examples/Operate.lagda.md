@@ -1,8 +1,3 @@
----
-title: Marlowe.Examples.Operate
-layout: page
----
-
 ```agda
 module Marlowe.Examples.Operate where
 ```

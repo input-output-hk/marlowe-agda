@@ -1,8 +1,3 @@
----
-title: Marlowe.Examples.Escrow
-layout: page
----
-
 ```agda
 module Marlowe.Examples.Escrow where
 ```

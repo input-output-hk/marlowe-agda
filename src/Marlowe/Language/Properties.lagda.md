@@ -1,8 +1,3 @@
----
-title: Marlowe.Language.Properties
-layout: page
----
-
 ```agda
 open import Relation.Binary using (DecidableEquality)
 

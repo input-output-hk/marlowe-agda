@@ -1,10 +1,3 @@
----
-title: Marlowe.Semantics.Operate
-layout: page
----
-
-The module contains the formalisation of mid-step and big-step semantics for Marlowe.
-
 ```agda
 open import Relation.Binary using (DecidableEquality)
 
@@ -13,6 +6,7 @@ module Marlowe.Semantics.Operate
   {Token : Set} (_≟-Token_ : DecidableEquality Token)
   where
 ```
+The module contains the formalisation of mid-step and big-step semantics for Marlowe.
 
 <!--
 ## Imports

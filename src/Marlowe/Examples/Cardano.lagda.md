@@ -1,8 +1,3 @@
----
-title: Marlowe.Examples.Cardano
-layout: page
----
-
 ```agda
 module Marlowe.Examples.Cardano where
 ```

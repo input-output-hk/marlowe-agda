@@ -1,8 +1,3 @@
----
-title: Marlowe.Semantics.Operate.Properties
-layout: page
----
-
 ```
 open import Relation.Binary using (DecidableEquality)
 

@@ -1,8 +1,3 @@
----
-title: Marlowe.Semantics.Evaluate.Properties
-layout: page
----
-
 ```agda
 open import Relation.Binary using (DecidableEquality)
 

@@ -1,13 +1,8 @@
----
-title: Marlowe.Language
-layout: page
----
-
-This module specifies the domain model for a Marlowe contract.
-
 ```agda
 module Marlowe.Language where
 ```
+
+This module specifies the domain model for a Marlowe contract.
 
 <!--
 ## Imports
