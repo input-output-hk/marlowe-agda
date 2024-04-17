@@ -3,7 +3,7 @@ title: main
 layout: page
 ---
 
-```
+```agda
 {-# OPTIONS --guardedness #-}
 
 module main where
@@ -12,7 +12,7 @@ module main where
 
 ## Imports
 
-```
+```agda
 open import IO
 open List using (forM′)
 open import Data.Product using (_,_)
@@ -33,7 +33,7 @@ open import Marlowe.Semantics.Operate _≟-Party_ _≟-Token_
 
 The reference implementation in Haskell is used for serialization 
 
-```
+```agda
 {-# FOREIGN GHC import Marlowe.Core.Contract #-}
 
 postulate
@@ -47,7 +47,7 @@ postulate
 
 ## Main
 
-```
+```agda
 main : Main
 main =
   let
