@@ -1,9 +1,4 @@
----
-title: Marlowe.Language.Properties
-layout: page
----
-
-```
+```agda
 open import Relation.Binary using (DecidableEquality)
 
 module Marlowe.Language.Properties
@@ -12,10 +7,10 @@ module Marlowe.Language.Properties
   where
 ```
 
+<!--
 ## Imports
 
-
-```
+```agda
 open import Agda.Builtin.Int using (Int)
 open import Contrib.Data.Nat.Properties
 open import Data.Bool using (Bool; _∧_; true; false)
@@ -39,8 +34,9 @@ open Entities-Parameterized-by-Party {Party}
 open Entities-Parameterized-by-Token {Token}
 open PosixTime using (getPosixTime)
 ```
+-->
 
-```
+```agda
 1ₜ : Token → Token × ℕ → ℕ
 
 1ₜ t₁ (t₂ , n) with ⌊ t₁ ≟-Token t₂ ⌋
@@ -60,7 +56,7 @@ projₚ t (a [ t′ , n ]↦ _) = 1ₜ t (t′ , n)
 Σ-payments t = sum ∘ map (projₚ t)
 ```
 
-```
+```agda
 zero-projₜ : ∀ {a×t : AccountId × Token} {t : Token} → projₜ t (a×t , 0) ≡ 0
 zero-projₜ {a×t} {t} with ⌊ t ≟-Token (proj₂ a×t) ⌋
 ... | true = refl

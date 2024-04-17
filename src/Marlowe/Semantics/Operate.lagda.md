@@ -1,11 +1,4 @@
----
-title: Marlowe.Semantics.Operate
-layout: page
----
-
-The module contains the formalisation of mid-step and big-step semantics for Marlowe.
-
-```
+```agda
 open import Relation.Binary using (DecidableEquality)
 
 module Marlowe.Semantics.Operate
@@ -13,10 +6,12 @@ module Marlowe.Semantics.Operate
   {Token : Set} (_≟-Token_ : DecidableEquality Token)
   where
 ```
+The module contains the formalisation of mid-step and big-step semantics for Marlowe.
 
+<!--
 ## Imports
 
-```
+```agda
 open import Data.Bool as 𝔹 using (Bool; if_then_else_; not; _∧_; _∨_; true; false)
 open import Data.Integer as ℤ using (∣_∣; +_)
 open import Data.List using (List; []; _∷_; _++_; foldr; reverse; [_]; null; map)
@@ -52,6 +47,7 @@ open Entities-Parameterized-by-Token.State
 open PosixTime
 open TransactionInput
 ```
+-->
 
 # Mid-step semantics
 
@@ -61,7 +57,7 @@ The contract is in the waiting state, when the timeout in the `When` constructor
 is after the upper bound of the time interval. In the waiting state the contract
 can accept inputs.
 
-```
+```agda
 data Waiting : Configuration → Set where
 
   waiting : ∀ {cs t c s e ws ps}
@@ -80,7 +76,7 @@ data Waiting : Configuration → Set where
 
 Mid-step reduction applies an input to a contract in the waiting state
 
-```
+```agda
 data _⇒_ : {C : Configuration} → Waiting C × Input → Configuration → Set where
 
   Deposit : ∀ {a p t v n cₐ e s ws ps cs c tₒ D}
@@ -141,7 +137,7 @@ as an `Action` can contain `Observation`s and `Value`s as opposed to the
 
 Evaluation of `Observation` and `Value` requires `State` and `Environment`.
 
-```
+```agda
 data _↦_ {s : State} {e : Environment} : InputContent → Action → Set where
 
   deposit-input : ∀ {a p t v n}
@@ -160,11 +156,11 @@ data _↦_ {s : State} {e : Environment} : InputContent → Action → Set where
 The function `applicable?` checks, if an `InputContent` can trigger a given `Action`. If
 this is the case, the relation is returned.
 
-```
+```agda
 applicable? : ∀ {s : State} {e : Environment} → (i : InputContent) → (a : Action) → Maybe (_↦_ {s} {e} i a)
 ```
 * IDeposit
-```
+```agda
 applicable? {s} {e} (IDeposit a₁ p₁ t₁ n) (Deposit a₂ p₂ t₂ v)
   with a₁ ≟-AccountId a₂ | p₁ ≟-Party p₂ | t₁ ≟-Token t₂ | ℰ⟦ v ⟧ e s  ℤ.≟ + n
 ... | yes refl | yes refl | yes refl | yes p = just (deposit-input {_} {_} {a₁} {p₁} {t₁} {v} {n} p)
@@ -173,7 +169,7 @@ applicable? (IDeposit _ _ _ _) (Choice _ _ ) = nothing
 applicable? (IDeposit _ _ _ _) (Notify _) = nothing
 ```
 * IChoice
-```
+```agda
 applicable? (IChoice _ _ ) (Deposit _ _ _ _ ) = nothing
 applicable? (IChoice i₁ n) (Choice i₂ b)
   with i₁ ≟-ChoiceId i₂ | n inBounds b 𝔹.≟ true
@@ -182,7 +178,7 @@ applicable? (IChoice i₁ n) (Choice i₂ b)
 applicable? (IChoice _ _) (Notify _) = nothing
 ```
 * INotify
-```
+```agda
 applicable? INotify (Deposit _ _ _ _) = nothing
 applicable? INotify (Choice _ _) = nothing
 applicable? {s} {e} INotify (Notify o)
@@ -193,7 +189,7 @@ applicable? {s} {e} INotify (Notify o)
 
 ## Evaluator for mid-step semantics
 
-```
+```agda
 {-# TERMINATING #-} -- TODO: use sized types instead
 ⇒-eval :
   ∀ {C : Configuration}
@@ -206,7 +202,7 @@ applicable? {s} {e} INotify (Notify o)
   with applicable? {s} {e} ic a
 ```
 * here
-```
+```agda
 ⇒-eval (waiting {mkCase _ cₐ ∷ cs} {_} {_} {s} {e} {ws} {ps} tₑ<t) (NormalInput ic) | just (deposit-input {a} {p} {t} {_} {n} ℰ⟦v⟧≡+n)
   with ⇀-eval ⟪ cₐ , record s { accounts = ((a , t) , n) ↑-update (accounts s) } , e , ws , ps ⟫
 ... | D , C⇀⋆D , inj₁ q = inj₁ (D , Deposit (here refl) ℰ⟦v⟧≡+n tₑ<t q C⇀⋆D)
@@ -221,7 +217,7 @@ applicable? {s} {e} INotify (Notify o)
 ... | _ , _    , inj₂ _ = inj₂ TEAmbiguousTimeIntervalError
 ```
 * there
-```
+```agda
 ⇒-eval (waiting {(_ ∷ cs)} {_} {c} tₑ<t) i@(NormalInput (IDeposit x x₁ x₂ x₃)) | nothing
   with ⇒-eval (waiting {cs} {_} {c} tₑ<t) i
 ... | inj₁ (D , (Deposit x x₁ x₂ x₃ x₄)) = inj₁ (D , (Deposit (there x) x₁ x₂ x₃ x₄))
@@ -240,7 +236,7 @@ applicable? {s} {e} INotify (Notify o)
 
 ## Fix interval
 
-```
+```agda
 data _↝_ : Configuration → Configuration → Set where
 
   trim-interval : ∀ {c as cs bs tₘ tₛ Δₜ ws ps }
@@ -260,7 +256,7 @@ data _↝_ : Configuration → Configuration → Set where
       ⟫
 ```
 
-```
+```agda
 data FixInterval (B : Configuration) : Set where
 
   trim : ∀ {C}
@@ -273,7 +269,7 @@ data FixInterval (B : Configuration) : Set where
     → FixInterval B
 ```
 
-```
+```agda
 fixInterval : ∀ (B : Configuration) → FixInterval B
 fixInterval ⟪ _ , ⟨ _ , _ , _ , mkPosixTime tₘ ⟩ , mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ) , _ , _ ⟫ with tₛ + Δₜ <? tₘ
 ... | yes p = error p
@@ -282,7 +278,7 @@ fixInterval ⟪ _ , ⟨ _ , _ , _ , mkPosixTime tₘ ⟩ , mkEnvironment (mkInte
 
 ## Warnings
 
-```
+```agda
 convertReduceWarnings : List ReduceWarning -> List TransactionWarning
 convertReduceWarnings = map convertReduceWarning
   where
@@ -302,7 +298,7 @@ The result of a big-step includes all the transaction warnings,
 all the payments triggered during the execution of the contract
 together with the final state.
 
-```
+```agda
 record Result : Set where
   constructor ⟦_,_,_⟧
   field
@@ -318,7 +314,7 @@ The rules for big-step semantics cover the following steps
 * Applying an input to a contract
 * Closing the contract
 
-```
+```agda
 data _⇓_ : Contract × State → Result → Set where
 
   reduce-until-quiescent : ∀ {C D ws ps s}
@@ -366,7 +362,7 @@ data _⇓_ : Contract × State → Result → Set where
 
 ## Evaluator for big step-semantics
 
-```
+```agda
 {-# TERMINATING #-} -- TODO: use sized types instead
 ⇓-eval :
   ∀ (c : Contract)
@@ -377,13 +373,13 @@ data _⇓_ : Contract × State → Result → Set where
 
 * Close
 
-```
+```agda
 ⇓-eval Close s@(⟨ [] , _ , _ , _ ⟩) [] = inj₁ (⟦ [] , [] , s ⟧ , done refl)
 ```
 
 * When
 
-```
+```agda
 ⇓-eval
   (When cs (mkTimeout (mkPosixTime t)) c) s@(⟨ _ , _ , _ , mkPosixTime tₘ ⟩) ((mkTransactionInput i@(mkInterval (mkPosixTime tₛ) Δₜ) _) ∷ is)
     with fixInterval ⟪ When cs (mkTimeout (mkPosixTime t)) c , s , mkEnvironment i , [] , [] ⟫
@@ -421,7 +417,7 @@ data _⇓_ : Contract × State → Result → Set where
 
 * Otherwise
 
-```
+```agda
 ⇓-eval c s []
     with ⇀-eval ⟪ c , s , mkEnvironment (mkInterval (mkPosixTime 0) 0) , [] , [] ⟫
 ... | _ , _ , inj₂ _ = inj₂ TEAmbiguousTimeIntervalError

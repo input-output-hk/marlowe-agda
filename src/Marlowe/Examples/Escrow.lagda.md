@@ -1,15 +1,11 @@
----
-title: Marlowe.Examples.Escrow
-layout: page
----
-
-```
+```agda
 module Marlowe.Examples.Escrow where
 ```
 
+<!--
 ## Imports
 
-```
+```agda
 open import Agda.Builtin.Int using (Int)
 open import Agda.Builtin.String using (String)
 open import Data.Integer using (0ℤ; 1ℤ; +_)
@@ -19,13 +15,14 @@ open import Data.Product using (_×_) renaming (_,_ to ⟨_,_⟩ )
 
 open import Marlowe.Examples.Cardano
 ```
+-->
 
-```
+```agda
 pattern [_] z = z ∷ []
 pattern [_,_] y z = y ∷ z ∷ []
 ```
 
-```
+```agda
 open import Marlowe.Language
 open Entities-Parameterized-by-Party {Party}
 open Entities-Parameterized-by-Token {Token}
@@ -33,7 +30,7 @@ open Entities-Parameterized-by-Token {Token}
 
 ## Escrow
 
-```
+```agda
 escrow : Party → Party → Party → Token → ℕ → Timeout → Timeout → Timeout → Timeout → Contract
 escrow seller buyer mediator token price paymentDeadline complaintDeadline responseDeadline mediationDeadline =
   When
@@ -86,7 +83,7 @@ escrow seller buyer mediator token price paymentDeadline complaintDeadline respo
     makeChoice name party value = Choice (mkChoiceId (mkChoiceName name) party) [(mkBound value value)]
 ```
 
-```
+```agda
 escrowExample : PosixTime × Contract × (List TransactionInput)
 escrowExample =
   let

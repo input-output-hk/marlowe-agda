@@ -1,9 +1,4 @@
----
-title: Marlowe.Semantics.Reduce.Properties
-layout: page
----
-
-```
+```agda
 open import Relation.Binary using (DecidableEquality)
 
 module Marlowe.Semantics.Reduce.Properties
@@ -12,9 +7,10 @@ module Marlowe.Semantics.Reduce.Properties
   where
 ```
 
+<!--
 ## Imports
 
-```
+```agda
 open import Contrib.Data.Nat.Properties
 open import Data.Bool.Properties using (not-¬)
 open import Data.Integer using (∣_∣)
@@ -48,12 +44,13 @@ open Environment
 open TimeInterval
 open PosixTime
 ```
+-->
 
 ## Quiescent
 
 Quiescent configurations do not reduce
 
-```
+```agda
 Quiescent¬⇀ : ∀ {C₁ C₂}
   → Quiescent C₁
     ------------
@@ -65,7 +62,7 @@ Quiescent¬⇀ (waiting {t} {tₛ} {Δₜ} (x)) (WhenTimeout {_} {t} {tₛ} {Δ�
 
 If a configuration reduces, it is not quiescent
 
-```
+```agda
 ⇀¬Quiescent : ∀ {C₁ C₂}
   → C₁ ⇀ C₂
     --------------
@@ -77,7 +74,7 @@ If a configuration reduces, it is not quiescent
 
 A reduction step preserves assets
 
-```
+```agda
 totalAmount : Token → Configuration → ℕ
 totalAmount t C = Σ-accounts t (accounts (state C)) + Σ-payments t (payments C)
 
@@ -129,7 +126,7 @@ totalAmount t C = Σ-accounts t (accounts (state C)) + Σ-payments t (payments C
 ⇀assetPreservation _ (AssertFalse _) = refl
 ```
 
-```
+```agda
 ⇀⋆assetPreservation :
   ∀ {C₁ C₂ : Configuration}
   → (t : Token)
@@ -144,7 +141,7 @@ totalAmount t C = Σ-accounts t (accounts (state C)) + Σ-payments t (payments C
 
 Reducing a closed contract does not produce any warning
 
-```
+```agda
 ⇀⋆Close-is-safe :
   ∀ {c₂} {s₁ s₂} {e₁ e₂} {ws₁ ws₂} {ps₁ ps₂}
   → ⟪ Close , s₁ , e₁ , ws₁ , ps₁ ⟫ ⇀⋆ ⟪ c₂ , s₂ , e₂ , ws₂ , ps₂ ⟫
@@ -155,7 +152,7 @@ Reducing a closed contract does not produce any warning
 
 Close is a terminal contract
 
-```
+```agda
 ⇀⋆Close-is-terminal :
   ∀ {c₂} {s₁ s₂} {e₁ e₂} {ws₁ ws₂} {ps₁ ps₂}
   → ⟪ Close , s₁ , e₁ , ws₁ , ps₁ ⟫ ⇀⋆ ⟪ c₂ , s₂ , e₂ , ws₂ , ps₂ ⟫
@@ -164,7 +161,7 @@ Close is a terminal contract
 ⇀⋆Close-is-terminal ((⟪ Close , _ , _ , _ , _ ⟫) ⇀⟨ CloseRefund ⟩ x) rewrite ⇀⋆Close-is-terminal x = refl
 ```
 
-```
+```agda
 ⇀-env-not-modified :
   ∀ {C D}
   → C ⇀ D
@@ -185,7 +182,7 @@ Close is a terminal contract
 
 ## Finite contracts
 
-```
+```agda
 ⇀⋆-env-not-modified :
   ∀ {C D}
   → C ⇀⋆ D
@@ -194,7 +191,7 @@ Close is a terminal contract
 ⇀⋆-env-not-modified (_ ⇀⟨ x ⟩ y) rewrite ⇀-env-not-modified x = ⇀⋆-env-not-modified y
 ```
 
-```
+```agda
 ⇀-maxTimeout : ∀ {C D}
   → C ⇀ D
   → maxTimeout (contract D) ≤ maxTimeout (contract C)
@@ -216,7 +213,7 @@ Close is a terminal contract
 ⇀-maxTimeout (AssertFalse _) = ≤-refl
 ```
 
-```
+```agda
 ⇀⋆-maxTimeout : ∀ {C D}
   → C ⇀⋆ D
   → maxTimeout (contract D) ≤ maxTimeout (contract C)
@@ -226,7 +223,7 @@ Close is a terminal contract
 
 ## Timed-out transaction closes contract
 
-```
+```agda
 ⇀⋆-after-timeout-closes-contract : ∀ {C D}
   → C ⇀⋆ D
   → Quiescent D

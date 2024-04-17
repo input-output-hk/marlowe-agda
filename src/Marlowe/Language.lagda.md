@@ -1,17 +1,13 @@
----
-title: Marlowe.Language
-layout: page
----
-
-This module specifies the domain model for a Marlowe contract.
-
-```
+```agda
 module Marlowe.Language where
 ```
 
+This module specifies the domain model for a Marlowe contract.
+
+<!--
 ## Imports
 
-```
+```agda
 open import Contrib.Data.List.AssocList
 open import Data.Bool using (Bool; _∧_)
 open import Data.Integer using (ℤ; _≤?_)
@@ -25,12 +21,13 @@ open import Relation.Nullary.Decidable using (⌊_⌋)
 open import Relation.Binary using (DecidableEquality)
 open import Relation.Binary.PropositionalEquality using (cong; cong₂)
 ```
+-->
 
 ## PosixTime and Timeout
 
 Timeouts for applying inputs are represented as PosixTime.
 
-```
+```agda
 record PosixTime : Set where
   constructor mkPosixTime
   field
@@ -42,7 +39,7 @@ data Timeout : Set where
 
 ## TimeInterval
 
-```
+```agda
 record TimeInterval : Set where
   constructor mkInterval
   field
@@ -55,7 +52,7 @@ endTime (mkInterval (mkPosixTime s) o) = mkPosixTime (s + o)
 
 ## Environment
 
-```
+```agda
 record Environment : Set where
   constructor mkEnvironment
   field
@@ -70,14 +67,14 @@ interval-end (mkEnvironment (mkInterval (mkPosixTime s) o)) = s + o
 The `ValueId` is used to store and reference `Value`s in the state of the
 contract.
 
-```
+```agda
 data ValueId : Set where
   mkValueId : String → ValueId
 ```
 
 ### ChoiceName
 
-```
+```agda
 data ChoiceName : Set where
   mkChoiceName : String → ChoiceName
 ```
@@ -86,7 +83,7 @@ data ChoiceName : Set where
 
 In order to interpret integers in the context of `Choice`s, we make use
 of the type `ChosenNum`.
-```
+```agda
 data ChosenNum : Set where
   mkChosenNum : ℤ → ChosenNum
 
@@ -99,7 +96,7 @@ unChosenNum (mkChosenNum num) = num
 `Choice`s are bound. The `Bound` data type is a tuple of
 integers that represents an inclusive lower and upper bound.
 
-```
+```agda
 data Bound : Set where
   mkBound : ℤ → ℤ → Bound
 ```
@@ -107,7 +104,7 @@ data Bound : Set where
 In order to determine, if a `ChosenNum` is within the inclusive bounds list,
 we use the `inBounds` function.
 
-```
+```agda
 _inBounds_ : ChosenNum → List Bound → Bool
 _inBounds_ (mkChosenNum num) bounds =
   any inBound bounds
@@ -118,7 +115,7 @@ _inBounds_ (mkChosenNum num) bounds =
 
 ## Parameterized by Party
 
-```
+```agda
 module Entities-Parameterized-by-Party {Party : Set} where
 ```
 
@@ -127,7 +124,7 @@ module Entities-Parameterized-by-Party {Party : Set} where
 Local accounts for parties of a contract are identified by the
 `AccountId`.
 
-```
+```agda
   data AccountId : Set where
     mkAccountId : Party → AccountId
 
@@ -140,7 +137,7 @@ Local accounts for parties of a contract are identified by the
 A contract can transfer assets between accounts or from an account to a party.
 This is modelled in `Payee`.
 
-```
+```agda
   data Payee : Set where
     mkAccount : AccountId → Payee
     mkParty : Party → Payee
@@ -151,7 +148,7 @@ This is modelled in `Payee`.
 Choices are identified by a `ChoiceId` which is defined by a 
 canonical name and the `Party` that has to make the choice.
 
-```
+```agda
   record ChoiceId : Set where
     constructor mkChoiceId
     field
@@ -161,7 +158,7 @@ canonical name and the `Party` that has to make the choice.
 
 ## Parameterized by Token
 
-```
+```agda
   module Entities-Parameterized-by-Token {Token : Set} where
 ```
 
@@ -171,14 +168,14 @@ Values and observations are language terms that interact with most of the
 other constructs. Value evaluates to an integer and observation evaluates to
 a boolean respectively. They are defined mutually recursive.
 
-```
+```agda
     data Value : Set
     data Observation : Set
 ```
 
 #### Value
 
-```
+```agda
     data Value where
       AvailableMoney : AccountId → Token → Value
       Constant : ℤ → Value
@@ -196,7 +193,7 @@ a boolean respectively. They are defined mutually recursive.
 
 #### Observation
 
-```
+```agda
     data Observation where
       AndObs : Observation → Observation → Observation
       OrObs : Observation → Observation → Observation
@@ -216,7 +213,7 @@ a boolean respectively. They are defined mutually recursive.
 Actions are the counterparts to inputs, i.e. a given input can trigger a
 certain action.
 
-```
+```agda
     data Action : Set where
       Deposit : AccountId → Party → Token → Value → Action
       Choice : ChoiceId → List Bound → Action
@@ -232,7 +229,7 @@ a possible exection path of the contract.
 `Case` and `Contract` are defined mutually recursive to allow to specify the
 continuation for a given action as another contract.
 
-```
+```agda
     data Case : Set
     data Contract : Set
 
@@ -250,7 +247,7 @@ continuation for a given action as another contract.
 
 ## State
 
-```
+```agda
     record State : Set where
       constructor ⟨_,_,_,_⟩
       field
@@ -265,7 +262,7 @@ continuation for a given action as another contract.
 
 ### Payment
 
-```
+```agda
     record Payment : Set where
       constructor _[_,_]↦_
       field
@@ -277,7 +274,7 @@ continuation for a given action as another contract.
 
 ## InputContent
 
-```
+```agda
     data InputContent : Set where
       IDeposit : AccountId → Party → Token → ℕ → InputContent
       IChoice : ChoiceId → ChosenNum → InputContent
@@ -286,7 +283,7 @@ continuation for a given action as another contract.
 
 ## Input
 
-```
+```agda
     data Input : Set where
       NormalInput : InputContent → Input
 ```
@@ -296,7 +293,7 @@ continuation for a given action as another contract.
 We use transactions to move contracts forward. Transactions are comprised
 of a list of inputs (possibly empty) to be applied within a TimeInterval
 
-```
+```agda
     record TransactionInput : Set where
       constructor mkTransactionInput
       field
@@ -306,7 +303,7 @@ of a list of inputs (possibly empty) to be applied within a TimeInterval
 
 ### Interval result
 
-```
+```agda
     data IntervalError : Set where
       InvalidInterval : TimeInterval → IntervalError
       IntervalInPastError : PosixTime → TimeInterval → IntervalError
@@ -318,7 +315,7 @@ of a list of inputs (possibly empty) to be applied within a TimeInterval
 
 ### Transaction warnings and errors
 
-```
+```agda
     data TransactionWarning : Set where
       TransactionNonPositiveDeposit : Party → AccountId → Token → ℤ → TransactionWarning
       TransactionNonPositivePay : AccountId → Payee → Token → ℤ → TransactionWarning
@@ -337,7 +334,7 @@ of a list of inputs (possibly empty) to be applied within a TimeInterval
 
 ## TransactionOutput
 
-```
+```agda
     data TransactionOutput : Set where
       mkTransactionOutput : List TransactionWarning → List Payment → State → Contract → TransactionOutput
       mkError : TransactionError → TransactionOutput
@@ -349,7 +346,7 @@ of a list of inputs (possibly empty) to be applied within a TimeInterval
 All contracts are finite and have an expiration time. The expiration time is
 the maximum of all timeouts in the contract.
 
-```
+```agda
     maxTimeout : Contract → ℕ
     maxTimeout Close = 0
     maxTimeout (Pay _ _ _ _ c) = maxTimeout c
@@ -362,7 +359,7 @@ the maximum of all timeouts in the contract.
 
 ## DecidableEquality
 
-```
+```agda
 module Equality
   {Party : Set} (_≟-Party_ : DecidableEquality Party)
   {Token : Set} (_≟-Token_ : DecidableEquality Token)
@@ -395,7 +392,7 @@ module Equality
 
 ## Export to Haskell
 
-```
+```agda
 open Entities-Parameterized-by-Party
 open Entities-Parameterized-by-Token
 
@@ -414,4 +411,8 @@ open Entities-Parameterized-by-Token
 {-# COMPILE GHC Case = data Case (Case) #-}
 {-# COMPILE GHC Contract = data Contract (Close | Pay | If | When | Let | Assert) #-}
 {-# COMPILE GHC Payment = data Payment (Payment) #-}
+
+-- {-# COMPILE GHC TimeInterval = data TimeInterval (TimeInterval) #-}
+-- {-# COMPILE GHC Environment = data Environment (Environment) #-}
+-- {-# COMPILE GHC State = data State (State) #-}
 ```

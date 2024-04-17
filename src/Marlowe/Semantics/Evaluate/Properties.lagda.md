@@ -1,9 +1,4 @@
----
-title: Marlowe.Semantics.Evaluate.Properties
-layout: page
----
-
-```
+```agda
 open import Relation.Binary using (DecidableEquality)
 
 module Marlowe.Semantics.Evaluate.Properties
@@ -12,9 +7,10 @@ module Marlowe.Semantics.Evaluate.Properties
   where
 ```
 
+<!--
 ## Imports
 
-```
+```agda
 open import Data.Bool using (_∧_; _∨_; if_then_else_; not)
 open import Data.Integer using (-_; _+_; _-_; _*_; _≟_; _<?_; _≤?_; ∣_∣; 0ℤ; 1ℤ)
 open import Data.Integer.Properties using (+-identityʳ; *-identityʳ; +-assoc)
@@ -31,8 +27,9 @@ open Entities-Parameterized-by-Token {Token}
 
 open import Marlowe.Semantics.Evaluate _≟-Party_ _≟-Token_
 ```
+-->
 
-```
+```agda
 0ᵥ : Value
 0ᵥ = Constant 0ℤ
 
@@ -40,7 +37,7 @@ open import Marlowe.Semantics.Evaluate _≟-Party_ _≟-Token_
 1ᵥ = Constant 1ℤ
 ```
 
-```
+```agda
 AddValue-identityʳ : ∀ (e : Environment) → ∀ (s : State) → ∀ (n : Value)
   → ℰ⟦ AddValue n 0ᵥ ⟧ e s ≡ ℰ⟦ n ⟧ e s
 AddValue-identityʳ e s n =
@@ -55,7 +52,7 @@ AddValue-identityʳ e s n =
   ∎
 ```
 
-```
+```agda
 MulValue-identityʳ : ∀ (e : Environment) → ∀ (s : State) → ∀ (n : Value)
   → ℰ⟦ MulValue n 1ᵥ ⟧ e s ≡ ℰ⟦ n ⟧ e s
 MulValue-identityʳ e s n =
@@ -70,7 +67,7 @@ MulValue-identityʳ e s n =
   ∎
 ```
 
-```
+```agda
 AddValue-assoc : ∀ (e : Environment) → ∀ (s : State) → ∀ (m n p : Value)
   → ℰ⟦ AddValue (AddValue m n) p ⟧ e s ≡ ℰ⟦ AddValue m (AddValue n p) ⟧ e s
 AddValue-assoc e s m n p =

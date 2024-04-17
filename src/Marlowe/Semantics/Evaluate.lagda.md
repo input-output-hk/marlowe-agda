@@ -1,9 +1,4 @@
----
-title: Marlowe.Semantics.Evaluate
-layout: page
----
-
-```
+```agda
 open import Relation.Binary using (DecidableEquality)
 
 module Marlowe.Semantics.Evaluate
@@ -12,10 +7,10 @@ module Marlowe.Semantics.Evaluate
   where
 ```
 
-
+<!--
 ## Imports
 
-```
+```agda
 open import Data.Bool using (Bool; false; true; _∧_; _∨_; if_then_else_; not)
 open import Data.Integer as ℤ using (ℤ; -_; _-_; +_; _+_; _*_; _≟_; _<?_; _≤?_; ∣_∣; 0ℤ; 1ℤ; NonZero)
 open import Data.Integer.DivMod as ℤ using ()
@@ -44,17 +39,18 @@ open Decidable (≡-dec _≟-AccountId_ _≟-Token_) renaming (_‼_default_ to 
 open Decidable _≟-ChoiceId_ renaming (_‼_default_ to _‼ᶜ_default_) using (_∈?_)
 open Decidable _≟-ValueId_ renaming (_‼_default_ to _‼ᵛ_default_) using ()
 ```
+-->
 
 ## Evaluation of `Value`s and `Observation`s
 
-```
+```agda
 ℰ⟦_⟧ : Value → Environment → State → ℤ
 𝒪⟦_⟧ : Observation → Environment → State → Bool
 ```
 
 ### Value
 
-```
+```agda
 ℰ⟦ AvailableMoney a t ⟧ _ s = + ((a , t) ‼ᵃ accounts s default 0)
 ℰ⟦ Constant x ⟧ _ _ = x
 ℰ⟦ NegValue x ⟧ e s = - ℰ⟦ x ⟧ e s
@@ -76,7 +72,7 @@ open Decidable _≟-ValueId_ renaming (_‼_default_ to _‼ᵛ_default_) using 
 
 ### Observation
 
-```
+```agda
 𝒪⟦ AndObs x y ⟧ e s = 𝒪⟦ x ⟧ e s ∧ 𝒪⟦ y ⟧ e s
 𝒪⟦ OrObs x y ⟧ e s = 𝒪⟦ x ⟧ e s ∨ 𝒪⟦ y ⟧ e s
 𝒪⟦ NotObs x ⟧ e s = not (𝒪⟦ x ⟧ e s)

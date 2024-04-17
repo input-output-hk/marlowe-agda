@@ -1,8 +1,3 @@
----
-title: Marlowe.Semantics.Operate.Properties
-layout: page
----
-
 ```
 open import Relation.Binary using (DecidableEquality)
 
@@ -12,6 +7,7 @@ module Marlowe.Semantics.Operate.Properties
   where
 ```
 
+<!--
 ## Imports
 
 ```
@@ -40,6 +36,7 @@ open Result
 
 open import Marlowe.Semantics.Reduce.Properties _≟-Party_ _≟-Token_
 ```
+-->
 
 ## Close is safe
 
