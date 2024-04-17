@@ -87,6 +87,14 @@ data Environment = Environment TimeInterval
 
 -- JSON serialization
 
+getInteger :: String -> Scientific -> A.Parser Integer
+getInteger ctx x = case (floatingOrInteger x :: Either Double Integer) of
+  Right a -> return a
+  Left _ -> fail $ "parsing " ++ ctx ++ " failed, expected integer, but encountered floating point"
+
+withInteger :: String -> A.Value -> A.Parser Integer
+withInteger ctx = withScientific ctx $ getInteger ctx
+
 instance A.ToJSON PosixTime where
   toJSON (PosixTime t) = undefined
 
@@ -94,10 +102,10 @@ instance A.FromJSON PosixTime where
   parseJSON = undefined
 
 instance A.ToJSON ChoiceName where
-  toJSON (ChoiceName s) = undefined
+  toJSON (ChoiceName s) = A.toJSON s
 
 instance A.FromJSON ChoiceName where
-  parseJSON s = undefined
+  parseJSON = withText "ChoiceName" (pure . ChoiceName)
 
 instance (A.ToJSON p) => A.ToJSON (ChoiceId p) where
   toJSON (ChoiceId name party) =
@@ -133,14 +141,6 @@ instance (A.ToJSON p) => A.ToJSON (Payee p) where
 
 instance (A.FromJSON p) => A.FromJSON (Payee p) where
   parseJSON = undefined
-
-getInteger :: String -> Scientific -> A.Parser Integer
-getInteger ctx x = case (floatingOrInteger x :: Either Double Integer) of
-  Right a -> return a
-  Left _ -> fail $ "parsing " ++ ctx ++ " failed, expected integer, but encountered floating point"
-
-withInteger :: String -> A.Value -> A.Parser Integer
-withInteger ctx = withScientific ctx $ getInteger ctx
 
 instance (A.ToJSON p, A.ToJSON t) => A.ToJSON (Observation p t) where
   toJSON (AndObs lhs rhs) =
@@ -444,7 +444,37 @@ instance (A.ToJSON p, A.ToJSON t) => A.ToJSON (Contract p t) where
 data Token = Token Text Text
   deriving (Show, Eq, Ord)
 
+instance A.ToJSON Token where
+  toJSON (Token currSym tokName) =
+    object
+      [ "currency_symbol" .= currSym,
+        "token_name" .= tokName
+      ]
+
+instance A.FromJSON Token where
+  parseJSON =
+    withObject
+      "Token"
+      ( \v ->
+          Token
+            <$> (v .: "currency_symbol")
+            <*> (v .: "token_name")
+      )
+
 data Party
   = Address Text
   | Role Text
   deriving (Show, Eq, Ord)
+
+instance A.ToJSON Party where
+  toJSON (Address address) =
+    object ["address" .= address]
+  toJSON (Role name) =
+    object ["role_token" .= name]
+
+instance A.FromJSON Party where
+  parseJSON = withObject "Party" $
+    \v -> asAddress v <|> asRole v
+    where
+      asAddress v = Address <$> v .: "address"
+      asRole v = Role <$> v .: "role_token"
