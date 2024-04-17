@@ -49,6 +49,7 @@ library
   import:          lang
   hs-source-dirs:  src
   build-depends:
+    , aeson
     , base
     , bytestring
     , composition-prelude
@@ -59,6 +60,7 @@ library
     , memory
     , optparse-applicative
     , process
+    , scientific
     , text
     , transformers
 
