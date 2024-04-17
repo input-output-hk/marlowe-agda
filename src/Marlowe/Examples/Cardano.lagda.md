@@ -79,11 +79,11 @@ open import Marlowe.Semantics.Evaluate _≟-Party_ _≟-Token_
 
 ```
 
-evalValue : Value → Environment → State → ℤ
-evalObservation : Observation → Environment → State → Bool
+evalValue : Environment → State → Value → ℤ
+evalObservation : Environment → State → Observation → Bool
 
-evalValue v e s = ℰ⟦ v ⟧ e s
-evalObservation o e s = 𝒪⟦ o ⟧ e s
+evalValue e s v = ℰ⟦ v ⟧ e s
+evalObservation e s o = 𝒪⟦ o ⟧ e s
 
 -- TODO: functions to be used in test-spec
 -- {-# COMPILE GHC evalValue as evalValue #-}
