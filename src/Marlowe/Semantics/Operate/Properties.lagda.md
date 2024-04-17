@@ -12,6 +12,7 @@ module Marlowe.Semantics.Operate.Properties
   where
 ```
 
+<!--
 ## Imports
 
 ```
@@ -40,6 +41,7 @@ open Result
 
 open import Marlowe.Semantics.Reduce.Properties _≟-Party_ _≟-Token_
 ```
+-->
 
 ## Close is safe
 

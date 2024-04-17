@@ -7,7 +7,7 @@ This module contains the formalisation of small step reduction semantics for Mar
 The formalization was initially proposed by the Faustus team at University of Wyoming, see
 Appendix A in "Developing Faustus: A Formally Verified Smart Contract Programming Language"
 
-```
+```agda
 open import Relation.Binary using (DecidableEquality)
 
 module Marlowe.Semantics.Reduce
@@ -16,9 +16,10 @@ module Marlowe.Semantics.Reduce
   where
 ```
 
+<!--
 ## Imports
 
-```
+```agda
 open import Data.Bool using (if_then_else_; true; false)
 open import Data.Bool.Properties using (_≟_; ¬-not)
 open import Data.Integer using (ℤ; 0ℤ; _>_; _≤_; ∣_∣; _<?_; _≤?_)
@@ -53,10 +54,11 @@ open TimeInterval using (startTime)
 open Decidable (≡-dec _≟-AccountId_ _≟-Token_) renaming (_∈?_ to _∈?-AccountId×Token_)
 open Decidable _≟-ValueId_ renaming (_∈?_ to _∈-ValueId?_)
 ```
+-->
 
 ### Account updates
 
-```
+```agda
 _↑-update_ : (p : (AccountId × Token) × ℕ) (abs : AssocList (AccountId × Token) ℕ) → AssocList (AccountId × Token) ℕ
 (a , b) ↑-update abs with a ∈?-AccountId×Token abs
 ... | yes p = p ∷= (a , proj₂ (lookup p) + b)
@@ -67,7 +69,7 @@ _↑-update_ : (p : (AccountId × Token) × ℕ) (abs : AssocList (AccountId × 
 
 ## Reduce warnings
 
-```
+```agda
 data ReduceWarning : Set where
   ReduceNonPositivePay : AccountId → Payee → Token → ℤ → ReduceWarning
   ReducePartialPay : AccountId → Payee → Token → ℕ → ℕ → ReduceWarning
@@ -78,7 +80,7 @@ data ReduceWarning : Set where
 
 ## Configuration
 
-```
+```agda
 record Configuration : Set where
   constructor ⟪_,_,_,_,_⟫
   field contract : Contract
@@ -92,7 +94,7 @@ open Configuration
 
 ## Small-step reduction rules
 
-```
+```agda
 data _⇀_ : Configuration → Configuration → Set where
 
   CloseRefund : ∀ {a t n s ws ps e}
@@ -319,7 +321,7 @@ data _⇀_ : Configuration → Configuration → Set where
 
 ### Reflexive and transitive closure
 
-```
+```agda
 infix  2 _⇀⋆_
 infix  1 begin_
 infixr 2 _⇀⟨_⟩_
@@ -348,7 +350,7 @@ begin M⇀⋆N = M⇀⋆N
 A contract that is either waiting for input or has been fully reduced is called
 quiescent.
 
-```
+```agda
 data Quiescent : Configuration → Set where
 
   close : ∀ {e cs vs ws m ps}
@@ -377,7 +379,7 @@ data Quiescent : Configuration → Set where
 
 
 
-```
+```agda
 data AmbiguousTimeInterval : Configuration → Set where
 
   AmbiguousTimeIntervalError : ∀ {t tₛ Δₜ cs c s ws ps}
@@ -401,7 +403,7 @@ A configuration is reducible, if
 * the configuration is quiescent or
 * the time interval is ambiguous
 
-```
+```agda
 data Reducible (C : Configuration) : Set where
 
   step : ∀ {D}
@@ -422,7 +424,7 @@ data Reducible (C : Configuration) : Set where
 
 Every configuration is reducible:
 
-```
+```agda
 progress : ∀ (C : Configuration) → Reducible C
 progress
   ⟪ Close
@@ -498,7 +500,7 @@ progress
 
 ## Evaluator
 
-```
+```agda
 {-# TERMINATING #-} -- TODO: use sized types instead
 ⇀-eval :
   ∀ (C : Configuration)

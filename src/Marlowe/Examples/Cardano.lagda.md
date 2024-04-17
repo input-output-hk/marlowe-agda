@@ -3,13 +3,14 @@ title: Marlowe.Examples.Cardano
 layout: page
 ---
 
-```
+```agda
 module Marlowe.Examples.Cardano where
 ```
 
+<!--
 ## Imports
 
-```
+```agda
 open import Agda.Builtin.String using (String)
 open import Data.Integer using (ℤ)
 open import Data.Bool using (Bool)
@@ -19,10 +20,11 @@ open import Relation.Binary using (DecidableEquality)
 open import Relation.Binary.PropositionalEquality using (cong; cong₂)
 open import Relation.Nullary using (yes; no)
 ```
+-->
 
 ## Party
 
-```
+```agda
 data Party : Set where
   Address : String → Party
   Role : String → Party
@@ -44,7 +46,7 @@ Address _ ≟-Party Role _ = no λ ()
 
 ## Token
 
-```
+```agda
 data Token : Set where
   mkToken : String → String → Token
 
@@ -61,7 +63,7 @@ mkToken c₁ n₁ ≟-Token mkToken c₂ n₂ with c₁ ≟ c₂ | n₁ ≟ n₂
 ... | no ¬p | _ = no λ x → ¬p (cong getCurrencySymbol x)
 ```
 
-```
+```agda
 open import Marlowe.Language
 open Entities-Parameterized-by-Party {Party}
 open Entities-Parameterized-by-Token {Token}
@@ -69,7 +71,7 @@ open Entities-Parameterized-by-Token {Token}
 open import Marlowe.Semantics.Evaluate _≟-Party_ _≟-Token_
 ```
 
-```
+```agda
 {-# FOREIGN GHC import Marlowe.Core.Contract #-}
 {-# COMPILE GHC Party = data Party (Address | Role) #-}
 {-# COMPILE GHC Token = data Token (Token) #-}
@@ -77,7 +79,7 @@ open import Marlowe.Semantics.Evaluate _≟-Party_ _≟-Token_
 
 ## Evaluation
 
-```
+```agda
 
 evalValue : Environment → State → Value → ℤ
 evalObservation : Environment → State → Observation → Bool

@@ -3,13 +3,14 @@ title: Marlowe.Examples.Operate
 layout: page
 ---
 
-```
+```agda
 module Marlowe.Examples.Operate where
 ```
 
+<!--
 ## Imports
 
-```
+```agda
 open import Data.Integer as ℤ using (+_)
 open import Data.List using (List; []; _∷_; _++_; foldr; reverse; [_]; null; map)
 open import Data.List.Relation.Unary.Any using (here)
@@ -21,12 +22,13 @@ open import Relation.Binary using (Decidable; DecidableEquality)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl)
 ```
+-->
 
 ### Token and Party
 
 `Token` and `Party` here are simply strings.
 
-```
+```agda
 open import Marlowe.Language
 open Entities-Parameterized-by-Party {String}
 open Entities-Parameterized-by-Token {String}
@@ -36,7 +38,7 @@ open import Marlowe.Semantics.Operate _≟_ _≟_
 
 ### Example
 
-```
+```agda
 tₒ : PosixTime
 tₒ = mkPosixTime 100
 
