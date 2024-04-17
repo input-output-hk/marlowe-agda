@@ -39,8 +39,10 @@ The reference implementation in Haskell is used for serialization
 postulate
   showContract : Contract → String
   showPayment : Payment → String
+  contractJSON : Contract → String
 {-# COMPILE GHC showContract = showContract #-}
 {-# COMPILE GHC showPayment = showPayment #-}
+{-# COMPILE GHC contractJSON = contractJSON #-}
 ```
 
 ## Main
@@ -54,7 +56,7 @@ main =
   in run (
     case r of
       λ { (inj₁ (⟦ ws , ps , s ⟧ , steps)) →
-             putStrLn (showContract contract)
+            putStrLn (contractJSON contract)
           >> forM′ ps (putStrLn ∘ showPayment)
         ; (inj₂ e) → putStrLn "error"
         }

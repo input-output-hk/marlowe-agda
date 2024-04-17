@@ -50,6 +50,7 @@ library
   hs-source-dirs:  src
   build-depends:
     , aeson
+    , aeson-pretty
     , base
     , bytestring
     , composition-prelude

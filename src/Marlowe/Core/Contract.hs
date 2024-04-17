@@ -6,21 +6,24 @@ module Marlowe.Core.Contract where
 import Control.Applicative ((<*>), (<|>))
 import Data.Aeson (object, withArray, withObject, withText, withScientific, (.=), (.:), (.:?), encode)
 import Data.Aeson.Types qualified as A (Parser, ToJSON(..), FromJSON(..), Value (..))
+import Data.Aeson.Encode.Pretty (encodePrettyToTextBuilder)
 import qualified Data.Foldable as F
 import Data.Scientific (Scientific, floatingOrInteger)
 import Data.Text as T
+import Data.Text.Lazy (toStrict)
+import Data.Text.Lazy.Builder (toLazyText)
 
-data PosixTime = PosixTime Integer
+newtype PosixTime = PosixTime Integer
   deriving (Show, Eq)
-data AccountId p = AccountId p
+newtype AccountId p = AccountId p
   deriving (Show, Eq, Ord)
-data ChoiceName = ChoiceName Text
+newtype ChoiceName = ChoiceName Text
   deriving (Show, Eq, Ord)
 data ChoiceId p = ChoiceId ChoiceName p
   deriving (Show, Eq, Ord)
-data ValueId = ValueId Text
+newtype ValueId = ValueId Text
   deriving (Show, Eq, Ord)
-data Timeout = Timeout PosixTime
+newtype Timeout = Timeout PosixTime
   deriving (Show, Eq)
 
 data Observation p t = AndObs (Observation p t) (Observation p t)
@@ -83,7 +86,7 @@ showPayment :: (Show p, Show t) => Payment p t -> Text
 showPayment = pack . show
 
 data TimeInterval = TimeInterval PosixTime Integer
-data Environment = Environment TimeInterval
+newtype Environment = Environment TimeInterval
 
 -- JSON serialization
 
@@ -485,3 +488,6 @@ instance A.FromJSON Party where
     where
       asAddress v = Address <$> v .: "address"
       asRole v = Role <$> v .: "role_token"
+
+contractJSON :: A.ToJSON p => A.ToJSON t => Contract p t -> Text
+contractJSON = toStrict . toLazyText . encodePrettyToTextBuilder
