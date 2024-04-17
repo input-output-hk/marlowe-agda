@@ -96,10 +96,10 @@ withInteger :: String -> A.Value -> A.Parser Integer
 withInteger ctx = withScientific ctx $ getInteger ctx
 
 instance A.ToJSON PosixTime where
-  toJSON (PosixTime t) = undefined
+  toJSON (PosixTime t) = A.toJSON t
 
 instance A.FromJSON PosixTime where
-  parseJSON = undefined
+  parseJSON i = PosixTime <$> withInteger "PosixTime" i
 
 instance A.ToJSON ChoiceName where
   toJSON (ChoiceName s) = A.toJSON s
@@ -125,22 +125,29 @@ instance (A.FromJSON p) => A.FromJSON (ChoiceId p) where
       )
 
 instance (A.ToJSON p) => A.ToJSON (AccountId p) where
-  toJSON (AccountId p) = undefined
+  toJSON (AccountId p) = A.toJSON p
 
 instance (A.FromJSON p) => A.FromJSON (AccountId p) where
-  parseJSON = undefined
+  parseJSON = A.parseJSON
 
 instance A.ToJSON ValueId where
-  toJSON (ValueId a) = undefined
+  toJSON (ValueId i) = A.toJSON i
 
 instance A.FromJSON ValueId where
-  parseJSON = undefined
+  parseJSON = withText "ValueId" (pure . ValueId)
 
 instance (A.ToJSON p) => A.ToJSON (Payee p) where
-  toJSON = undefined
+  toJSON (Account account) =
+    object ["account" .= account]
+  toJSON (Party party) =
+    object ["party" .= party]
 
 instance (A.FromJSON p) => A.FromJSON (Payee p) where
-  parseJSON = undefined
+  parseJSON = withObject "Payee" $
+    \v -> asAccount v <|> asParty v
+    where
+      asAccount v = Account <$> v .: "account"
+      asParty v = Party <$> v .: "party"
 
 instance (A.ToJSON p, A.ToJSON t) => A.ToJSON (Observation p t) where
   toJSON (AndObs lhs rhs) =
