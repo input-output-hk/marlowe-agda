@@ -272,20 +272,13 @@ continuation for a given action as another contract.
         payee : Payee
 ```
 
-## InputContent
-
-```agda
-    data InputContent : Set where
-      IDeposit : AccountId → Party → Token → ℕ → InputContent
-      IChoice : ChoiceId → ChosenNum → InputContent
-      INotify : InputContent
-```
-
 ## Input
 
 ```agda
     data Input : Set where
-      NormalInput : InputContent → Input
+      IDeposit : AccountId → Party → Token → ℕ → Input
+      IChoice : ChoiceId → ChosenNum → Input
+      INotify : Input
 ```
 
 ## TransactionInput
