@@ -101,8 +101,8 @@ escrowExample =
           (mkTimeout (mkPosixTime 30))
           (mkTimeout (mkPosixTime 40))
       , [
-        mkTransactionInput interval [(NormalInput (IDeposit (mkAccountId seller) buyer token price))]
-      , mkTransactionInput interval [(NormalInput (IChoice (mkChoiceId (mkChoiceName "Everything is alright") buyer) (mkChosenNum 0ℤ)))]
+        mkTransactionInput interval [ IDeposit (mkAccountId seller) buyer token price ]
+      , mkTransactionInput interval [ IChoice (mkChoiceId (mkChoiceName "Everything is alright") buyer) (mkChosenNum 0ℤ) ]
       ]
     ⟩ ⟩
 ```

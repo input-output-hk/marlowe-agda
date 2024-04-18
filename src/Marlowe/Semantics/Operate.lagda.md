@@ -96,7 +96,7 @@ data _⇒_ : {C : Configuration} → Waiting C × Input → Configuration → Se
       ⇀⋆ D
     -------------------------------------------------
     → ( waiting {cs} {tₒ} {c} {s} {e} {ws} {ps} tₑ<tₒ
-      , NormalInput (IDeposit a p t n)
+      , IDeposit a p t n
       ) ⇒ D
 
   Choice : ∀ {cₐ c i n s bs ws ps cs tₒ e D}
@@ -116,7 +116,7 @@ data _⇒_ : {C : Configuration} → Waiting C × Input → Configuration → Se
       ⇀⋆ D
     -------------------------------------------------
     → ( waiting {cs} {tₒ} {c} {s} {e} {ws} {ps} tₑ<tₒ
-      , NormalInput (IChoice i n)
+      , IChoice i n
       ) ⇒ D
 
   Notify : ∀ {cₐ c s o cs tₒ e ws ps D}
@@ -127,7 +127,7 @@ data _⇒_ : {C : Configuration} → Waiting C × Input → Configuration → Se
     → ⟪ cₐ , s , e , ws , ps ⟫ ⇀⋆ D
     -------------------------------------------------
     → ( waiting {cs} {tₒ} {c} {s} {e} {ws} {ps} tₑ<tₒ
-      , NormalInput INotify
+      , INotify
       ) ⇒ D
 ```
 
@@ -138,7 +138,7 @@ as an `Action` can contain `Observation`s and `Value`s as opposed to the
 Evaluation of `Observation` and `Value` requires `State` and `Environment`.
 
 ```agda
-data _↦_ {s : State} {e : Environment} : InputContent → Action → Set where
+data _↦_ {s : State} {e : Environment} : Input → Action → Set where
 
   deposit-input : ∀ {a p t v n}
     → ℰ⟦ v ⟧ e s ≡ + n
@@ -157,7 +157,7 @@ The function `applicable?` checks, if an `InputContent` can trigger a given `Act
 this is the case, the relation is returned.
 
 ```agda
-applicable? : ∀ {s : State} {e : Environment} → (i : InputContent) → (a : Action) → Maybe (_↦_ {s} {e} i a)
+applicable? : ∀ {s : State} {e : Environment} → (i : Input) → (a : Action) → Maybe (_↦_ {s} {e} i a)
 ```
 * IDeposit
 ```agda
@@ -196,37 +196,37 @@ applicable? {s} {e} INotify (Notify o)
   → (w : Waiting C)
   → (i : Input)
   → (Σ[ D ∈ Configuration ] ((w , i) ⇒ D)) ⊎ TransactionError
-⇒-eval {⟪ When [] (mkTimeout (mkPosixTime tₒ)) c , s , e , ws , ps ⟫} (waiting tₑ<t) (NormalInput ic) = inj₂ TEApplyNoMatchError
+⇒-eval {⟪ When [] (mkTimeout (mkPosixTime tₒ)) c , s , e , ws , ps ⟫} (waiting tₑ<t) i = inj₂ TEApplyNoMatchError
 
-⇒-eval (waiting {mkCase a cₐ ∷ cs} {t} {c} {s} {e} {ws} {ps} tₑ<t) (NormalInput ic)
-  with applicable? {s} {e} ic a
+⇒-eval (waiting {mkCase a cₐ ∷ cs} {t} {c} {s} {e} {ws} {ps} tₑ<t) i
+  with applicable? {s} {e} i a
 ```
 * here
 ```agda
-⇒-eval (waiting {mkCase _ cₐ ∷ cs} {_} {_} {s} {e} {ws} {ps} tₑ<t) (NormalInput ic) | just (deposit-input {a} {p} {t} {_} {n} ℰ⟦v⟧≡+n)
+⇒-eval (waiting {mkCase _ cₐ ∷ cs} {_} {_} {s} {e} {ws} {ps} tₑ<t) _ | just (deposit-input {a} {p} {t} {_} {n} ℰ⟦v⟧≡+n)
   with ⇀-eval ⟪ cₐ , record s { accounts = ((a , t) , n) ↑-update (accounts s) } , e , ws , ps ⟫
 ... | D , C⇀⋆D , inj₁ q = inj₁ (D , Deposit (here refl) ℰ⟦v⟧≡+n tₑ<t q C⇀⋆D)
 ... | _ , _    , inj₂ _ = inj₂ TEAmbiguousTimeIntervalError
-⇒-eval (waiting {mkCase _ cₐ ∷ cs} {_} {_} {s} {e} {ws} {ps} tₑ<t) (NormalInput ic) | just (choice-input {i} {n} {bs} p)
+⇒-eval (waiting {mkCase _ cₐ ∷ cs} {_} {_} {s} {e} {ws} {ps} tₑ<t) _ | just (choice-input {i} {n} {bs} p)
   with ⇀-eval ⟪ cₐ , record s { choices = (i , unChosenNum n) ↑ (choices s) } , e , ws , ps ⟫
 ... | D , C⇀⋆D , inj₁ q = inj₁ (D , Choice (here refl) p tₑ<t q C⇀⋆D)
 ... | _ , _    , inj₂ q = inj₂ TEAmbiguousTimeIntervalError
-⇒-eval (waiting {mkCase _ cₐ ∷ cs} {_} {_} {s} {e} {ws} {ps} tₑ<t) (NormalInput ic) | just (notify-input {o} o≡true)
+⇒-eval (waiting {mkCase _ cₐ ∷ cs} {_} {_} {s} {e} {ws} {ps} tₑ<t) _ | just (notify-input {o} o≡true)
   with ⇀-eval ⟪ cₐ , s , e , ws , ps ⟫
 ... | D , C⇀⋆D , inj₁ q = inj₁ (D , Notify {s = s} {o = o} {e = e} (here refl) o≡true tₑ<t q C⇀⋆D)
 ... | _ , _    , inj₂ _ = inj₂ TEAmbiguousTimeIntervalError
 ```
 * there
 ```agda
-⇒-eval (waiting {(_ ∷ cs)} {_} {c} tₑ<t) i@(NormalInput (IDeposit x x₁ x₂ x₃)) | nothing
+⇒-eval (waiting {(_ ∷ cs)} {_} {c} tₑ<t) i@(IDeposit x x₁ x₂ x₃) | nothing
   with ⇒-eval (waiting {cs} {_} {c} tₑ<t) i
 ... | inj₁ (D , (Deposit x x₁ x₂ x₃ x₄)) = inj₁ (D , (Deposit (there x) x₁ x₂ x₃ x₄))
 ... | inj₂ e = inj₂ e
-⇒-eval (waiting {(_ ∷ cs)} {_} {c} {s} tₑ<t) i@(NormalInput (IChoice x x₁)) | nothing
+⇒-eval (waiting {(_ ∷ cs)} {_} {c} {s} tₑ<t) i@(IChoice x x₁) | nothing
   with ⇒-eval (waiting {cs} {_} {c} {s} tₑ<t) i
 ... | inj₁ (D , (Choice x x₁ x₂ x₃ x₄)) = inj₁ (D , (Choice (there x) x₁ x₂ x₃ x₄))
 ... | inj₂ e = inj₂ e
-⇒-eval (waiting {(_ ∷ cs)} {_} {c} tₑ<t) i@(NormalInput INotify) | nothing
+⇒-eval (waiting {(_ ∷ cs)} {_} {c} tₑ<t) i@INotify | nothing
   with ⇒-eval (waiting {cs} {_} {c} tₑ<t) i
 ... | inj₁ (D , (Notify x x₁ x₂ x₃ x₄)) = inj₁ (D , (Notify (there x) x₁ x₂ x₃ x₄))
 ... | inj₂ e = inj₂ e

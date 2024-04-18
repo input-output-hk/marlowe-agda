@@ -65,7 +65,7 @@ s : State
 s = emptyState (mkPosixTime 0)
 
 i : TransactionInput
-i = mkTransactionInput (mkInterval (mkPosixTime 0) 10) [ NormalInput (IDeposit a₁ p₂ t 1) ]
+i = mkTransactionInput (mkInterval (mkPosixTime 0) 10) [ IDeposit a₁ p₂ t 1 ]
 
 e : Environment
 e = mkEnvironment (mkInterval (mkPosixTime 0) 2)
@@ -80,7 +80,7 @@ reduction-steps =
   reduce-until-quiescent refl refl
     (⟪ c , s , e , [] , [] ⟫ ⇀⟨ AssertFalse refl ⟩ (⟪ d , s , e , [ ReduceAssertionFailed ] , [] ⟫ ∎))
     (waiting (s≤s (s≤s (s≤s z≤n))))
-    (apply-input {i = NormalInput (IDeposit a₁ p₂ t 1)} (s≤s (s≤s (s≤s z≤n))) (trim-interval z≤n)
+    (apply-input {i = IDeposit a₁ p₂ t 1} (s≤s (s≤s (s≤s z≤n))) (trim-interval z≤n)
       (Deposit (here refl) refl (s≤s (s≤s (s≤s z≤n))) close
         (⟪ Close , ⟨ [((a₁ , t) , 1)] , [] , [] , mkPosixTime 0 ⟩ , e , []  , [] ⟫
                ⇀⟨ CloseRefund ⟩ (⟪ Close , ⟨ [] , [] , [] , mkPosixTime 0 ⟩ , e , [] , [ a₁ [ t , 1 ]↦ mkParty p₁ ] ⟫) ∎))
