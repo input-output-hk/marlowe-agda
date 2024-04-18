@@ -310,7 +310,6 @@ of a list of inputs (possibly empty) to be applied within a TimeInterval
 
 ```agda
     data TransactionWarning : Set where
-      TransactionNonPositiveDeposit : Party → AccountId → Token → ℤ → TransactionWarning
       TransactionNonPositivePay : AccountId → Payee → Token → ℤ → TransactionWarning
       TransactionPartialPay : AccountId → Payee → Token → ℕ → ℕ → TransactionWarning
       TransactionPayNoAccount : AccountId → Payee → Token → ℤ → TransactionWarning
@@ -411,5 +410,7 @@ open Entities-Parameterized-by-Token
 {-# COMPILE GHC Payment = data Payment (Payment) #-}
 {-# COMPILE GHC ChosenNum = data ChosenNum (ChosenNum) #-}
 {-# COMPILE GHC Input = data Input (IDeposit | IChoice | INotify) #-}
-
+{-# COMPILE GHC TransactionWarning = data TransactionWarning (TransactionNonPositivePay | TransactionPartialPay | TransactionPayNoAccount | TransactionShadowing | TransactionAssertionFailed) #-}
+-- TODO: needs State
+-- {-# COMPILE GHC TransactionOutput = data TransactionOutput (TransactionOutput | Error) #-}
 ```

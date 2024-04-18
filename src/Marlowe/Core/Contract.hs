@@ -108,9 +108,9 @@ data Payment p t = Payment (AccountId p) t Integer (Payee p)
   deriving (Show, Eq)
 
 data TransactionWarning p t
-  = TransactionNonPositiveDeposit p (AccountId p) t Integer
-  | TransactionNonPositivePay (AccountId p) (Payee p) t Integer
+  = TransactionNonPositivePay (AccountId p) (Payee p) t Integer
   | TransactionPartialPay (AccountId p) (Payee p) t Integer Integer
+  | TransactionPayNoAccount (AccountId p) (Payee p) t Integer
   | TransactionShadowing ValueId Integer Integer
   | TransactionAssertionFailed
   deriving (Show, Eq)
@@ -649,7 +649,7 @@ instance A.ToJSON TransactionError where
 instance (A.FromJSON p, A.FromJSON t) => A.FromJSON (TransactionWarning p t) where
   parseJSON (A.String "assertion_failed") = return TransactionAssertionFailed
   parseJSON (A.Object v) =
-    ( TransactionNonPositiveDeposit
+    ( TransactionPayNoAccount
         <$> (v .: "party")
         <*> (v .: "in_account")
         <*> (v .: "of_token")
@@ -680,13 +680,6 @@ instance (A.FromJSON p, A.FromJSON t) => A.FromJSON (TransactionWarning p t) whe
   parseJSON _ = fail "Contract must be either an object or a the string \"close\""
 
 instance (A.ToJSON p, A.ToJSON t) => A.ToJSON (TransactionWarning p t) where
-  toJSON (TransactionNonPositiveDeposit party accId tok amount) =
-    object
-      [ "party" .= party,
-        "asked_to_deposit" .= amount,
-        "of_token" .= tok,
-        "in_account" .= accId
-      ]
   toJSON (TransactionNonPositivePay accId payee tok amount) =
     object
       [ "account" .= accId,
@@ -701,6 +694,13 @@ instance (A.ToJSON p, A.ToJSON t) => A.ToJSON (TransactionWarning p t) where
         "of_token" .= tok,
         "to_payee" .= payee,
         "but_only_paid" .= paid
+      ]
+  toJSON (TransactionPayNoAccount party accId tok amount) =
+    object
+      [ "party" .= party,
+        "asked_to_deposit" .= amount,
+        "of_token" .= tok,
+        "in_account" .= accId
       ]
   toJSON (TransactionShadowing valId oldVal newVal) =
     object
