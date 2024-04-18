@@ -1,14 +1,16 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Marlowe.Core.Contract where
 
 import Control.Applicative ((<*>), (<|>))
-import Data.Aeson (object, withArray, withObject, withText, withScientific, (.=), (.:), (.:?), encode)
-import Data.Aeson.Types qualified as A (Parser, ToJSON(..), FromJSON(..), Value (..))
+import Data.Aeson as A (object, withArray, withObject, withText, withScientific, (.=), (.:), (.:?), encode)
+import Data.Aeson.Types qualified as A (Parser, ToJSON(..), FromJSON(..), Value (..), prependFailure, typeMismatch)
 import Data.Aeson.Encode.Pretty (encodePrettyToTextBuilder)
 import qualified Data.Foldable as F
-import Data.Scientific (Scientific, floatingOrInteger)
+import Data.Scientific (Scientific (..), floatingOrInteger, scientific)
 import Data.Text as T
 import Data.Text.Lazy (toStrict)
 import Data.Text.Lazy.Builder (toLazyText)
@@ -76,36 +78,64 @@ data Contract p t = Close
 data Case p t = Case (Action p t) (Contract p t)
   deriving (Show, Eq)
 
-data State p t
-  = State
-      [((AccountId p, t), Integer)]
-      [(ChoiceId p, Integer)]
-      [(ValueId, Integer)]
-      PosixTime
-
-accounts :: State p t -> [((AccountId p, t), Integer)]
-accounts (State as _ _ _) = as
-
-choices :: State p t -> [(ChoiceId p, Integer)]
-choices (State _ cs _ _) = cs
-
-boundValues :: State p t -> [(ValueId, Integer)]
-boundValues (State _ _ vs _) = vs
-
-minTime :: State p t -> PosixTime
-minTime (State _ _ _ m) = m
+data State p t = State
+  { accounts :: [((AccountId p, t), Integer)],
+    choices :: [(ChoiceId p, Integer)],
+    boundValues :: [(ValueId, Integer)],
+    minTime :: PosixTime
+  }
+  deriving (Show, Eq)
 
 data TimeInterval = TimeInterval PosixTime Integer
+  deriving (Show, Eq)
+
+intervalEnd :: TimeInterval -> PosixTime
+intervalEnd (TimeInterval (PosixTime i) d) = PosixTime (i + d)
+
 data Environment = Environment TimeInterval
+  deriving (Show, Eq)
 
 data ChosenNum = ChosenNum Integer
+  deriving (Show, Eq)
 
 data Input p t
   = IDeposit (AccountId p) p t Integer
   | IChoice (ChoiceId p) ChosenNum
   | INotify
+  deriving (Show, Eq)
 
 data Payment p t = Payment (AccountId p) t Integer (Payee p)
+  deriving (Show, Eq)
+
+data TransactionWarning p t
+  = TransactionNonPositiveDeposit p (AccountId p) t Integer
+  | TransactionNonPositivePay (AccountId p) (Payee p) t Integer
+  | TransactionPartialPay (AccountId p) (Payee p) t Integer Integer
+  | TransactionShadowing ValueId Integer Integer
+  | TransactionAssertionFailed
+  deriving (Show, Eq)
+
+data IntervalError
+  = InvalidInterval TimeInterval
+  | IntervalInPastError PosixTime TimeInterval
+  deriving stock (Show, Eq)
+
+data TransactionError
+  = TEAmbiguousTimeIntervalError
+  | TEApplyNoMatchError
+  | TEIntervalError IntervalError
+  | TEUselessTransaction
+  | TEHashMismatch
+  deriving (Show, Eq)
+
+data TransactionOutput p t
+  = TransactionOutput
+      { txOutWarnings :: [TransactionWarning p t],
+        txOutPayments :: [Payment p t],
+        txOutState :: State p t,
+        txOutContract :: Contract p t
+      }
+  | Error TransactionError
   deriving (Show, Eq)
 
 showContract :: (Show p, Show t) => Contract p t -> Text
@@ -481,7 +511,33 @@ instance (A.ToJSON p, A.ToJSON t) => A.ToJSON (Contract p t) where
         "then" .= cont
       ]
 
-instance (A.FromJSON t, A.FromJSON p) => A.FromJSON (Input t p) where
+instance (A.FromJSON p, A.FromJSON t) => A.FromJSON (State p t) where
+  parseJSON =
+    withObject
+      "State"
+      ( \v ->
+          State
+            <$> (v .: "accounts" >>= A.parseJSON)
+            <*> (v .: "choices" >>= A.parseJSON)
+            <*> (v .: "boundValues" >>= A.parseJSON)
+            <*> (PosixTime <$> (withInteger "minTime" =<< (v .: "minTime")))
+      )
+instance (A.ToJSON p, A.ToJSON t) => A.ToJSON (State p t) where
+  toJSON
+    State
+      { accounts = a
+      , choices = c
+      , boundValues = bv
+      , minTime = PosixTime ms
+      } =
+      object
+        [ "accounts" .= A.toJSON a
+        , "choices" .= A.toJSON c
+        , "boundValues" .= A.toJSON bv
+        , "minTime" .= ms
+        ]
+
+instance (A.FromJSON p, A.FromJSON t) => A.FromJSON (Input p t) where
   parseJSON (A.String "input_notify") = return INotify
   parseJSON (A.Object v) =
     IChoice
@@ -494,21 +550,188 @@ instance (A.FromJSON t, A.FromJSON p) => A.FromJSON (Input t p) where
         <*> v .: "that_deposits"
   parseJSON _ = fail "Input must be either an object or the string \"input_notify\""
 
-instance (A.ToJSON t, A.ToJSON p) => A.ToJSON (Input t p) where
+instance (A.ToJSON p, A.ToJSON t) => A.ToJSON (Input p t) where
   toJSON (IDeposit accId party tok amount) =
     object
-      [ "input_from_party" .= party
-      , "that_deposits" .= amount
-      , "of_token" .= tok
-      , "into_account" .= accId
+      [ "input_from_party" .= party,
+        "that_deposits" .= amount,
+        "of_token" .= tok,
+        "into_account" .= accId
       ]
   toJSON (IChoice choiceId chosenNum) =
     object
-      [ "input_that_chooses_num" .= chosenNum
-      , "for_choice_id" .= choiceId
+      [ "input_that_chooses_num" .= chosenNum,
+        "for_choice_id" .= choiceId
       ]
   toJSON INotify = A.String $ pack "input_notify"
 
+instance (A.ToJSON p, A.ToJSON t) => A.ToJSON (Payment p t) where
+  toJSON (Payment accountId payee token amount) =
+    object
+      [ "payment_from" .= accountId,
+        "to" .= payee,
+        "token" .= token,
+        "amount" .= amount
+      ]
+
+instance (A.FromJSON p, A.FromJSON t) => A.FromJSON (Payment p t) where
+  parseJSON =
+    withObject "Payment" $
+      \o ->
+        Payment
+          <$> o .: "payment_from"
+          <*> o .: "to"
+          <*> o .: "token"
+          <*> o .: "amount"
+
+posixTimeToJSON :: PosixTime -> A.Value
+posixTimeToJSON (PosixTime n) = A.Number $ scientific n 0
+
+instance A.ToJSON IntervalError where
+  toJSON (InvalidInterval i@(TimeInterval s e)) =
+    A.object
+      [("invalidInterval", A.object [("from", posixTimeToJSON s), ("to", posixTimeToJSON $ intervalEnd i)])]
+  toJSON (IntervalInPastError t i@(TimeInterval s e)) =
+    A.object
+      [ ( "intervalInPastError",
+          A.object [("minTime", posixTimeToJSON t), ("from", posixTimeToJSON s), ("to", posixTimeToJSON $ intervalEnd i)]
+        )
+      ]
+
+posixTimeFromJSON :: A.Value -> A.Parser PosixTime
+posixTimeFromJSON = \case
+  v@(A.Number n) ->
+    either
+      (\_ -> A.prependFailure "parsing PosixTime failed, " (A.typeMismatch "Integer" v))
+      (return . PosixTime)
+      (floatingOrInteger n :: Either Double Integer)
+  invalid ->
+    A.prependFailure "parsing PosixTime failed, " (A.typeMismatch "Number" invalid)
+
+instance A.FromJSON IntervalError where
+  parseJSON (A.Object v) =
+    let parseInvalidInterval = do
+          o <- v .: "invalidInterval"
+          InvalidInterval <$> posixIntervalFromJSON o
+        parseIntervalInPastError = do
+          o <- v .: "intervalInPastError"
+          IntervalInPastError
+            <$> (posixTimeFromJSON =<< o .: "minTime")
+            <*> posixIntervalFromJSON o
+     in parseIntervalInPastError <|> parseInvalidInterval
+    where
+      posixIntervalFromJSON o = TimeInterval <$> (posixTimeFromJSON =<< o .: "from") <*> (o .: "to")
+  parseJSON invalid =
+    A.prependFailure "parsing IntervalError failed, " (A.typeMismatch "Object" invalid)
+
+instance A.FromJSON TransactionError where
+  parseJSON (A.String s) =
+    case s of
+      "TEAmbiguousTimeIntervalError" -> return TEAmbiguousTimeIntervalError
+      "TEApplyNoMatchError" -> return TEApplyNoMatchError
+      "TEUselessTransaction" -> return TEUselessTransaction
+      "TEHashMismatch" -> return TEHashMismatch
+      _ -> fail "Failed parsing TransactionError"
+  parseJSON (A.Object o) = do
+    err <- o .: "error"
+    if err == ("TEIntervalError" :: String)
+      then TEIntervalError <$> o .: "context"
+      else fail "Failed parsing TransactionError"
+  parseJSON _ = fail "Failed parsing TransactionError"
+
+instance A.ToJSON TransactionError where
+  toJSON TEAmbiguousTimeIntervalError = A.String "TEAmbiguousTimeIntervalError"
+  toJSON TEApplyNoMatchError = A.String "TEApplyNoMatchError"
+  toJSON (TEIntervalError intervalError) = object ["error" .= A.String "TEIntervalError", "context" .= intervalError]
+  toJSON TEUselessTransaction = A.String "TEUselessTransaction"
+  toJSON TEHashMismatch = A.String "TEHashMismatch"
+
+instance (A.FromJSON p, A.FromJSON t) => A.FromJSON (TransactionWarning p t) where
+  parseJSON (A.String "assertion_failed") = return TransactionAssertionFailed
+  parseJSON (A.Object v) =
+    ( TransactionNonPositiveDeposit
+        <$> (v .: "party")
+        <*> (v .: "in_account")
+        <*> (v .: "of_token")
+        <*> (v .: "asked_to_deposit")
+    )
+      <|> ( do
+              maybeButOnlyPaid <- v .:? "but_only_paid"
+              case maybeButOnlyPaid :: Maybe Scientific of
+                Nothing ->
+                  TransactionNonPositivePay
+                    <$> (v .: "account")
+                    <*> (v .: "to_payee")
+                    <*> (v .: "of_token")
+                    <*> (v .: "asked_to_pay")
+                Just butOnlyPaid ->
+                  TransactionPartialPay
+                    <$> (v .: "account")
+                    <*> (v .: "to_payee")
+                    <*> (v .: "of_token")
+                    <*> getInteger "but only paid" butOnlyPaid
+                    <*> (v .: "asked_to_pay")
+          )
+      <|> ( TransactionShadowing
+              <$> (v .: "value_id")
+              <*> (v .: "had_value")
+              <*> (v .: "is_now_assigned")
+          )
+  parseJSON _ = fail "Contract must be either an object or a the string \"close\""
+
+instance (A.ToJSON p, A.ToJSON t) => A.ToJSON (TransactionWarning p t) where
+  toJSON (TransactionNonPositiveDeposit party accId tok amount) =
+    object
+      [ "party" .= party,
+        "asked_to_deposit" .= amount,
+        "of_token" .= tok,
+        "in_account" .= accId
+      ]
+  toJSON (TransactionNonPositivePay accId payee tok amount) =
+    object
+      [ "account" .= accId,
+        "asked_to_pay" .= amount,
+        "of_token" .= tok,
+        "to_payee" .= payee
+      ]
+  toJSON (TransactionPartialPay accId payee tok paid expected) =
+    object
+      [ "account" .= accId,
+        "asked_to_pay" .= expected,
+        "of_token" .= tok,
+        "to_payee" .= payee,
+        "but_only_paid" .= paid
+      ]
+  toJSON (TransactionShadowing valId oldVal newVal) =
+    object
+      [ "value_id" .= valId,
+        "had_value" .= oldVal,
+        "is_now_assigned" .= newVal
+      ]
+  toJSON TransactionAssertionFailed = A.String $ pack "assertion_failed"
+
+instance (A.ToJSON p, A.ToJSON t) => A.ToJSON (TransactionOutput p t) where
+  toJSON TransactionOutput {..} =
+    object
+      [ "warnings" .= txOutWarnings,
+        "payments" .= txOutPayments,
+        "state" .= txOutState,
+        "contract" .= txOutContract
+      ]
+  toJSON (Error err) = object ["transaction_error" .= err]
+
+instance (A.FromJSON p, A.FromJSON t) => A.FromJSON (TransactionOutput p t) where
+  parseJSON =
+    withObject "TransactionOutput" $
+      \o ->
+        let asTransactionOutput =
+              TransactionOutput
+                <$> o .: "warnings"
+                <*> o .: "payments"
+                <*> o .: "state"
+                <*> o .: "contract"
+            asError = Error <$> o .: "transaction_error"
+         in asTransactionOutput <|> asError
 
 -- Cardano specific types
 
