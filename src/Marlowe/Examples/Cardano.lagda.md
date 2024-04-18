@@ -82,6 +82,6 @@ evalObservation : Environment → State → Observation → Bool
 evalValue e s v = ℰ⟦ v ⟧ e s
 evalObservation e s o = 𝒪⟦ o ⟧ e s
 
--- TODO: functions to be used in test-spec
+-- TODO: functions to be used in test-spec: requires environment and state
 -- {-# COMPILE GHC evalValue as evalValue #-}
 -- {-# COMPILE GHC evalObservation as evalObservation #-}
