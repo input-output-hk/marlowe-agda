@@ -403,9 +403,13 @@ open Entities-Parameterized-by-Token
 {-# COMPILE GHC Action = data Action (Deposit | Choice | Notify) #-}
 {-# COMPILE GHC Case = data Case (Case) #-}
 {-# COMPILE GHC Contract = data Contract (Close | Pay | If | When | Let | Assert) #-}
-{-# COMPILE GHC Payment = data Payment (Payment) #-}
 
--- {-# COMPILE GHC TimeInterval = data TimeInterval (TimeInterval) #-}
--- {-# COMPILE GHC Environment = data Environment (Environment) #-}
+{-# COMPILE GHC TimeInterval = data TimeInterval (TimeInterval) #-}
+{-# COMPILE GHC Environment = data Environment (Environment) #-}
 -- {-# COMPILE GHC State = data State (State) #-}
+
+{-# COMPILE GHC Payment = data Payment (Payment) #-}
+{-# COMPILE GHC ChosenNum = data ChosenNum (ChosenNum) #-}
+{-# COMPILE GHC Input = data Input (IDeposit | IChoice | INotify) #-}
+
 ```

@@ -95,17 +95,24 @@ boundValues (State _ _ vs _) = vs
 minTime :: State p t -> PosixTime
 minTime (State _ _ _ m) = m
 
-showContract :: (Show p, Show t) => Contract p t -> Text
-showContract = pack . show
+data TimeInterval = TimeInterval PosixTime Integer
+data Environment = Environment TimeInterval
+
+data ChosenNum = ChosenNum Integer
+
+data Input p t
+  = IDeposit (AccountId p) p t Integer
+  | IChoice (ChoiceId p) ChosenNum
+  | INotify
 
 data Payment p t = Payment (AccountId p) t Integer (Payee p)
   deriving (Show, Eq)
 
+showContract :: (Show p, Show t) => Contract p t -> Text
+showContract = pack . show
+
 showPayment :: (Show p, Show t) => Payment p t -> Text
 showPayment = pack . show
-
-data TimeInterval = TimeInterval PosixTime Integer
-newtype Environment = Environment TimeInterval
 
 -- JSON serialization
 
@@ -215,6 +222,12 @@ instance (A.ToJSON p, A.ToJSON t) => A.ToJSON (Observation p t) where
       ]
   toJSON TrueObs = A.toJSON True
   toJSON FalseObs = A.toJSON False
+
+instance A.ToJSON ChosenNum where
+  toJSON (ChosenNum i) = A.toJSON i
+
+instance A.FromJSON ChosenNum where
+  parseJSON i = ChosenNum <$> withInteger "ChosenNum" i
 
 instance (A.FromJSON p, A.FromJSON t) => A.FromJSON (Observation p t) where
   parseJSON (A.Bool True) = return TrueObs
@@ -467,6 +480,35 @@ instance (A.ToJSON p, A.ToJSON t) => A.ToJSON (Contract p t) where
       [ "assert" .= obs,
         "then" .= cont
       ]
+
+instance (A.FromJSON t, A.FromJSON p) => A.FromJSON (Input t p) where
+  parseJSON (A.String "input_notify") = return INotify
+  parseJSON (A.Object v) =
+    IChoice
+      <$> v .: "for_choice_id"
+      <*> v .: "input_that_chooses_num"
+      <|> IDeposit
+        <$> v .: "into_account"
+        <*> v .: "input_from_party"
+        <*> v .: "of_token"
+        <*> v .: "that_deposits"
+  parseJSON _ = fail "Input must be either an object or the string \"input_notify\""
+
+instance (A.ToJSON t, A.ToJSON p) => A.ToJSON (Input t p) where
+  toJSON (IDeposit accId party tok amount) =
+    object
+      [ "input_from_party" .= party
+      , "that_deposits" .= amount
+      , "of_token" .= tok
+      , "into_account" .= accId
+      ]
+  toJSON (IChoice choiceId chosenNum) =
+    object
+      [ "input_that_chooses_num" .= chosenNum
+      , "for_choice_id" .= choiceId
+      ]
+  toJSON INotify = A.String $ pack "input_notify"
+
 
 -- Cardano specific types
 
