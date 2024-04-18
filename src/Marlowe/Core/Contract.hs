@@ -76,6 +76,25 @@ data Contract p t = Close
 data Case p t = Case (Action p t) (Contract p t)
   deriving (Show, Eq)
 
+data State p t
+  = State
+      [((AccountId p, t), Integer)]
+      [(ChoiceId p, Integer)]
+      [(ValueId, Integer)]
+      PosixTime
+
+accounts :: State p t -> [((AccountId p, t), Integer)]
+accounts (State as _ _ _) = as
+
+choices :: State p t -> [(ChoiceId p, Integer)]
+choices (State _ cs _ _) = cs
+
+boundValues :: State p t -> [(ValueId, Integer)]
+boundValues (State _ _ vs _) = vs
+
+minTime :: State p t -> PosixTime
+minTime (State _ _ _ m) = m
+
 showContract :: (Show p, Show t) => Contract p t -> Text
 showContract = pack . show
 
