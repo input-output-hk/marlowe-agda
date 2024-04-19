@@ -411,6 +411,8 @@ open Entities-Parameterized-by-Token
 {-# COMPILE GHC ChosenNum = data ChosenNum (ChosenNum) #-}
 {-# COMPILE GHC Input = data Input (IDeposit | IChoice | INotify) #-}
 {-# COMPILE GHC TransactionWarning = data TransactionWarning (TransactionNonPositivePay | TransactionPartialPay | TransactionPayNoAccount | TransactionShadowing | TransactionAssertionFailed) #-}
+{-# COMPILE GHC TransactionError = data TransactionError (TEAmbiguousTimeIntervalError | TEApplyNoMatchError | TEIntervalError | TEUselessTransaction | TEHashMismatch) #-}
 -- TODO: needs State
 -- {-# COMPILE GHC TransactionOutput = data TransactionOutput (TransactionOutput | Error) #-}
+{-# COMPILE GHC IntervalError = data IntervalError (InvalidInterval | IntervalInPastError) #-}
 ```
