@@ -50,6 +50,25 @@ endTime : TimeInterval → PosixTime
 endTime (mkInterval (mkPosixTime s) o) = mkPosixTime (s + o)
 ```
 
+## IntervalError
+
+```agda
+data IntervalError : Set where
+  InvalidInterval : TimeInterval → IntervalError
+  IntervalInPastError : PosixTime → TimeInterval → IntervalError
+```
+
+## TransactionError
+
+```agda
+data TransactionError : Set where
+  TEAmbiguousTimeIntervalError : TransactionError
+  TEApplyNoMatchError : TransactionError
+  TEIntervalError : IntervalError → TransactionError
+  TEUselessTransaction : TransactionError
+  TEHashMismatch : TransactionError
+```
+
 ## Environment
 
 ```agda
@@ -297,10 +316,6 @@ of a list of inputs (possibly empty) to be applied within a TimeInterval
 ### Interval result
 
 ```agda
-    data IntervalError : Set where
-      InvalidInterval : TimeInterval → IntervalError
-      IntervalInPastError : PosixTime → TimeInterval → IntervalError
-
     data IntervalResult : Set where
       IntervalTrimmed : Environment → State → IntervalResult
       mkIntervalError : IntervalError → IntervalResult
@@ -316,12 +331,6 @@ of a list of inputs (possibly empty) to be applied within a TimeInterval
       TransactionShadowing : ValueId → ℤ → ℤ → TransactionWarning
       TransactionAssertionFailed : TransactionWarning
 
-    data TransactionError : Set where
-      TEAmbiguousTimeIntervalError : TransactionError
-      TEApplyNoMatchError : TransactionError
-      TEIntervalError : IntervalError → TransactionError
-      TEUselessTransaction : TransactionError
-      TEHashMismatch : TransactionError
 ```
 
 ## TransactionOutput
