@@ -1,9 +1,7 @@
 ```agda
-open import Relation.Binary using (DecidableEquality)
+open import Marlowe.Abstract
 
-module Marlowe.Semantics.Reduce
-  {Party : Set} (_≟-Party_ : DecidableEquality Party)
-  {Token : Set} (_≟-Token_ : DecidableEquality Token)
+module Marlowe.Semantics.Reduce (a : MarloweAbstract) (open MarloweAbstract a)
   where
 ```
 
@@ -35,19 +33,15 @@ open import Relation.Nullary using (Dec; yes; no; ¬_)
 
 open import Contrib.Data.List.AssocList
 
-open import Marlowe.Language
-open Entities-Parameterized-by-Party {Party}
-open Entities-Parameterized-by-Token {Token}
-open Equality _≟-Party_ _≟-Token_
-
-open import Marlowe.Semantics.Evaluate _≟-Party_ _≟-Token_
+open import Marlowe.Language a
+open import Marlowe.Semantics.Evaluate a
 
 open Environment using (timeInterval)
-open Entities-Parameterized-by-Token.State using (accounts; boundValues; choices)
+open State using (accounts; boundValues; choices)
 open TimeInterval using (startTime)
 
-open Decidable (≡-dec _≟-AccountId_ _≟-Token_) renaming (_∈?_ to _∈?-AccountId×Token_)
-open Decidable _≟-ValueId_ renaming (_∈?_ to _∈-ValueId?_)
+open Decidable ⦃ DecEq-AccountId×Token ⦄ renaming (_∈?_ to _∈?-AccountId×Token_)
+open Decidable ⦃ DecEq-ValueId ⦄ renaming (_∈?_ to _∈-ValueId?_)
 ```
 -->
 

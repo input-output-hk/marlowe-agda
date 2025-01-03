@@ -1,9 +1,7 @@
 ```agda
-open import Relation.Binary using (DecidableEquality)
+open import Marlowe.Abstract
 
-module Marlowe.Language.Properties
-  {Party : Set}
-  {Token : Set} (_≟-Token_ : DecidableEquality Token)
+module Marlowe.Language.Properties (a : MarloweAbstract) (open MarloweAbstract a)
   where
 ```
 
@@ -16,8 +14,8 @@ open import Contrib.Data.Nat.Properties
 open import Data.Bool using (Bool; _∧_; true; false)
 open import Data.List using (List; []; _∷_; sum; filter; map)
 open import Data.List.Relation.Unary.Any using (lookup; _─_; _∷=_; here; there; index)
-open import Data.Nat
-open import Data.Nat.Properties
+open import Data.Nat hiding (_≟_)
+open import Data.Nat.Properties hiding (_≟_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Function.Base using (case_of_; _∘_)
 
@@ -27,11 +25,10 @@ open import Relation.Nullary.Decidable using (⌊_⌋)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; cong; sym; trans)
 
+open import Contrib.DecEq
 open import Contrib.Data.List.AssocList
 
-open import Marlowe.Language
-open Entities-Parameterized-by-Party {Party}
-open Entities-Parameterized-by-Token {Token}
+open import Marlowe.Language a
 open PosixTime using (getPosixTime)
 ```
 -->
@@ -39,7 +36,7 @@ open PosixTime using (getPosixTime)
 ```agda
 1ₜ : Token → Token × ℕ → ℕ
 
-1ₜ t₁ (t₂ , n) with ⌊ t₁ ≟-Token t₂ ⌋
+1ₜ t₁ (t₂ , n) with ⌊ t₁ ≟ t₂ ⌋
 ... | true = n
 ... | false = 0
 
@@ -58,7 +55,7 @@ projₚ t (a [ t′ , n ]↦ _) = 1ₜ t (t′ , n)
 
 ```agda
 zero-projₜ : ∀ {a×t : AccountId × Token} {t : Token} → projₜ t (a×t , 0) ≡ 0
-zero-projₜ {a×t} {t} with ⌊ t ≟-Token (proj₂ a×t) ⌋
+zero-projₜ {a×t} {t} with ⌊ t ≟ (proj₂ a×t) ⌋
 ... | true = refl
 ... | false = refl
 
@@ -67,17 +64,17 @@ linear-projₜ :
     {t : Token}
     {m n : ℕ}
   → ((projₜ t (a×t , m)) + (projₜ t (a×t , n))) ≡ projₜ t (a×t , m + n)
-linear-projₜ {a×t} {t} with ⌊ t ≟-Token (proj₂ a×t) ⌋
+linear-projₜ {a×t} {t} with ⌊ t ≟ (proj₂ a×t) ⌋
 ... | true = refl
 ... | false = refl
 
 ⊓-projₜ : ∀ {t} {a×t : AccountId × Token} {m n} → projₜ t (a×t , m ⊓ n) ≡ projₜ t (a×t , m) ⊓ projₜ t (a×t , n)
-⊓-projₜ {t} {a×t} with ⌊ t ≟-Token (proj₂ a×t) ⌋
+⊓-projₜ {t} {a×t} with ⌊ t ≟ (proj₂ a×t) ⌋
 ... | true = refl
 ... | false = refl
 
 ∸-projₜ : ∀ {t} {a×t : AccountId × Token} {m n} → projₜ t (a×t , m ∸ n) ≡ projₜ t (a×t , m) ∸ projₜ t (a×t , n)
-∸-projₜ {t₁} {a×t} with ⌊ t₁ ≟-Token (proj₂ a×t) ⌋
+∸-projₜ {t₁} {a×t} with ⌊ t₁ ≟ (proj₂ a×t) ⌋
 ... | true = refl
 ... | false = refl
 

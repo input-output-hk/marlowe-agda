@@ -1,9 +1,7 @@
 ```agda
-open import Relation.Binary using (DecidableEquality)
+open import Marlowe.Abstract
 
-module Marlowe.Semantics.Reduce.Properties
-  {Party : Set} (_≟-Party_ : DecidableEquality Party)
-  {Token : Set} (_≟-Token_ : DecidableEquality Token)
+module Marlowe.Semantics.Reduce.Properties (a : MarloweAbstract) (open MarloweAbstract a)
   where
 ```
 
@@ -26,19 +24,15 @@ open import Relation.Nullary.Negation using (contradiction)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; _≢_; refl; cong; sym; subst; trans)
 
-open import Marlowe.Language
-open Entities-Parameterized-by-Party {Party}
-open Entities-Parameterized-by-Token {Token}
-open Equality _≟-Party_ _≟-Token_
-
-open import Marlowe.Language.Properties {Party} _≟-Token_
-open import Marlowe.Semantics.Evaluate _≟-Party_ _≟-Token_
-open import Marlowe.Semantics.Reduce _≟-Party_ _≟-Token_
+open import Marlowe.Language a
+open import Marlowe.Language.Properties a
+open import Marlowe.Semantics.Evaluate a
+open import Marlowe.Semantics.Reduce a
 
 open import Contrib.Data.List.AssocList
-open Decidable (≡-dec _≟-AccountId_ _≟-Token_) renaming (_∈?_ to _∈?-AccountId×Token_)
+open Decidable ⦃ DecEq-AccountId×Token ⦄ renaming (_∈?_ to _∈?-AccountId×Token_)
 
-open Entities-Parameterized-by-Token.State
+open State
 open Configuration
 open Environment
 open TimeInterval
@@ -56,7 +50,7 @@ Quiescent¬⇀ : ∀ {C₁ C₂}
     ------------
   → ¬ (C₁ ⇀ C₂)
 Quiescent¬⇀ close ()
-Quiescent¬⇀ (waiting {t} {tₛ} {Δₜ} (x)) (WhenTimeout {_} {t} {tₛ} {Δₜ} y) =
+Quiescent¬⇀ (waiting {t} {tₛ} {Δₜ} x) (WhenTimeout {_} {t} {tₛ} {Δₜ} y) =
   let ¬p = ≤⇒≯ (≤-trans y (m≤m+n tₛ Δₜ)) in ¬p x
 ```
 

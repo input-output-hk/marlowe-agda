@@ -1,5 +1,7 @@
 module Contrib.Data.List.AssocList where
 
+open import Contrib.DecEq
+
 open import Agda.Builtin.List using (List; _∷_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Maybe using (Maybe; just; nothing; fromMaybe)
@@ -24,7 +26,7 @@ a ∈ abs = Any ((a ≡_) ∘ proj₁) abs
 _∉_ : A → AssocList A B → Set
 a ∉ abs = All ((a ≢_) ∘ proj₁) abs
 
-module Decidable {A : Set} (_≟_ : DecidableEquality A) where
+module Decidable {A : Set} ⦃ _ : DecEq A ⦄ where
 
   _∈?_ : Decidable (_∈_ {A} {B})
   a ∈? abs = any? ((a ≟_) ∘ proj₁) abs

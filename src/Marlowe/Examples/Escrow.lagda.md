@@ -22,12 +22,6 @@ pattern [_] z = z ∷ []
 pattern [_,_] y z = y ∷ z ∷ []
 ```
 
-```agda
-open import Marlowe.Language
-open Entities-Parameterized-by-Party {Party}
-open Entities-Parameterized-by-Token {Token}
-```
-
 ## Escrow
 
 ```agda

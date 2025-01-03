@@ -13,7 +13,6 @@ open import Data.Nat using (z≤n; s≤s)
 open import Data.Product using (Σ; _,_; ∃; Σ-syntax; ∃-syntax)
 open import Data.String using (String; _≟_)
 open import Data.Sum using (inj₁; inj₂)
-open import Relation.Binary using (Decidable; DecidableEquality)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl)
 ```
@@ -24,11 +23,19 @@ open Eq using (_≡_; refl)
 `Token` and `Party` here are simply strings.
 
 ```agda
-open import Marlowe.Language
-open Entities-Parameterized-by-Party {String}
-open Entities-Parameterized-by-Token {String}
-open import Marlowe.Semantics.Reduce _≟_ _≟_
-open import Marlowe.Semantics.Operate _≟_ _≟_
+open import Marlowe.Abstract
+open import Contrib.DecEq
+
+impl : MarloweAbstract
+impl =
+  record
+    { Token = String
+    ; Party = String
+    }
+
+open import Marlowe.Language impl
+open import Marlowe.Semantics.Reduce impl
+open import Marlowe.Semantics.Operate impl
 ```
 
 ### Example

@@ -1,9 +1,7 @@
 ```agda
-open import Relation.Binary using (DecidableEquality)
+open import Marlowe.Abstract
 
-module Marlowe.Semantics.Operate
-  {Party : Set} (_≟-Party_ : DecidableEquality Party)
-  {Token : Set} (_≟-Token_ : DecidableEquality Token)
+module Marlowe.Semantics.Operate (a : MarloweAbstract) (open MarloweAbstract a)
   where
 ```
 The module contains the formalisation of mid-step and big-step semantics for Marlowe.
@@ -19,31 +17,27 @@ open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Membership.DecSetoid using () renaming (_∈?_ to _∈?-List_)
 open import Data.List.Relation.Unary.Any using (Any; here; there; lookup; any?)
 open import Data.Maybe using (Maybe; just; nothing; fromMaybe)
-open import Data.Nat as ℕ using (ℕ; suc; zero; _<_; _<ᵇ_; _<?_; _≟_; z≤n; s≤s; _+_; _⊔_; _∸_; _≥_)
+open import Data.Nat as ℕ using (ℕ; suc; zero; _<_; _<ᵇ_; _<?_; z≤n; s≤s; _+_; _⊔_; _∸_; _≥_)
 open import Data.Nat.Properties using (≰⇒>; ≮⇒≥; ≤-reflexive; ≤-trans)
 open import Data.Product using (Σ; _,_; ∃; Σ-syntax; ∃-syntax; _×_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Function.Base using (_∘_ ; id)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
-open import Relation.Nullary.Decidable using (⌊_⌋)
 
-open import Relation.Binary using (Decidable; DecidableEquality)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; cong; sym; trans)
 
-open import Marlowe.Language
-open Entities-Parameterized-by-Party {Party}
-open Entities-Parameterized-by-Token {Token}
-open Equality _≟-Party_ _≟-Token_
+open import Contrib.DecEq
 
-open import Marlowe.Semantics.Evaluate _≟-Party_ _≟-Token_
-open import Marlowe.Semantics.Reduce _≟-Party_ _≟-Token_
+open import Marlowe.Language a
+open import Marlowe.Semantics.Evaluate a
+open import Marlowe.Semantics.Reduce a
 
 open import Contrib.Data.List.AssocList renaming (_∈_ to _∈′_)
-open Decidable _≟-ChoiceId_
+open Decidable ⦃ DecEq-ChoiceId ⦄
 
 open Configuration
-open Entities-Parameterized-by-Token.State
+open State
 open PosixTime
 open TransactionInput
 ```
@@ -162,7 +156,7 @@ applicable? : ∀ {s : State} {e : Environment} → (i : Input) → (a : Action)
 * IDeposit
 ```agda
 applicable? {s} {e} (IDeposit a₁ p₁ t₁ n) (Deposit a₂ p₂ t₂ v)
-  with a₁ ≟-AccountId a₂ | p₁ ≟-Party p₂ | t₁ ≟-Token t₂ | ℰ⟦ v ⟧ e s  ℤ.≟ + n
+  with a₁ ≟ a₂ | p₁ ≟ p₂ | t₁ ≟ t₂ | ℰ⟦ v ⟧ e s  ℤ.≟ + n
 ... | yes refl | yes refl | yes refl | yes p = just (deposit-input {_} {_} {a₁} {p₁} {t₁} {v} {n} p)
 ... | _        | _        | _        | _     = nothing
 applicable? (IDeposit _ _ _ _) (Choice _ _ ) = nothing
@@ -172,7 +166,7 @@ applicable? (IDeposit _ _ _ _) (Notify _) = nothing
 ```agda
 applicable? (IChoice _ _ ) (Deposit _ _ _ _ ) = nothing
 applicable? (IChoice i₁ n) (Choice i₂ b)
-  with i₁ ≟-ChoiceId i₂ | n inBounds b 𝔹.≟ true
+  with i₁ ≟ i₂ | n inBounds b 𝔹.≟ true
 ... | yes refl | yes p = (just (choice-input {_} {_} {i₁} {n} {b} p))
 ... | _        | _     = nothing
 applicable? (IChoice _ _) (Notify _) = nothing
