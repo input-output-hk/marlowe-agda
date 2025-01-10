@@ -14,7 +14,7 @@ open import Relation.Binary using (DecidableEquality)
 open import Relation.Binary.PropositionalEquality using (cong; cong₂)
 open import Relation.Nullary using (yes; no)
 
-open import Contrib.DecEq
+open import Class.DecEq
 ```
 -->
 
@@ -86,7 +86,6 @@ open import Marlowe.Semantics.Operate impl public
 ## Evaluation
 
 ```agda
-
 evalValue : Environment → State → Value → ℤ
 evalObservation : Environment → State → Observation → Bool
 

@@ -6,7 +6,7 @@ module Marlowe.Examples.Reduce where
 ## Imports
 
 ```agda
-open import Contrib.Data.List.AssocList
+open import Prelude.AssocList
 open import Data.List using (List; []; _∷_; [_])
 open import Data.Product using (Σ; _,_; ∃; Σ-syntax; ∃-syntax)
 open import Data.String using (_≟_; String)
@@ -21,7 +21,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 ```agda
 open import Marlowe.Abstract
-open import Contrib.DecEq
+open import Class.DecEq
 
 impl : MarloweAbstract
 impl =

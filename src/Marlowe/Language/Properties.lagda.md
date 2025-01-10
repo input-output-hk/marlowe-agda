@@ -12,8 +12,7 @@ module Marlowe.Language.Properties (a : MarloweAbstract) (open MarloweAbstract a
 open import Agda.Builtin.Int using (Int)
 open import Contrib.Data.Nat.Properties
 open import Data.Bool using (Bool; _∧_; true; false)
-open import Data.List using (List; []; _∷_; sum; filter; map)
-open import Data.List.Relation.Unary.Any using (lookup; _─_; _∷=_; here; there; index)
+open import Data.List using (List; []; _∷_; sum; filter; map; lookup; _─_)
 open import Data.Nat hiding (_≟_)
 open import Data.Nat.Properties hiding (_≟_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
@@ -25,8 +24,8 @@ open import Relation.Nullary.Decidable using (⌊_⌋)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; cong; sym; trans)
 
-open import Contrib.DecEq
-open import Contrib.Data.List.AssocList
+open import Class.DecEq
+open import Prelude.AssocList
 
 open import Marlowe.Language a
 open PosixTime using (getPosixTime)
@@ -78,11 +77,12 @@ linear-projₜ {a×t} {t} with ⌊ t ≟ (proj₂ a×t) ⌋
 ... | true = refl
 ... | false = refl
 
+{- TODO:
 Σ-accounts-─ :
   ∀ {a×t : AccountId × Token}
     {abs : AssocList (AccountId × Token) ℕ}
   → (t : Token)
-  → (a×t∈abs : a×t ∈ abs)
+  → (a×t∈abs : a×t ∈ᵐ abs)
   ------------------------------------------------------------------------------------------
   → Σ-accounts t abs ≡ projₜ t (a×t , proj₂ (lookup a×t∈abs)) + Σ-accounts t (abs ─ a×t∈abs)
 Σ-accounts-─ t (here refl) = refl
@@ -93,7 +93,7 @@ linear-projₜ {a×t} {t} with ⌊ t ≟ (proj₂ a×t) ⌋
   ∀ {a×t : AccountId × Token}
     {abs : AssocList (AccountId × Token) ℕ}
   → (t : Token)
-  → (a×t∈abs : a×t ∈ abs)
+  → (a×t∈abs : a×t ∈ᵐ abs)
   -----------------------------------------------------------
   → projₜ t (a×t , proj₂ (lookup a×t∈abs)) ≤ Σ-accounts t abs
 Σ-accounts-↓≤ {a×t} {abs} t a×t∈abs =
@@ -106,7 +106,7 @@ linear-projₜ {a×t} {t} with ⌊ t ≟ (proj₂ a×t) ⌋
     {abs : AssocList (AccountId × Token) ℕ}
   → (n : ℕ)
   → (t : Token)
-  → (a×t∈abs : a×t ∈ abs)
+  → (a×t∈abs : a×t ∈ᵐ abs)
   -----------------------------------------------------------------
   → (projₜ t (a×t , proj₂ (lookup a×t∈abs) ⊓ n)) ≤ Σ-accounts t abs
 Σ-accounts-↓≤⊓ {a×t} n t a×t∈abs =
@@ -121,7 +121,7 @@ linear-projₜ {a×t} {t} with ⌊ t ≟ (proj₂ a×t) ⌋
     {abs : AssocList (AccountId × Token) ℕ}
   → (n : ℕ)
   → (t : Token)
-  → (a×t∈abs : a×t ∈ abs)
+  → (a×t∈abs : a×t ∈ᵐ abs)
   -----------------------------------------------------------------------------------------------------
   → Σ-accounts t (a×t∈abs ∷= (a×t , proj₂ (lookup a×t∈abs) + n)) ≡ projₜ t (a×t , n) + Σ-accounts t abs
 Σ-accounts-↑ {a×t} {(_ , m) ∷ xs} n f (here refl) = Σ-accounts-∷ m n {a×t} {xs} f
@@ -156,4 +156,5 @@ linear-projₜ {a×t} {t} with ⌊ t ≟ (proj₂ a×t) ⌋
      (sym (cong (projₜ t x + Σ-accounts t xs ∸_) (⊓-projₜ {t} {a×t} {proj₂ x} {n})))
 Σ-accounts-↓ {a×t} {abs = x ∷ xs} n t (there p) rewrite Σ-accounts-↓ {a×t} {abs = xs} n t p =
   sym (+-∸-assoc (projₜ t x) (Σ-accounts-↓≤⊓ n t p))
+-}
 ```

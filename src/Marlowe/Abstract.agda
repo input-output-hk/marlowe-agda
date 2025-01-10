@@ -1,6 +1,6 @@
 module Marlowe.Abstract where
 
-open import Contrib.DecEq
+open import Class.DecEq
 
 record MarloweAbstract : Set₁ where
   field Token : Set

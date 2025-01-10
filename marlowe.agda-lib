@@ -1,5 +1,7 @@
 name: marlowe
 depend:
   standard-library
+  standard-library-classes
   standard-library-meta
+  iog-prelude
 include: src

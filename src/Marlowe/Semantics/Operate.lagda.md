@@ -27,14 +27,13 @@ open import Relation.Nullary using (Dec; yes; no; ¬_)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; cong; sym; trans)
 
-open import Contrib.DecEq
+open import Class.DecEq
+open import Class.Default
+open import Prelude.AssocList
 
 open import Marlowe.Language a
 open import Marlowe.Semantics.Evaluate a
 open import Marlowe.Semantics.Reduce a
-
-open import Contrib.Data.List.AssocList renaming (_∈_ to _∈′_)
-open Decidable ⦃ DecEq-ChoiceId ⦄
 
 open Configuration
 open State
@@ -101,7 +100,7 @@ data _⇒_ : {C : Configuration} → Waiting C × Input → Configuration → Se
     → ⟪ cₐ
       , record s
           { choices =
-            (i , unChosenNum n) ↑ (choices s)
+            set i (unChosenNum n) (choices s)
           }
       , e
       , ws
@@ -202,7 +201,7 @@ applicable? {s} {e} INotify (Notify o)
 ... | D , C⇀⋆D , inj₁ q = inj₁ (D , Deposit (here refl) ℰ⟦v⟧≡+n tₑ<t q C⇀⋆D)
 ... | _ , _    , inj₂ _ = inj₂ TEAmbiguousTimeIntervalError
 ⇒-eval (waiting {mkCase _ cₐ ∷ cs} {_} {_} {s} {e} {ws} {ps} tₑ<t) _ | just (choice-input {i} {n} {bs} p)
-  with ⇀-eval ⟪ cₐ , record s { choices = (i , unChosenNum n) ↑ (choices s) } , e , ws , ps ⟫
+  with ⇀-eval ⟪ cₐ , record s { choices = set i (unChosenNum n) (choices s) } , e , ws , ps ⟫
 ... | D , C⇀⋆D , inj₁ q = inj₁ (D , Choice (here refl) p tₑ<t q C⇀⋆D)
 ... | _ , _    , inj₂ q = inj₂ TEAmbiguousTimeIntervalError
 ⇒-eval (waiting {mkCase _ cₐ ∷ cs} {_} {_} {s} {e} {ws} {ps} tₑ<t) _ | just (notify-input {o} o≡true)

@@ -56,7 +56,23 @@
             buildInputs = [ agdaStdlib agdaStdlibClasses ];
           };
 
-          deps = [ agdaStdlib agdaStdlibClasses agdaStdlibMeta ];
+          agdaIOGPrelude = pkgs.agdaPackages.mkDerivation {
+            inherit (locales) LANG LC_ALL LOCALE_ARCHIVE;
+            pname = "agda-prelude";
+            version = "2.0";
+            src = pkgs.fetchFromGitHub {
+              repo = "iog-agda-prelude";
+              owner = "input-output-hk";
+              rev = "ee289f9a0b2ec0a3bfc43c3f678a17c174b397e6";
+              sha256 = "sha256-noLUBl9d/vDNbAzWfnBrWoATlBrVG1DwzRV7/2uRHoE=";
+            };
+            meta = { };
+            libraryFile = "iog-prelude.agda-lib";
+            everythingFile = "src/Everything.agda";
+            buildInputs = [ agdaStdlib agdaStdlibClasses ];
+          };
+
+          deps = [ agdaStdlib agdaStdlibClasses agdaStdlibMeta agdaIOGPrelude ];
 
           marlowe-agda = pkgs.agdaPackages.mkDerivation {
             inherit (locales) LANG LC_ALL LOCALE_ARCHIVE;

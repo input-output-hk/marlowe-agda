@@ -10,8 +10,9 @@ This module specifies the domain model for a Marlowe contract.
 ## Imports
 
 ```agda
-open import Contrib.Data.List.AssocList
-open import Contrib.DecEq
+open import Prelude.AssocList
+open import Class.DecEq
+
 open import Data.Bool using (Bool; _∧_)
 open import Data.Integer using (ℤ; _≤?_)
 open import Data.List using (List; []; _∷_; any)

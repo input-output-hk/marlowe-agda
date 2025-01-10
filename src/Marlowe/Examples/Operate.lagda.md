@@ -24,7 +24,7 @@ open Eq using (_≡_; refl)
 
 ```agda
 open import Marlowe.Abstract
-open import Contrib.DecEq
+open import Class.DecEq
 
 impl : MarloweAbstract
 impl =

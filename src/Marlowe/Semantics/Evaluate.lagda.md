@@ -21,17 +21,16 @@ open import Data.String as String using ()
 open import Relation.Nullary using (yes; no)
 open import Relation.Nullary.Decidable using (⌊_⌋; fromWitnessFalse)
 
-open import Contrib.Data.List.AssocList
-
 open import Marlowe.Language a
 open Environment using (timeInterval)
 open State using (accounts; choices; boundValues)
 open TimeInterval using (startTime; offset)
 open PosixTime using (getPosixTime)
 
-open Decidable ⦃ DecEq-AccountId×Token ⦄ renaming (_‼_default_ to _‼ᵃ_default_) using ()
-open Decidable ⦃ DecEq-ChoiceId ⦄ renaming (_‼_default_ to _‼ᶜ_default_) using (_∈?_)
-open Decidable ⦃ DecEq-ValueId ⦄ renaming (_‼_default_ to _‼ᵛ_default_) using ()
+open import Class.Default
+open import Class.Decidable
+open import Prelude.AssocList
+open import Prelude.Irrelevance
 ```
 -->
 
@@ -45,7 +44,7 @@ open Decidable ⦃ DecEq-ValueId ⦄ renaming (_‼_default_ to _‼ᵛ_default_
 ### Value
 
 ```agda
-ℰ⟦ AvailableMoney a t ⟧ _ s = + ((a , t) ‼ᵃ accounts s default 0)
+ℰ⟦ AvailableMoney a t ⟧ _ s = + ((accounts s) ‼d (a , t))
 ℰ⟦ Constant x ⟧ _ _ = x
 ℰ⟦ NegValue x ⟧ e s = - ℰ⟦ x ⟧ e s
 ℰ⟦ AddValue x y ⟧ e s = ℰ⟦ x ⟧ e s + ℰ⟦ y ⟧ e s
@@ -57,10 +56,10 @@ open Decidable ⦃ DecEq-ValueId ⦄ renaming (_‼_default_ to _‼ᵛ_default_
     _/_ num den with den ℤ.≟ 0ℤ
     ... | yes _ = 0ℤ
     ... | no ¬p = (num ℤ./ den) ⦃ ℤ.≢-nonZero ¬p ⦄
-ℰ⟦ ChoiceValue c ⟧ _ s = c ‼ᶜ choices s default 0ℤ
+ℰ⟦ ChoiceValue c ⟧ _ s = choices s ‼d c
 ℰ⟦ TimeIntervalStart ⟧ e _ = + getPosixTime (startTime (timeInterval e))
 ℰ⟦ TimeIntervalEnd ⟧ e _ = + getPosixTime (endTime (timeInterval e))
-ℰ⟦ UseValue v ⟧ _ s = v ‼ᵛ boundValues s default 0ℤ
+ℰ⟦ UseValue v ⟧ _ s = boundValues s ‼d v
 ℰ⟦ Cond o x y ⟧ e s = if 𝒪⟦ o ⟧ e s then ℰ⟦ x ⟧ e s else ℰ⟦ y ⟧ e s
 ```
 
@@ -70,7 +69,7 @@ open Decidable ⦃ DecEq-ValueId ⦄ renaming (_‼_default_ to _‼ᵛ_default_
 𝒪⟦ AndObs x y ⟧ e s = 𝒪⟦ x ⟧ e s ∧ 𝒪⟦ y ⟧ e s
 𝒪⟦ OrObs x y ⟧ e s = 𝒪⟦ x ⟧ e s ∨ 𝒪⟦ y ⟧ e s
 𝒪⟦ NotObs x ⟧ e s = not (𝒪⟦ x ⟧ e s)
-𝒪⟦ ChoseSomething c ⟧  _ s = ⌊ c ∈? choices s ⌋
+𝒪⟦ ChoseSomething c ⟧  _ s = ⌊ c ∈ᵐ? choices s ⌋
 𝒪⟦ ValueGE y x ⟧ e s = ⌊ ℰ⟦ x ⟧ e s ≤? ℰ⟦ y ⟧ e s ⌋
 𝒪⟦ ValueGT y x ⟧ e s = ⌊ ℰ⟦ x ⟧ e s <? ℰ⟦ y ⟧ e s ⌋
 𝒪⟦ ValueLT x y ⟧ e s = ⌊ ℰ⟦ x ⟧ e s <? ℰ⟦ y ⟧ e s ⌋
