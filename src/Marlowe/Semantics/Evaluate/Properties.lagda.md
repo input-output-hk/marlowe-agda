@@ -1,9 +1,7 @@
 ```agda
-open import Relation.Binary using (DecidableEquality)
+open import Marlowe.Abstract
 
-module Marlowe.Semantics.Evaluate.Properties
-  {Party : Set} (_≟-Party_ : DecidableEquality Party)
-  {Token : Set} (_≟-Token_ : DecidableEquality Token)
+module Marlowe.Semantics.Evaluate.Properties (a : MarloweAbstract) (open MarloweAbstract a)
   where
 ```
 
@@ -21,11 +19,8 @@ import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; cong; sym)
 open Eq.≡-Reasoning
 
-open import Marlowe.Language
-open Entities-Parameterized-by-Party {Party}
-open Entities-Parameterized-by-Token {Token}
-
-open import Marlowe.Semantics.Evaluate _≟-Party_ _≟-Token_
+open import Marlowe.Language a
+open import Marlowe.Semantics.Evaluate a
 ```
 -->
 

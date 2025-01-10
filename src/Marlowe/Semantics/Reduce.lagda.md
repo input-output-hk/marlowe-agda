@@ -1,9 +1,7 @@
 ```agda
-open import Relation.Binary using (DecidableEquality)
+open import Marlowe.Abstract
 
-module Marlowe.Semantics.Reduce
-  {Party : Set} (_≟-Party_ : DecidableEquality Party)
-  {Token : Set} (_≟-Token_ : DecidableEquality Token)
+module Marlowe.Semantics.Reduce (a : MarloweAbstract) (open MarloweAbstract a)
   where
 ```
 
@@ -18,45 +16,40 @@ Appendix A in "Developing Faustus: A Formally Verified Smart Contract Programmin
 open import Data.Bool using (if_then_else_; true; false)
 open import Data.Bool.Properties using (_≟_; ¬-not)
 open import Data.Integer using (ℤ; 0ℤ; _>_; _≤_; ∣_∣; _<?_; _≤?_)
-open import Data.Integer.Properties as ℤ using ()
-open import Data.List using (List; []; _∷_; [_])
-open import Data.List.Membership.Propositional using () renaming (_∈_ to _∈-List_)
-open import Data.List.Relation.Unary.Any using (lookup; _∷=_; here; there)
-open import Data.List.Relation.Unary.All.Properties using (¬Any⇒All¬; All¬⇒¬Any)
+import Data.Integer.Properties as ℤ
+open import Data.List using (List; []; _∷_; [_]; lookup)
 open import Data.Nat as ℕ using (ℕ; zero; suc; s≤s; _⊓_; _∸_; _+_; _<ᵇ_; _≤ᵇ_; _<_; _≥_)
 open import Data.Nat.Properties using (1+n≰n; ≤-trans; +-identityʳ; +-comm; +-assoc; ≤⇒≯; m≤m+n; ≰⇒>; ≮⇒≥)
 open import Data.Product using (Σ; _,_; ∃; Σ-syntax; ∃-syntax; _×_; proj₁; proj₂)
 open import Data.Product.Properties using (≡-dec)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 
+open import Function.Base using (_∘_)
+
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; cong; sym)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 
-open import Contrib.Data.List.AssocList
+open import Class.Decidable
+open import Prelude.AssocList
+open import Prelude.Irrelevance
+open import Data.List.Relation.Unary.First using (index)
 
-open import Marlowe.Language
-open Entities-Parameterized-by-Party {Party}
-open Entities-Parameterized-by-Token {Token}
-open Equality _≟-Party_ _≟-Token_
-
-open import Marlowe.Semantics.Evaluate _≟-Party_ _≟-Token_
+open import Marlowe.Language a
+open import Marlowe.Semantics.Evaluate a
 
 open Environment using (timeInterval)
-open Entities-Parameterized-by-Token.State using (accounts; boundValues; choices)
+open State using (accounts; boundValues; choices)
 open TimeInterval using (startTime)
-
-open Decidable (≡-dec _≟-AccountId_ _≟-Token_) renaming (_∈?_ to _∈?-AccountId×Token_)
-open Decidable _≟-ValueId_ renaming (_∈?_ to _∈-ValueId?_)
 ```
 -->
 
 ### Account updates
 
 ```agda
-_↑-update_ : (p : (AccountId × Token) × ℕ) (abs : AssocList (AccountId × Token) ℕ) → AssocList (AccountId × Token) ℕ
-(a , b) ↑-update abs with a ∈?-AccountId×Token abs
-... | yes p = p ∷= (a , proj₂ (lookup p) + b)
+_↑-update_ : (AccountId × Token) × ℕ → AssocList (AccountId × Token) ℕ → AssocList (AccountId × Token) ℕ
+(a , b) ↑-update abs with a ∈ᵐ? abs
+... | yes p = p ∷= (proj₂ (lookup abs (index p)) + b)
 ... | no _ = (a , b) ∷ abs
 ```
 
@@ -128,7 +121,7 @@ data _⇀_ : Configuration → Configuration → Set where
 
   PayNoAccount : ∀ {s e v a p t c ws ps}
     → ℰ⟦ v ⟧ e s > 0ℤ
-    → (a , t) ∉ accounts s
+    → (a , t) ∉ᵐ accounts s
       ----------------------------------
     → ⟪ Pay a p t v c
       , s
@@ -145,10 +138,10 @@ data _⇀_ : Configuration → Configuration → Set where
 
   PayInternalTransfer : ∀ {s e v aₛ aₜ t c ws ps}
     → ℰ⟦ v ⟧ e s > 0ℤ
-    → (aₛ×t∈as : (aₛ , t) ∈ accounts s)
+    → (aₛ×t∈as : (aₛ , t) ∈ᵐ accounts s)
       ------------------------------------------
     → let
-        m = proj₂ (lookup aₛ×t∈as)
+        m = proj₂ (lookup (accounts s) (index aₛ×t∈as))
         n = ∣ ℰ⟦ v ⟧ e s ∣
       in
       ⟪ Pay aₛ (mkAccount aₜ) t v c
@@ -160,7 +153,7 @@ data _⇀_ : Configuration → Configuration → Set where
       ⟪ c
       , record s
           { accounts =
-            ((aₜ , t) , (m ⊓ n)) ↑-update (aₛ×t∈as ∷= ((aₛ , t) , m ∸ n))
+            ((aₜ , t) , (m ⊓ n)) ↑-update (aₛ×t∈as ∷= (m ∸ n))
           }
       , e
       , if (m <ᵇ n)
@@ -171,10 +164,10 @@ data _⇀_ : Configuration → Configuration → Set where
 
   PayExternal : ∀ {s e v a t c ws ps p}
     → ℰ⟦ v ⟧ e s > 0ℤ
-    → (a×t∈as : (a , t) ∈ accounts s)
+    → (a×t∈as : (a , t) ∈ᵐ accounts s)
       ---------------------------------
     → let
-        m = proj₂ (lookup a×t∈as)
+        m = proj₂ (lookup (accounts s) (index a×t∈as))
         n = ∣ ℰ⟦ v ⟧ e s ∣
       in
       ⟪ Pay a (mkParty p) t v c
@@ -186,7 +179,7 @@ data _⇀_ : Configuration → Configuration → Set where
       ⟪ c
       , record s
           { accounts =
-            a×t∈as ∷= ((a , t) , m ∸ n)
+            a×t∈as ∷= (m ∸ n)
           }
       , e
       , if (m <ᵇ n)
@@ -247,7 +240,7 @@ data _⇀_ : Configuration → Configuration → Set where
       ⟫
 
   LetShadow : ∀ {s e c i v ws ps}
-    → (i∈bs : i ∈ boundValues s)
+    → (i∈bs : i ∈ᵐ boundValues s)
       ---------------------------
     → ⟪ Let i v c
       , s
@@ -258,12 +251,12 @@ data _⇀_ : Configuration → Configuration → Set where
       ⟪ c
       , s
       , e
-      , ReduceShadowing i (proj₂ (lookup i∈bs)) (ℰ⟦ v ⟧ e s) ∷ ws
+      , ReduceShadowing i (proj₂ (lookup (boundValues s) (index i∈bs))) (ℰ⟦ v ⟧ e s) ∷ ws
       , ps
       ⟫
 
   LetNoShadow : ∀ {s e c i v ws ps}
-    → i ∉ boundValues s
+    → i ∉ᵐ boundValues s
       ------------------
     → ⟪ Let i v c
       , s
@@ -420,6 +413,14 @@ data Reducible (C : Configuration) : Set where
 Every configuration is reducible:
 
 ```agda
+-- ¬First⇒All¬ : ∀ {P} xs → ¬ AnyFirst P xs → All (¬_ ∘ P) xs
+--i-- ⇒All¬ = {!!}
+
+{-
+¬Any⇒All¬ []       ¬p = []
+¬Any⇒All¬ (x ∷ xs) ¬p = ¬p ∘ here ∷ ¬Any⇒All¬ xs (¬p ∘ there)
+-}
+
 progress : ∀ (C : Configuration) → Reducible C
 progress
   ⟪ Close
@@ -441,20 +442,20 @@ progress
   , e
   , _
   , _
-  ⟫ with ℰ⟦ v ⟧ e s ≤? 0ℤ | (a , t) ∈?-AccountId×Token as
+  ⟫ with ℰ⟦ v ⟧ e s ≤? 0ℤ | (a , t) ∈ᵐ? as
 ... | yes v≤0 | _           = step (PayNonPositive v≤0)
 ... | no  v≰0 | yes a×t∈as = step (PayInternalTransfer (ℤ.≰⇒> v≰0) a×t∈as)
-... | no  v≰0 | no ¬a×t∈as = step (PayNoAccount (ℤ.≰⇒> v≰0) (¬Any⇒All¬ as ¬a×t∈as))
+... | no  v≰0 | no ¬a×t∈as = step (PayNoAccount (ℤ.≰⇒> v≰0) λ x → ⊥⇒·⊥ (¬a×t∈as x))
 progress
   ⟪ Pay a (mkParty p) t v _
   , s@(⟨ as , _ , _ , _ ⟩)
   , e
   , _
   , _
-  ⟫ with ℰ⟦ v ⟧ e s ≤? 0ℤ | (a , t) ∈?-AccountId×Token as
+  ⟫ with ℰ⟦ v ⟧ e s ≤? 0ℤ | (a , t) ∈ᵐ? as
 ... | yes v≤0 | _           = step (PayNonPositive v≤0)
 ... | no  v≰0 | yes a×t∈as = step (PayExternal (ℤ.≰⇒> v≰0) a×t∈as)
-... | no  v≰0 | no ¬a×t∈as = step (PayNoAccount (ℤ.≰⇒> v≰0) (¬Any⇒All¬ as ¬a×t∈as))
+... | no  v≰0 | no ¬a×t∈as = step (PayNoAccount (ℤ.≰⇒> v≰0) λ x → ⊥⇒·⊥ (¬a×t∈as x))
 progress
   ⟪ If o c₁ c₂
   , s
@@ -479,9 +480,9 @@ progress
   , e
   , ws
   , ps
-  ⟫ with i ∈-ValueId? vs
+  ⟫ with i ∈ᵐ? vs
 ... | yes i∈vs = step (LetShadow {s} {e} {c} {i} {v} {ws} {ps} i∈vs)
-... | no ¬a∈abs = step (LetNoShadow (¬Any⇒All¬ vs ¬a∈abs))
+... | no ¬a∈abs = step (LetNoShadow λ x → ⊥⇒·⊥ (¬a∈abs x))
 progress
   ⟪ Assert o c
   , s

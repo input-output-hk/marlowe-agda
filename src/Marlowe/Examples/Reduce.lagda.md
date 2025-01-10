@@ -6,12 +6,11 @@ module Marlowe.Examples.Reduce where
 ## Imports
 
 ```agda
-open import Contrib.Data.List.AssocList
+open import Prelude.AssocList
 open import Data.List using (List; []; _∷_; [_])
 open import Data.Product using (Σ; _,_; ∃; Σ-syntax; ∃-syntax)
 open import Data.String using (_≟_; String)
 open import Data.Sum using (inj₁; inj₂)
-open import Relation.Binary using (DecidableEquality)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 ```
 -->
@@ -21,10 +20,18 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 `Token` and `Party` here are simply strings.
 
 ```agda
-open import Marlowe.Language
-open Entities-Parameterized-by-Party
-open Entities-Parameterized-by-Token
-open import Marlowe.Semantics.Reduce _≟_ _≟_
+open import Marlowe.Abstract
+open import Class.DecEq
+
+impl : MarloweAbstract
+impl =
+  record
+    { Token = String
+    ; Party = String
+    }
+
+open import Marlowe.Language impl
+open import Marlowe.Semantics.Reduce impl
 ```
 
 ### Examples
@@ -69,5 +76,4 @@ _ = ⇀-eval config₂
       , (config₂ ⇀⟨ IfTrue refl ⟩ config₁ ⇀⟨ CloseRefund ⟩ config₀ ∎)
       , inj₁ close
       )
-
 ```
