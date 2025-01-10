@@ -389,35 +389,3 @@ instance
   DecEq-AccountId×Token : DecEq (AccountId × Token)
   DecEq-AccountId×Token = record { _≟_ = ≡-dec _≟_ _≟_ }
 ```
-
-## Export to Haskell
-
-```agda
-{-# FOREIGN GHC import Marlowe.Core.Contract #-}
-{-# COMPILE GHC PosixTime = data PosixTime (PosixTime) #-}
-{-# COMPILE GHC Timeout = data Timeout (Timeout) #-}
-{-# COMPILE GHC AccountId = data AccountId (AccountId) #-}
-{-# COMPILE GHC ChoiceName = data ChoiceName (ChoiceName)  #-}
-{-# COMPILE GHC ChoiceId = data ChoiceId (ChoiceId) #-}
-{-# COMPILE GHC ValueId = data ValueId (ValueId) #-}
-{-# COMPILE GHC Payee = data Payee (Account | Party) #-}
-{-# COMPILE GHC Observation = data Observation (AndObs | OrObs | NotObs | ChoseSomething | ValueGE | ValueGT | ValueLT | ValueLE | ValueEQ | TrueObs | FalseObs) #-}
-{-# COMPILE GHC Value = data Value (AvailableMoney | Constant | NegValue | AddValue | SubValue | MulValue | DivValue | ChoiceValue | TimeIntervalStart | TimeIntervalEnd | UseValue | Cond) #-}
-{-# COMPILE GHC Bound = data Bound (Bound) #-}
-{-# COMPILE GHC Action = data Action (Deposit | Choice | Notify) #-}
-{-# COMPILE GHC Case = data Case (Case) #-}
-{-# COMPILE GHC Contract = data Contract (Close | Pay | If | When | Let | Assert) #-}
-
-{-# COMPILE GHC TimeInterval = data TimeInterval (TimeInterval) #-}
-{-# COMPILE GHC Environment = data Environment (Environment) #-}
-{-# COMPILE GHC State = data State (State) #-}
-
-{-# COMPILE GHC Payment = data Payment (Payment) #-}
-{-# COMPILE GHC ChosenNum = data ChosenNum (ChosenNum) #-}
-{-# COMPILE GHC Input = data Input (IDeposit | IChoice | INotify) #-}
-{-# COMPILE GHC TransactionWarning = data TransactionWarning (TransactionNonPositivePay | TransactionPartialPay | TransactionPayNoAccount | TransactionShadowing | TransactionAssertionFailed) #-}
-{-# COMPILE GHC TransactionError = data TransactionError (TEAmbiguousTimeIntervalError | TEApplyNoMatchError | TEIntervalError | TEUselessTransaction | TEHashMismatch) #-}
--- TODO: needs State
--- {-# COMPILE GHC TransactionOutput = data TransactionOutput (TransactionOutput | Error) #-}
-{-# COMPILE GHC IntervalError = data IntervalError (InvalidInterval | IntervalInPastError) #-}
-```

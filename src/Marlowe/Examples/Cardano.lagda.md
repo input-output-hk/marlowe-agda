@@ -83,12 +83,6 @@ open import Marlowe.Semantics.Reduce impl public
 open import Marlowe.Semantics.Operate impl public
 ```
 
-```agda
-{-# FOREIGN GHC import Marlowe.Core.Contract #-}
-{-# COMPILE GHC Party = data Party (Address | Role) #-}
-{-# COMPILE GHC Token = data Token (Token) #-}
-```
-
 ## Evaluation
 
 ```agda
@@ -98,7 +92,4 @@ evalObservation : Environment → State → Observation → Bool
 
 evalValue e s v = ℰ⟦ v ⟧ e s
 evalObservation e s o = 𝒪⟦ o ⟧ e s
-
--- TODO: functions to be used in test-spec: requires environment and state
--- {-# COMPILE GHC evalValue as evalValue #-}
--- {-# COMPILE GHC evalObservation as evalObservation #-}
+```

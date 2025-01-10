@@ -1,3 +1,5 @@
 name: marlowe
-depend: standard-library
+depend:
+  standard-library
+  standard-library-meta
 include: src
