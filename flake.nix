@@ -104,12 +104,5 @@
 
   nixConfig = {
     bash-prompt = "\\n\\[\\033[1;32m\\][iog-prelude:\\w]\\$\\[\\033[0m\\] ";
-    extra-substituters = [
-      "https://cache.iog.io"
-    ];
-    extra-trusted-public-keys = [
-      "hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ="
-    ];
-    allow-import-from-derivation = true;
   };
 }
