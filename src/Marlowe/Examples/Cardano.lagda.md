@@ -10,11 +10,22 @@ open import Agda.Builtin.String using (String)
 open import Data.Integer using (ℤ)
 open import Data.Bool using (Bool)
 open import Data.Nat using (ℕ)
+open import Data.Product using (_×_)
+open import Data.List using (List)
 open import Relation.Binary using (DecidableEquality)
 open import Relation.Binary.PropositionalEquality using (cong; cong₂)
 open import Relation.Nullary using (yes; no)
 
 open import Class.DecEq
+
+open import Function.Base using (id)
+
+open import Tactic.Derive.Convertible
+open import Tactic.Derive.HsType
+
+open import Class.Convertible
+open import Class.HasHsType
+open import Prelude.AssocList
 ```
 -->
 
@@ -77,10 +88,10 @@ impl =
     ; Party = Party
     }
 
-open import Marlowe.Language impl public
-open import Marlowe.Semantics.Evaluate impl public
-open import Marlowe.Semantics.Reduce impl public
-open import Marlowe.Semantics.Operate impl public
+open import Marlowe.Language impl
+open import Marlowe.Semantics.Evaluate impl
+open import Marlowe.Semantics.Reduce impl
+open import Marlowe.Semantics.Operate impl
 ```
 
 ## Evaluation
@@ -91,4 +102,131 @@ evalObservation : Environment → State → Observation → Bool
 
 evalValue e s v = ℰ⟦ v ⟧ e s
 evalObservation e s o = 𝒪⟦ o ⟧ e s
+```
+
+## Export to Haskell
+
+```agda
+instance
+  HsTy-ℤ = MkHsType ℤ ℤ
+
+  Conv-ℤ : Convertible ℤ ℤ
+  Conv-ℤ =
+    let open Convertible in λ where
+      .to   → id
+      .from → id
+
+  Convertible-String : Convertible String String
+  Convertible-String =
+    let open Convertible in λ where
+      .to   → id
+      .from → id
+
+  Convertible-Bool : Convertible Bool Bool
+  Convertible-Bool =
+    let open Convertible in λ where
+      .to   → id
+      .from → id
+
+  HSTy-PosixTime = autoHsType PosixTime
+  Conv-PosixTime = autoConvert PosixTime
+
+  HSTy-Timeout = autoHsType Timeout
+  Conv-timeout = autoConvert Timeout
+
+  HSTy-Party = autoHsType Party
+  Conv-Party = autoConvert Party
+
+  HSTy-Token = autoHsType Token
+  Conv-Token = autoConvert Token
+
+  HSTy-AccountId = autoHsType AccountId
+  Conv-AccountId = autoConvert AccountId
+
+  HSTy-ChoiceName = autoHsType ChoiceName
+  Conv-ChoiceName = autoConvert ChoiceName
+
+  HSTy-ChoiceId = autoHsType ChoiceId
+  Conv-ChoiceId = autoConvert ChoiceId
+
+  HSTy-ValueId = autoHsType ValueId
+  Conv-ValueId = autoConvert ValueId
+
+  HSTy-Payee = autoHsType Payee
+  Conv-Payee = autoConvert Payee
+
+  HSTy-Observation : HasHsType Observation
+  HSTy-Value : HasHsType Value
+
+  HSTy-Observation = autoHsType Observation
+  HSTy-Value = autoHsType Value
+
+  {-# TERMINATING #-}
+  Conv-Observation : let type = HasHsType.HsType HSTy-Observation in Convertible Observation type
+
+  {-# TERMINATING #-}
+  Conv-Value : let type = HasHsType.HsType HSTy-Value in Convertible Value type
+
+  Conv-Observation = autoConvert Observation
+  Conv-Value = autoConvert Value
+
+  HSTy-Bound = autoHsType Bound
+  Conv-Bound = autoConvert Bound
+
+  HSTy-Action = autoHsType Action
+  Conv-Action = autoConvert Action
+
+  HSTy-Case : HasHsType Case
+  HSTy-Contract : HasHsType Contract
+
+  HSTy-Case = autoHsType Case
+  HSTy-Contract = autoHsType Contract
+
+  {-# TERMINATING #-}
+  Conv-Case : let type = HasHsType.HsType HSTy-Case in Convertible Case type
+
+  {-# TERMINATING #-}
+  Conv-Contract : let type = HasHsType.HsType HSTy-Contract in Convertible Contract type
+
+  Conv-Case = autoConvert Case
+  Conv-Contract = autoConvert Contract
+
+  HSTy-TimeInterval = autoHsType TimeInterval
+  Conv-TimeInterval = autoConvert TimeInterval
+
+  HSTy-Environment = autoHsType Environment
+  Conv-Environment = autoConvert Environment
+
+  HSTy-State = autoHsType State ⊣ withConstructor "MkState"
+  Conv-State = autoConvert State
+
+  HSTy-Payment = autoHsType Payment ⊣ withConstructor "MkPayment"
+  Conv-Payment = autoConvert Payment
+
+  HSTy-ChosenNum = autoHsType ChosenNum
+  Conv-ChosenNum = autoConvert ChosenNum
+
+  HSTy-Input = autoHsType Input
+  Conv-Input = autoConvert Input
+
+  HSTy-TransactionWarning = autoHsType TransactionWarning
+  Conv-TransactionWarning = autoConvert TransactionWarning
+
+  HSTy-IntervalError = autoHsType IntervalError
+  Conv-IntervalError = autoConvert IntervalError
+
+  HSTy-TransactionError = autoHsType TransactionError
+  Conv-TransactionError = autoConvert TransactionError
+
+  HSTy-TransactionOutput = autoHsType TransactionOutput
+  Conv-TransactionOutput = autoConvert TransactionOutput
+```
+```agda
+eval-value : HsType (Environment → State → Value → ℤ)
+eval-value = to evalValue
+{-# COMPILE GHC eval-value as evalValue #-}
+
+eval-observation : HsType (Environment → State → Observation → Bool)
+eval-observation = to evalObservation
+{-# COMPILE GHC eval-observation as evalObservation #-}
 ```
