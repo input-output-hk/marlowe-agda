@@ -103,7 +103,7 @@ evalObservation : Environment → State → Observation → Bool
 evalValue e s v = ℰ⟦ v ⟧ e s
 evalObservation e s o = 𝒪⟦ o ⟧ e s
 ```
-
+<!--
 ## Export to Haskell
 
 ```agda
@@ -230,3 +230,4 @@ eval-observation : HsType (Environment → State → Observation → Bool)
 eval-observation = to evalObservation
 {-# COMPILE GHC eval-observation as evalObservation #-}
 ```
+-->
