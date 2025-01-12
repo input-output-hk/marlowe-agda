@@ -413,14 +413,6 @@ data Reducible (C : Configuration) : Set where
 Every configuration is reducible:
 
 ```agda
--- ¬First⇒All¬ : ∀ {P} xs → ¬ AnyFirst P xs → All (¬_ ∘ P) xs
---i-- ⇒All¬ = {!!}
-
-{-
-¬Any⇒All¬ []       ¬p = []
-¬Any⇒All¬ (x ∷ xs) ¬p = ¬p ∘ here ∷ ¬Any⇒All¬ xs (¬p ∘ there)
--}
-
 progress : ∀ (C : Configuration) → Reducible C
 progress
   ⟪ Close
