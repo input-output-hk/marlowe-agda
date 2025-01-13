@@ -1,7 +1,7 @@
 ```agda
 open import Marlowe.Abstract
 
-module Marlowe.Semantics.Reduce (a : MarloweAbstract) (open MarloweAbstract a)
+module Marlowe.Semantics.Reduce (ma : MarloweAbstract) (open MarloweAbstract ma)
   where
 ```
 
@@ -33,17 +33,18 @@ open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Class.Decidable
 open import Prelude.AssocList
 open import Prelude.Irrelevance
+open import Prelude.InferenceRules
 open import Data.List.Relation.Unary.First using (index)
 
-open import Marlowe.Language a
-open import Marlowe.Semantics.Evaluate a
+open import Marlowe.Language ma
+open import Marlowe.Semantics.Evaluate ma
 
 open Environment using (timeInterval)
 open State using (accounts; boundValues; choices)
 open TimeInterval using (startTime)
 ```
 -->
-
+<!--
 ### Account updates
 
 ```agda
@@ -52,7 +53,7 @@ _↑-update_ : (AccountId × Token) × ℕ → AssocList (AccountId × Token) �
 ... | yes p = p ∷= (proj₂ (lookup abs (index p)) + b)
 ... | no _ = (a , b) ∷ abs
 ```
-
+-->
 # Small-step semantics
 
 ## Reduce warnings
@@ -83,11 +84,29 @@ open Configuration
 ## Small-step reduction rules
 
 ```agda
-data _⇀_ : Configuration → Configuration → Set where
+private variable
+   a aₛ aₜ    : AccountId
+   t          : Token
+   n tₛ tᵢ Δₜ : ℕ
+   s          : State
+   w          : ReduceWarning
+   ws         : List ReduceWarning
+   pₐ         : Party
+   p          : Payee
+   ps         : List Payment
+   e          : Environment
+   c c₁ c₂    : Contract
+   cs         : List Case
+   v          : Value
+   i          : ValueId
+   o          : Observation
 
-  CloseRefund : ∀ {a t n s ws ps e}
-      -----------------------------
-    → ⟪ Close
+data _⇀_ : Configuration → Configuration → Set where
+```
+```agda
+  CloseRefund :
+      ────────────────────────────────────
+      ⟪ Close
       , record s
           { accounts =
             ((a , t) , n) ∷ accounts s
@@ -102,11 +121,12 @@ data _⇀_ : Configuration → Configuration → Set where
       , ws
       , a [ t , n ]↦ mkParty (unAccountId a) ∷ ps
       ⟫
-
-  PayNonPositive : ∀ {s e v a p t c ws ps}
-    → ℰ⟦ v ⟧ e s ≤ 0ℤ
-      ------------------------------------
-    → ⟪ Pay a p t v c
+```
+```agda
+  PayNonPositive :
+    ∙ ℰ⟦ v ⟧ e s ≤ 0ℤ
+      ────────────────────────────────────
+      ⟪ Pay a p t v c
       , s
       , e
       , ws
@@ -118,12 +138,13 @@ data _⇀_ : Configuration → Configuration → Set where
       , ReduceNonPositivePay a p t (ℰ⟦ v ⟧ e s) ∷ ws
       , ps
       ⟫
-
-  PayNoAccount : ∀ {s e v a p t c ws ps}
-    → ℰ⟦ v ⟧ e s > 0ℤ
-    → (a , t) ∉ᵐ accounts s
-      ----------------------------------
-    → ⟪ Pay a p t v c
+```
+```agda
+  PayNoAccount :
+   ∙ ℰ⟦ v ⟧ e s > 0ℤ
+   ∙ (a , t) ∉ᵐ accounts s
+     ────────────────────────────────────
+     ⟪ Pay a p t v c
       , s
       , e
       , ws
@@ -135,12 +156,13 @@ data _⇀_ : Configuration → Configuration → Set where
       , ReducePayNoAccount a p t (ℰ⟦ v ⟧ e s) ∷ ws
       , ps
       ⟫
-
-  PayInternalTransfer : ∀ {s e v aₛ aₜ t c ws ps}
-    → ℰ⟦ v ⟧ e s > 0ℤ
-    → (aₛ×t∈as : (aₛ , t) ∈ᵐ accounts s)
-      ------------------------------------------
-    → let
+```
+```agda
+  PayInternalTransfer :
+    ∙ ℰ⟦ v ⟧ e s > 0ℤ
+    → (aₛ×t∈as : (aₛ , t) ∈ᵐ accounts s) →
+      ────────────────────────────────────
+      let
         m = proj₂ (lookup (accounts s) (index aₛ×t∈as))
         n = ∣ ℰ⟦ v ⟧ e s ∣
       in
@@ -161,16 +183,17 @@ data _⇀_ : Configuration → Configuration → Set where
           else ws
       , ps
       ⟫
-
-  PayExternal : ∀ {s e v a t c ws ps p}
-    → ℰ⟦ v ⟧ e s > 0ℤ
-    → (a×t∈as : (a , t) ∈ᵐ accounts s)
-      ---------------------------------
-    → let
+```
+```agda
+  PayExternal :
+    ∙ ℰ⟦ v ⟧ e s > 0ℤ
+    → (a×t∈as : (a , t) ∈ᵐ accounts s) →
+      ────────────────────────────────────
+      let
         m = proj₂ (lookup (accounts s) (index a×t∈as))
         n = ∣ ℰ⟦ v ⟧ e s ∣
       in
-      ⟪ Pay a (mkParty p) t v c
+      ⟪ Pay a (mkParty pₐ) t v c
       , s
       , e
       , ws
@@ -183,15 +206,16 @@ data _⇀_ : Configuration → Configuration → Set where
           }
       , e
       , if (m <ᵇ n)
-          then ReducePartialPay a (mkParty p) t m n ∷ ws
+          then ReducePartialPay a (mkParty pₐ) t m n ∷ ws
           else ws
-      , a [ t , m ⊓ n ]↦ mkParty p ∷ ps
+      , a [ t , m ⊓ n ]↦ mkParty pₐ ∷ ps
       ⟫
-
-  IfTrue : ∀ {s e o c₁ c₂ ws ps}
-    → 𝒪⟦ o ⟧ e s ≡ true
-      --------------------------
-    → ⟪ If o c₁ c₂
+```
+```agda
+  IfTrue :
+    ∙ 𝒪⟦ o ⟧ e s ≡ true
+      ────────────────────────────────────
+      ⟪ If o c₁ c₂
       , s
       , e
       , ws
@@ -203,11 +227,12 @@ data _⇀_ : Configuration → Configuration → Set where
       , ws
       , ps
       ⟫
-
-  IfFalse : ∀ {s e o c₁ c₂ ws ps}
-    → 𝒪⟦ o ⟧ e s ≡ false
-      ---------------------------
-    → ⟪ If o c₁ c₂
+```
+```agda
+  IfFalse :
+    ∙ 𝒪⟦ o ⟧ e s ≡ false
+      ────────────────────────────────────
+      ⟪ If o c₁ c₂
       , s
       , e
       , ws
@@ -219,14 +244,15 @@ data _⇀_ : Configuration → Configuration → Set where
       , ws
       , ps
       ⟫
-
-  WhenTimeout : ∀ {s t tₛ Δₜ c ws ps cs}
-    → t ℕ.≤ tₛ
-      ---------------------------------
-    → let
+```
+```agda
+  WhenTimeout :
+    ∙ tᵢ ℕ.≤ tₛ
+      ────────────────────────────────────
+      let
         e = mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ)
       in
-      ⟪ When cs (mkTimeout (mkPosixTime t)) c
+      ⟪ When cs (mkTimeout (mkPosixTime tᵢ)) c
       , s
       , e
       , ws
@@ -238,11 +264,12 @@ data _⇀_ : Configuration → Configuration → Set where
       , ws
       , ps
       ⟫
-
-  LetShadow : ∀ {s e c i v ws ps}
-    → (i∈bs : i ∈ᵐ boundValues s)
-      ---------------------------
-    → ⟪ Let i v c
+```
+```agda
+  LetShadow :
+       (i∈bs : i ∈ᵐ boundValues s) →
+      ────────────────────────────────────
+      ⟪ Let i v c
       , s
       , e
       , ws
@@ -254,11 +281,12 @@ data _⇀_ : Configuration → Configuration → Set where
       , ReduceShadowing i (proj₂ (lookup (boundValues s) (index i∈bs))) (ℰ⟦ v ⟧ e s) ∷ ws
       , ps
       ⟫
-
-  LetNoShadow : ∀ {s e c i v ws ps}
-    → i ∉ᵐ boundValues s
-      ------------------
-    → ⟪ Let i v c
+```
+```agda
+  LetNoShadow :
+    ∙ i ∉ᵐ boundValues s
+      ────────────────────────────────────
+      ⟪ Let i v c
       , s
       , e
       , ws
@@ -273,11 +301,12 @@ data _⇀_ : Configuration → Configuration → Set where
       , ws
       , ps
       ⟫
-
-  AssertTrue : ∀ {s e o c ws ps}
-    → 𝒪⟦ o ⟧ e s ≡ true
-      --------------------------
-    → ⟪ Assert o c
+```
+```agda
+  AssertTrue :
+    ∙ 𝒪⟦ o ⟧ e s ≡ true
+      ────────────────────────────────────
+      ⟪ Assert o c
       , s
       , e
       , ws
@@ -289,11 +318,12 @@ data _⇀_ : Configuration → Configuration → Set where
       , ws
       , ps
       ⟫
-
-  AssertFalse : ∀ {s e o c ws ps}
-    → 𝒪⟦ o ⟧ e s ≡ false
-      ---------------------------
-    → ⟪ Assert o c
+```
+```agda
+  AssertFalse :
+    ∙ 𝒪⟦ o ⟧ e s ≡ false
+      ────────────────────────────────────
+      ⟪ Assert o c
       , s
       , e
       , ws
@@ -473,7 +503,7 @@ progress
   , ws
   , ps
   ⟫ with i ∈ᵐ? vs
-... | yes i∈vs = step (LetShadow {s} {e} {c} {i} {v} {ws} {ps} i∈vs)
+... | yes i∈vs = step (LetShadow i∈vs)
 ... | no ¬a∈abs = step (LetNoShadow λ x → ⊥⇒·⊥ (¬a∈abs x))
 progress
   ⟪ Assert o c
