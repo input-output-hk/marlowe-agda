@@ -103,6 +103,6 @@
       );
 
   nixConfig = {
-    bash-prompt = "\\n\\[\\033[1;32m\\][iog-prelude:\\w]\\$\\[\\033[0m\\] ";
+    bash-prompt = "\\n\\[\\033[1;32m\\][marlowe-agda:\\w]\\$\\[\\033[0m\\] ";
   };
 }
