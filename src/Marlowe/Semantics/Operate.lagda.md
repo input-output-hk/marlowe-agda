@@ -1,7 +1,7 @@
 ```agda
 open import Marlowe.Abstract
 
-module Marlowe.Semantics.Operate (a : MarloweAbstract) (open MarloweAbstract a)
+module Marlowe.Semantics.Operate (ma : MarloweAbstract) (open MarloweAbstract ma)
   where
 ```
 The module contains the formalisation of mid-step and big-step semantics for Marlowe.
@@ -31,9 +31,9 @@ open import Class.DecEq
 open import Class.Default
 open import Prelude.AssocList
 
-open import Marlowe.Language a
-open import Marlowe.Semantics.Evaluate a
-open import Marlowe.Semantics.Reduce a
+open import Marlowe.Language ma
+open import Marlowe.Semantics.Evaluate ma
+open import Marlowe.Semantics.Reduce ma
 
 open Configuration
 open State

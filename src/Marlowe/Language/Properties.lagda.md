@@ -1,7 +1,7 @@
 ```agda
 open import Marlowe.Abstract
 
-module Marlowe.Language.Properties (a : MarloweAbstract) (open MarloweAbstract a)
+module Marlowe.Language.Properties (ma : MarloweAbstract) (open MarloweAbstract ma)
   where
 ```
 
@@ -27,7 +27,7 @@ open Eq using (_≡_; refl; cong; sym; trans)
 open import Class.DecEq
 open import Prelude.AssocList
 
-open import Marlowe.Language a
+open import Marlowe.Language ma
 open PosixTime using (getPosixTime)
 ```
 -->

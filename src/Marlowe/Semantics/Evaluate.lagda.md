@@ -1,7 +1,7 @@
 ```agda
 open import Marlowe.Abstract
 
-module Marlowe.Semantics.Evaluate (a : MarloweAbstract) (open MarloweAbstract a)
+module Marlowe.Semantics.Evaluate (ma : MarloweAbstract) (open MarloweAbstract ma)
   where
 ```
 
@@ -21,7 +21,7 @@ open import Data.String as String using ()
 open import Relation.Nullary using (yes; no)
 open import Relation.Nullary.Decidable using (⌊_⌋; fromWitnessFalse)
 
-open import Marlowe.Language a
+open import Marlowe.Language ma
 open Environment using (timeInterval)
 open State using (accounts; choices; boundValues)
 open TimeInterval using (startTime; offset)

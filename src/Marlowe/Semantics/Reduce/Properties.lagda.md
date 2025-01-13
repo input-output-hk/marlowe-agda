@@ -1,7 +1,7 @@
 ```agda
 open import Marlowe.Abstract
 
-module Marlowe.Semantics.Reduce.Properties (a : MarloweAbstract) (open MarloweAbstract a)
+module Marlowe.Semantics.Reduce.Properties (ma : MarloweAbstract) (open MarloweAbstract ma)
   where
 ```
 
@@ -13,7 +13,6 @@ open import Contrib.Data.Nat.Properties
 open import Data.Bool.Properties using (not-¬)
 open import Data.Integer using (∣_∣)
 open import Data.List using (List; _∷_; []; _++_; sum; filter; map)
-open import Data.List.Relation.Unary.Any using (lookup; _∷=_; here; there)
 open import Data.Nat as ℕ
 open import Data.Nat.Properties as ℕ
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
@@ -24,13 +23,13 @@ open import Relation.Nullary.Negation using (contradiction)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; _≢_; refl; cong; sym; subst; trans)
 
-open import Marlowe.Language a
-open import Marlowe.Language.Properties a
-open import Marlowe.Semantics.Evaluate a
-open import Marlowe.Semantics.Reduce a
+open import Marlowe.Language ma
+open import Marlowe.Language.Properties ma
+open import Marlowe.Semantics.Evaluate ma
+open import Marlowe.Semantics.Reduce ma
 
-open import Contrib.Data.List.AssocList
-open Decidable ⦃ DecEq-AccountId×Token ⦄ renaming (_∈?_ to _∈?-AccountId×Token_)
+open import Class.Decidable
+open import Prelude.AssocList
 
 open State
 open Configuration

@@ -1,7 +1,7 @@
 ```agda
 open import Marlowe.Abstract
 
-module Marlowe.Semantics.Evaluate.Properties (a : MarloweAbstract) (open MarloweAbstract a)
+module Marlowe.Semantics.Evaluate.Properties (ma : MarloweAbstract) (open MarloweAbstract ma)
   where
 ```
 
@@ -19,8 +19,8 @@ import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; cong; sym)
 open Eq.≡-Reasoning
 
-open import Marlowe.Language a
-open import Marlowe.Semantics.Evaluate a
+open import Marlowe.Language ma
+open import Marlowe.Semantics.Evaluate ma
 ```
 -->
 

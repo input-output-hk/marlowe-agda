@@ -1,7 +1,7 @@
 ```
 open import Marlowe.Abstract
 
-module Marlowe.Semantics.Operate.Properties (a : MarloweAbstract) (open MarloweAbstract a)
+module Marlowe.Semantics.Operate.Properties (ma : MarloweAbstract) (open MarloweAbstract ma)
   where
 ```
 
@@ -21,15 +21,15 @@ import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; cong; sym; trans)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 
-open import Marlowe.Language a
-open import Marlowe.Semantics.Operate a
-open import Marlowe.Semantics.Reduce a
+open import Marlowe.Language ma
+open import Marlowe.Semantics.Operate ma
+open import Marlowe.Semantics.Reduce ma
 
 open Configuration
 open TransactionInput
 open Result
 
-open import Marlowe.Semantics.Reduce.Properties a
+open import Marlowe.Semantics.Reduce.Properties ma
 ```
 -->
 

@@ -101,9 +101,6 @@ private variable
    vs         : List Value
    i          : ValueId
    o          : Observation
-   m          : PosixTime
-   ac         : AssocList ChoiceId ℤ
-   av         : AssocList ValueId ℤ
 ```
 ```agda
 data _⇀_ : Configuration → Configuration → Set where
@@ -252,27 +249,7 @@ data _⇀_ : Configuration → Configuration → Set where
 ### Reflexive and transitive closure
 
 ```agda
-infix  2 _⇀⋆_
-infix  1 begin_
-infixr 2 _⇀⟨_⟩_
-infix  3 _∎
-
-data _⇀⋆_ : Configuration → Configuration → Set where
-  _∎ : ∀ M
-      -------
-    → M ⇀⋆ M
-
-  _⇀⟨_⟩_ : ∀ L {M N}
-    → L ⇀ M
-    → M ⇀⋆ N
-      ------
-    → L ⇀⋆ N
-
-begin_ : ∀ {M N}
-  → M ⇀⋆ N
-    -------
-  → M ⇀⋆ N
-begin M⇀⋆N = M⇀⋆N
+open import Prelude.Closures (_⇀_) renaming (_—↠_ to _⇀⋆_; _—→⟨_⟩_ to _⇀⟨_⟩_) public
 ```
 
 ### Quiescent
@@ -280,6 +257,12 @@ begin M⇀⋆N = M⇀⋆N
 A contract that is either waiting for input or has been fully reduced is called
 quiescent.
 
+```agda
+private variable
+   ac : AssocList ChoiceId ℤ
+   av : AssocList ValueId ℤ
+   m  : PosixTime
+```
 ```agda
 data Quiescent : Configuration → Set where
 

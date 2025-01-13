@@ -1,7 +1,7 @@
 ```agda
 open import Marlowe.Abstract
 
-module Marlowe.Language (a : MarloweAbstract) (open MarloweAbstract a) where
+module Marlowe.Language (ma : MarloweAbstract) (open MarloweAbstract ma) where
 ```
 
 This module specifies the domain model for a Marlowe contract.
