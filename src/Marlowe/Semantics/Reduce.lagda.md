@@ -104,7 +104,8 @@ private variable
    m          : PosixTime
    ac         : AssocList ChoiceId ℤ
    av         : AssocList ValueId ℤ
-
+```
+```agda
 data _⇀_ : Configuration → Configuration → Set where
 ```
 ```agda
@@ -135,11 +136,11 @@ data _⇀_ : Configuration → Configuration → Set where
 ```
 ```agda
   PayNoAccount :
-   ∙ ℰ⟦ v ⟧ e s > 0ℤ
-   ∙ (a , t) ∉ᵐ accounts s
+    ∙ ℰ⟦ v ⟧ e s > 0ℤ
+    ∙ (a , t) ∉ᵐ accounts s
       ────────────────────────────────────────────────
-     ⟪ Pay a p t v c , s , e , ws , ps ⟫ ⇀
-     ⟪ c , s , e , ReducePayNoAccount a p t (ℰ⟦ v ⟧ e s) ∷ ws , ps ⟫
+      ⟪ Pay a p t v c , s , e , ws , ps ⟫ ⇀
+      ⟪ c , s , e , ReducePayNoAccount a p t (ℰ⟦ v ⟧ e s) ∷ ws , ps ⟫
 ```
 ```agda
   PayInternalTransfer :
