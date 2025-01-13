@@ -220,6 +220,9 @@ instance
 
   HSTy-TransactionOutput = autoHsType TransactionOutput
   Conv-TransactionOutput = autoConvert TransactionOutput
+
+  HSTy-TransactionInput = autoHsType TransactionInput
+  Conv-TransactionInput = autoConvert TransactionInput
 ```
 ```agda
 eval-value : HsType (Environment → State → Value → ℤ)
@@ -229,5 +232,23 @@ eval-value = to evalValue
 eval-observation : HsType (Environment → State → Observation → Bool)
 eval-observation = to evalObservation
 {-# COMPILE GHC eval-observation as evalObservation #-}
+
+open import Data.Maybe
+open import Data.Sum
+open import Data.Product
+
+evalBs : Contract → State → List TransactionInput → Maybe Result
+evalBs c s is
+  with ⇓-eval c s is
+... | inj₁ (i , _) = just i
+... | inj₂ _ = nothing
+
+instance
+  HSTy-Result = autoHsType Result ⊣ withConstructor "MkResult"
+  Conv-Result = autoConvert Result
+
+eval-bs : HsType (Contract → State → List TransactionInput → Maybe Result)
+eval-bs = to evalBs
+{-# COMPILE GHC eval-bs as evalBs #-}
 ```
 -->
