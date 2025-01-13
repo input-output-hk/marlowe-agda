@@ -201,18 +201,15 @@ data _⇀_ : Configuration → Configuration → Set where
       ⟪ c₂ , s , e , ws , ps ⟫
 ```
 ```agda
-  WhenTimeout :
+  WhenTimeout : let e = mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ) in
     ∙ tᵢ ℕ.≤ tₛ
       ────────────────────────────────────────────────
-      let
-        e = mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ)
-      in
       ⟪ When cs (mkTimeout (mkPosixTime tᵢ)) c , s , e , ws , ps ⟫ ⇀
       ⟪ c , s , e , ws , ps ⟫
 ```
 ```agda
   LetShadow :
-       (i∈bs : i ∈ᵐ boundValues s) →
+      (i∈bs : i ∈ᵐ boundValues s) →
       ────────────────────────────────────────────────
       ⟪ Let i v c , s , e , ws , ps ⟫ ⇀
       ⟪ c
