@@ -60,10 +60,10 @@ _↑-update_ : (AccountId × Token) × ℕ → AssocList (AccountId × Token) �
 
 ```agda
 data ReduceWarning : Set where
-  ReduceNonPositivePay : AccountId → Payee → Token → ℤ → ReduceWarning
-  ReducePartialPay : AccountId → Payee → Token → ℕ → ℕ → ReduceWarning
-  ReducePayNoAccount : AccountId → Payee → Token → ℤ → ReduceWarning
-  ReduceShadowing : ValueId → ℤ → ℤ → ReduceWarning
+  ReduceNonPositivePay  : AccountId → Payee → Token → ℤ → ReduceWarning
+  ReducePartialPay      : AccountId → Payee → Token → ℕ → ℕ → ReduceWarning
+  ReducePayNoAccount    : AccountId → Payee → Token → ℤ → ReduceWarning
+  ReduceShadowing       : ValueId → ℤ → ℤ → ReduceWarning
   ReduceAssertionFailed : ReduceWarning
 ```
 
@@ -72,11 +72,11 @@ data ReduceWarning : Set where
 ```agda
 record Configuration : Set where
   constructor ⟪_,_,_,_,_⟫
-  field contract : Contract
-        state : State
+  field contract    : Contract
+        state       : State
         environment : Environment
-        warnings : List ReduceWarning
-        payments : List Payment
+        warnings    : List ReduceWarning
+        payments    : List Payment
 
 open Configuration
 ```
@@ -98,14 +98,18 @@ private variable
    c c₁ c₂    : Contract
    cs         : List Case
    v          : Value
+   vs         : List Value
    i          : ValueId
    o          : Observation
+   m          : PosixTime
+   ac         : AssocList ChoiceId ℤ
+   av         : AssocList ValueId ℤ
 
 data _⇀_ : Configuration → Configuration → Set where
 ```
 ```agda
   CloseRefund :
-      ────────────────────────────────────
+      ────────────────────────────────────────────────
       ⟪ Close
       , record s
           { accounts =
@@ -125,7 +129,7 @@ data _⇀_ : Configuration → Configuration → Set where
 ```agda
   PayNonPositive :
     ∙ ℰ⟦ v ⟧ e s ≤ 0ℤ
-      ────────────────────────────────────
+      ────────────────────────────────────────────────
       ⟪ Pay a p t v c , s , e , ws , ps ⟫ ⇀
       ⟪ c , s , e , ReduceNonPositivePay a p t (ℰ⟦ v ⟧ e s) ∷ ws , ps ⟫
 ```
@@ -133,7 +137,7 @@ data _⇀_ : Configuration → Configuration → Set where
   PayNoAccount :
    ∙ ℰ⟦ v ⟧ e s > 0ℤ
    ∙ (a , t) ∉ᵐ accounts s
-     ────────────────────────────────────
+      ────────────────────────────────────────────────
      ⟪ Pay a p t v c , s , e , ws , ps ⟫ ⇀
      ⟪ c , s , e , ReducePayNoAccount a p t (ℰ⟦ v ⟧ e s) ∷ ws , ps ⟫
 ```
@@ -141,7 +145,7 @@ data _⇀_ : Configuration → Configuration → Set where
   PayInternalTransfer :
     ∙ ℰ⟦ v ⟧ e s > 0ℤ
     → (aₛ×t∈as : (aₛ , t) ∈ᵐ accounts s) →
-      ────────────────────────────────────
+      ────────────────────────────────────────────────
       let
         m = proj₂ (lookup (accounts s) (index aₛ×t∈as))
         n = ∣ ℰ⟦ v ⟧ e s ∣
@@ -163,7 +167,7 @@ data _⇀_ : Configuration → Configuration → Set where
   PayExternal :
     ∙ ℰ⟦ v ⟧ e s > 0ℤ
     → (a×t∈as : (a , t) ∈ᵐ accounts s) →
-      ────────────────────────────────────
+      ────────────────────────────────────────────────
       let
         m = proj₂ (lookup (accounts s) (index a×t∈as))
         n = ∣ ℰ⟦ v ⟧ e s ∣
@@ -184,21 +188,21 @@ data _⇀_ : Configuration → Configuration → Set where
 ```agda
   IfTrue :
     ∙ 𝒪⟦ o ⟧ e s ≡ true
-      ────────────────────────────────────
+      ────────────────────────────────────────────────
       ⟪ If o c₁ c₂ , s , e , ws , ps ⟫ ⇀
       ⟪ c₁ , s , e , ws , ps ⟫
 ```
 ```agda
   IfFalse :
     ∙ 𝒪⟦ o ⟧ e s ≡ false
-      ────────────────────────────────────
+      ────────────────────────────────────────────────
       ⟪ If o c₁ c₂ , s , e , ws , ps ⟫ ⇀
       ⟪ c₂ , s , e , ws , ps ⟫
 ```
 ```agda
   WhenTimeout :
     ∙ tᵢ ℕ.≤ tₛ
-      ────────────────────────────────────
+      ────────────────────────────────────────────────
       let
         e = mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ)
       in
@@ -208,7 +212,7 @@ data _⇀_ : Configuration → Configuration → Set where
 ```agda
   LetShadow :
        (i∈bs : i ∈ᵐ boundValues s) →
-      ────────────────────────────────────
+      ────────────────────────────────────────────────
       ⟪ Let i v c , s , e , ws , ps ⟫ ⇀
       ⟪ c
       , s
@@ -220,7 +224,7 @@ data _⇀_ : Configuration → Configuration → Set where
 ```agda
   LetNoShadow :
     ∙ i ∉ᵐ boundValues s
-      ────────────────────────────────────
+      ────────────────────────────────────────────────
       ⟪ Let i v c , s , e , ws , ps ⟫ ⇀
       ⟪ c
       , record s
@@ -235,14 +239,14 @@ data _⇀_ : Configuration → Configuration → Set where
 ```agda
   AssertTrue :
     ∙ 𝒪⟦ o ⟧ e s ≡ true
-      ────────────────────────────────────
+      ────────────────────────────────────────────────
       ⟪ Assert o c , s , e , ws , ps ⟫ ⇀
       ⟪ c , s , e , ws , ps ⟫
 ```
 ```agda
   AssertFalse :
     ∙ 𝒪⟦ o ⟧ e s ≡ false
-      ────────────────────────────────────
+      ────────────────────────────────────────────────
       ⟪ Assert o c , s , e , ws , ps ⟫ ⇀
       ⟪ c , s , e , ReduceAssertionFailed ∷ ws , ps ⟫
 ```
@@ -281,21 +285,21 @@ quiescent.
 ```agda
 data Quiescent : Configuration → Set where
 
-  close : ∀ {e cs vs ws m ps}
-      -----------------------
-    → Quiescent
+  close :
+      ───────────────────────
+      Quiescent
         ⟪ Close
-        , ⟨ [] , cs , vs , m ⟩
+        , ⟨ [] , ac , av , m ⟩
         , e
         , ws
         , ps
         ⟫
 
-  waiting : ∀ {t tₛ Δₜ cs s c ws ps}
-    → tₛ + Δₜ < t
-      -----------------------------
-    → Quiescent
-        ⟪ When cs (mkTimeout (mkPosixTime t)) c
+  waiting :
+    ∙ tₛ + Δₜ < tᵢ
+      ─────────────────────────────
+      Quiescent
+        ⟪ When cs (mkTimeout (mkPosixTime tᵢ)) c
         , s
         , mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ)
         , ws
@@ -310,12 +314,12 @@ data Quiescent : Configuration → Set where
 ```agda
 data AmbiguousTimeInterval : Configuration → Set where
 
-  AmbiguousTimeIntervalError : ∀ {t tₛ Δₜ cs c s ws ps}
-    → tₛ < t
-    → tₛ + Δₜ ≥ t
-      ------------------------------------------------
-    → AmbiguousTimeInterval
-        ⟪ When cs (mkTimeout (mkPosixTime t)) c
+  AmbiguousTimeIntervalError :
+    ∙ tₛ < tᵢ
+    ∙ tₛ + Δₜ ≥ tᵢ
+      ────────────────────────────────────────────────
+      AmbiguousTimeInterval
+        ⟪ When cs (mkTimeout (mkPosixTime tᵢ)) c
         , s
         , mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ)
         , ws
@@ -332,22 +336,25 @@ A configuration is reducible, if
 * the time interval is ambiguous
 
 ```agda
+private variable
+  D : Configuration
+
 data Reducible (C : Configuration) : Set where
 
-  step : ∀ {D}
-    → C ⇀ D
-      -----------
-    → Reducible C
+  step :
+    ∙ C ⇀ D
+      ───────────
+      Reducible C
 
   quiescent :
-      Quiescent C
-      -----------
-    → Reducible C
+    ∙ Quiescent C
+      ───────────
+      Reducible C
 
   ambiguousTimeInterval :
-      AmbiguousTimeInterval C
-      -----------------------
-    → Reducible C
+    ∙ AmbiguousTimeInterval C
+      ───────────────────────
+      Reducible C
 ```
 
 Every configuration is reducible:
