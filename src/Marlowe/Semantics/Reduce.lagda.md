@@ -126,36 +126,16 @@ data _⇀_ : Configuration → Configuration → Set where
   PayNonPositive :
     ∙ ℰ⟦ v ⟧ e s ≤ 0ℤ
       ────────────────────────────────────
-      ⟪ Pay a p t v c
-      , s
-      , e
-      , ws
-      , ps
-      ⟫ ⇀
-      ⟪ c
-      , s
-      , e
-      , ReduceNonPositivePay a p t (ℰ⟦ v ⟧ e s) ∷ ws
-      , ps
-      ⟫
+      ⟪ Pay a p t v c , s , e , ws , ps ⟫ ⇀
+      ⟪ c , s , e , ReduceNonPositivePay a p t (ℰ⟦ v ⟧ e s) ∷ ws , ps ⟫
 ```
 ```agda
   PayNoAccount :
    ∙ ℰ⟦ v ⟧ e s > 0ℤ
    ∙ (a , t) ∉ᵐ accounts s
      ────────────────────────────────────
-     ⟪ Pay a p t v c
-      , s
-      , e
-      , ws
-      , ps
-      ⟫ ⇀
-      ⟪ c
-      , s
-      , e
-      , ReducePayNoAccount a p t (ℰ⟦ v ⟧ e s) ∷ ws
-      , ps
-      ⟫
+     ⟪ Pay a p t v c , s , e , ws , ps ⟫ ⇀
+     ⟪ c , s , e , ReducePayNoAccount a p t (ℰ⟦ v ⟧ e s) ∷ ws , ps ⟫
 ```
 ```agda
   PayInternalTransfer :
@@ -166,12 +146,7 @@ data _⇀_ : Configuration → Configuration → Set where
         m = proj₂ (lookup (accounts s) (index aₛ×t∈as))
         n = ∣ ℰ⟦ v ⟧ e s ∣
       in
-      ⟪ Pay aₛ (mkAccount aₜ) t v c
-      , s
-      , e
-      , ws
-      , ps
-      ⟫ ⇀
+      ⟪ Pay aₛ (mkAccount aₜ) t v c , s , e , ws , ps ⟫ ⇀
       ⟪ c
       , record s
           { accounts =
@@ -193,12 +168,7 @@ data _⇀_ : Configuration → Configuration → Set where
         m = proj₂ (lookup (accounts s) (index a×t∈as))
         n = ∣ ℰ⟦ v ⟧ e s ∣
       in
-      ⟪ Pay a (mkParty pₐ) t v c
-      , s
-      , e
-      , ws
-      , ps
-      ⟫ ⇀
+      ⟪ Pay a (mkParty pₐ) t v c , s , e , ws , ps ⟫ ⇀
       ⟪ c
       , record s
           { accounts =
@@ -215,35 +185,15 @@ data _⇀_ : Configuration → Configuration → Set where
   IfTrue :
     ∙ 𝒪⟦ o ⟧ e s ≡ true
       ────────────────────────────────────
-      ⟪ If o c₁ c₂
-      , s
-      , e
-      , ws
-      , ps
-      ⟫ ⇀
-      ⟪ c₁
-      , s
-      , e
-      , ws
-      , ps
-      ⟫
+      ⟪ If o c₁ c₂ , s , e , ws , ps ⟫ ⇀
+      ⟪ c₁ , s , e , ws , ps ⟫
 ```
 ```agda
   IfFalse :
     ∙ 𝒪⟦ o ⟧ e s ≡ false
       ────────────────────────────────────
-      ⟪ If o c₁ c₂
-      , s
-      , e
-      , ws
-      , ps
-      ⟫ ⇀
-      ⟪ c₂
-      , s
-      , e
-      , ws
-      , ps
-      ⟫
+      ⟪ If o c₁ c₂ , s , e , ws , ps ⟫ ⇀
+      ⟪ c₂ , s , e , ws , ps ⟫
 ```
 ```agda
   WhenTimeout :
@@ -252,29 +202,14 @@ data _⇀_ : Configuration → Configuration → Set where
       let
         e = mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ)
       in
-      ⟪ When cs (mkTimeout (mkPosixTime tᵢ)) c
-      , s
-      , e
-      , ws
-      , ps
-      ⟫ ⇀
-      ⟪ c
-      , s
-      , e
-      , ws
-      , ps
-      ⟫
+      ⟪ When cs (mkTimeout (mkPosixTime tᵢ)) c , s , e , ws , ps ⟫ ⇀
+      ⟪ c , s , e , ws , ps ⟫
 ```
 ```agda
   LetShadow :
        (i∈bs : i ∈ᵐ boundValues s) →
       ────────────────────────────────────
-      ⟪ Let i v c
-      , s
-      , e
-      , ws
-      , ps
-      ⟫ ⇀
+      ⟪ Let i v c , s , e , ws , ps ⟫ ⇀
       ⟪ c
       , s
       , e
@@ -286,12 +221,7 @@ data _⇀_ : Configuration → Configuration → Set where
   LetNoShadow :
     ∙ i ∉ᵐ boundValues s
       ────────────────────────────────────
-      ⟪ Let i v c
-      , s
-      , e
-      , ws
-      , ps
-      ⟫ ⇀
+      ⟪ Let i v c , s , e , ws , ps ⟫ ⇀
       ⟪ c
       , record s
           { boundValues =
@@ -306,35 +236,15 @@ data _⇀_ : Configuration → Configuration → Set where
   AssertTrue :
     ∙ 𝒪⟦ o ⟧ e s ≡ true
       ────────────────────────────────────
-      ⟪ Assert o c
-      , s
-      , e
-      , ws
-      , ps
-      ⟫ ⇀
-      ⟪ c
-      , s
-      , e
-      , ws
-      , ps
-      ⟫
+      ⟪ Assert o c , s , e , ws , ps ⟫ ⇀
+      ⟪ c , s , e , ws , ps ⟫
 ```
 ```agda
   AssertFalse :
     ∙ 𝒪⟦ o ⟧ e s ≡ false
       ────────────────────────────────────
-      ⟪ Assert o c
-      , s
-      , e
-      , ws
-      , ps
-      ⟫ ⇀
-      ⟪ c
-      , s
-      , e
-      , ReduceAssertionFailed ∷ ws
-      , ps
-      ⟫
+      ⟪ Assert o c , s , e , ws , ps ⟫ ⇀
+      ⟪ c , s , e , ReduceAssertionFailed ∷ ws , ps ⟫
 ```
 
 ### Reflexive and transitive closure
