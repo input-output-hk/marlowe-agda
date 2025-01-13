@@ -105,6 +105,7 @@ private variable
 ```agda
 data _⇀_ : Configuration → Configuration → Set where
 ```
+#### Reduction rules for `Close` contracts
 ```agda
   CloseRefund :
       ────────────────────────────────────────────────
@@ -124,6 +125,7 @@ data _⇀_ : Configuration → Configuration → Set where
       , a [ t , n ]↦ mkParty (unAccountId a) ∷ ps
       ⟫
 ```
+#### Reduction rules for `Pay` contracts
 ```agda
   PayNonPositive :
     ∙ ℰ⟦ v ⟧ e s ≤ 0ℤ
@@ -183,6 +185,7 @@ data _⇀_ : Configuration → Configuration → Set where
       , a [ t , m ⊓ n ]↦ mkParty pₐ ∷ ps
       ⟫
 ```
+#### Reduction rules for `If` contracts
 ```agda
   IfTrue :
     ∙ 𝒪⟦ o ⟧ e s ≡ true
@@ -197,6 +200,7 @@ data _⇀_ : Configuration → Configuration → Set where
       ⟪ If o c₁ c₂ , s , e , ws , ps ⟫ ⇀
       ⟪ c₂ , s , e , ws , ps ⟫
 ```
+#### Reduction rules for `When` contracts
 ```agda
   WhenTimeout : let e = mkEnvironment (mkInterval (mkPosixTime tₛ) Δₜ) in
     ∙ tᵢ ℕ.≤ tₛ
@@ -204,6 +208,7 @@ data _⇀_ : Configuration → Configuration → Set where
       ⟪ When cs (mkTimeout (mkPosixTime tᵢ)) c , s , e , ws , ps ⟫ ⇀
       ⟪ c , s , e , ws , ps ⟫
 ```
+#### Reduction rules for `Let` contracts
 ```agda
   LetShadow :
       (i∈bs : i ∈ᵐ boundValues s) →
@@ -231,6 +236,7 @@ data _⇀_ : Configuration → Configuration → Set where
       , ps
       ⟫
 ```
+#### Reduction rules for `Assert` contracts
 ```agda
   AssertTrue :
     ∙ 𝒪⟦ o ⟧ e s ≡ true
