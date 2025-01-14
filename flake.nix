@@ -1,5 +1,5 @@
 {
-  description = "marlowe-agda";
+  description = "marlowe-spec";
 
   inputs = {
     flake-utils.url = "github:numtide/flake-utils";
@@ -74,23 +74,24 @@
 
           deps = [ agdaStdlib agdaStdlibClasses agdaStdlibMeta agdaIOGPrelude ];
 
-          marlowe-agda = pkgs.agdaPackages.mkDerivation {
+          marloweSpec = pkgs.agdaPackages.mkDerivation {
             inherit (locales) LANG LC_ALL LOCALE_ARCHIVE;
-            pname = "marlowe-agda";
-            name = "marlowe-agda";
-            src = "src";
+            pname = "marlowe-spec";
+            name = "marlowe-spec";
+            src = ./formal-spec;
             meta = { };
-            libraryFile = "marlowe-agda.agda-lib";
+            libraryFile = "marlowe-spec.agda-lib";
             everythingFile = "Everything.agda";
             buildInputs = deps;
+            dontUnpack = true;
           };
 
           agdaWithPkgs = p: pkgs.agda.withPackages { pkgs = p; ghc = pkgs.ghc; };
           agdaWithDeps = agdaWithPkgs deps;
         in
         {
-          packages.default = marlowe-agda;
-          defaultPackage = marlowe-agda;
+          packages.default = marloweSpec;
+          defaultPackage = marloweSpec;
           devShell = pkgs.mkShell {
             buildInputs = [
               pkgs.nixpkgs-fmt

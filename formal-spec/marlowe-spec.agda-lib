@@ -4,4 +4,4 @@ depend:
   standard-library-classes
   standard-library-meta
   iog-prelude
-include: src
+include: .
