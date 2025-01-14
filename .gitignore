@@ -28,3 +28,6 @@ cabal.project.local
 *.chs.h
 *.prof
 .liquid/
+
+# MAlonzo
+formal-spec/MAlonzo
