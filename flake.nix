@@ -80,10 +80,9 @@
             name = "marlowe-spec";
             src = ./formal-spec;
             meta = { };
-            libraryFile = "marlowe-spec.agda-lib";
+            libraryFile = "formal-spec/marlowe-spec.agda-lib";
             everythingFile = "Everything.agda";
             buildInputs = deps;
-            dontUnpack = true;
           };
 
           agdaWithPkgs = p: pkgs.agda.withPackages { pkgs = p; ghc = pkgs.ghc; };
@@ -104,6 +103,6 @@
       );
 
   nixConfig = {
-    bash-prompt = "\\n\\[\\033[1;32m\\][marlowe-agda:\\w]\\$\\[\\033[0m\\] ";
+    bash-prompt = "\\n\\[\\033[1;32m\\][marlowe-spec:\\w]\\$\\[\\033[0m\\] ";
   };
 }
