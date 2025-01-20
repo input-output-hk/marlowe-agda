@@ -1,5 +1,10 @@
 ```agda
 module Marlowe.Examples.Cardano where
+
+{-# FOREIGN GHC
+  {-# LANGUAGE DuplicateRecordFields #-}
+#-}
+
 ```
 
 <!--
@@ -103,7 +108,6 @@ evalObservation : Environment → State → Observation → Bool
 evalValue e s v = ℰ⟦ v ⟧ e s
 evalObservation e s o = 𝒪⟦ o ⟧ e s
 ```
-<!--
 ## Export to Haskell
 
 ```agda
@@ -155,17 +159,82 @@ instance
   HSTy-Payee = autoHsType Payee
   Conv-Payee = autoConvert Payee
 
+  -- Mutually recursive type see:
+  -- https://github.com/agda/agda-stdlib-meta/issues/19
+
   HSTy-Observation : HasHsType Observation
   HSTy-Value : HasHsType Value
 
-  HSTy-Observation = autoHsType Observation
-  HSTy-Value = autoHsType Value
+{-# FOREIGN GHC
+data Observation' =
+    AndObs Observation' Observation'
+  | OrObs Observation' Observation'
+  | NotObs Observation'
+  | ChoseSomething ChoiceId
+  | ValueGE Value' Value'
+  | ValueGT Value' Value'
+  | ValueLT Value' Value'
+  | ValueLE Value' Value'
+  | ValueEQ Value' Value'
+  | TrueObs
+  | FalseObs
+  deriving (Show, Eq, Generic)
+data Value' =
+    AvailableMoney AccountId Token
+  | Constant Integer
+  | NegValue Value'
+  | AddValue Value' Value'
+  | SubValue Value' Value'
+  | MulValue Value' Value'
+  | DivValue Value' Value'
+  | ChoiceValue ChoiceId
+  | TimeIntervalStart
+  | TimeIntervalEnd
+  | UseValue ValueId
+  | Cond Observation' Value' Value'
+  deriving (Show, Eq, Generic)
+#-}
 
-  {-# TERMINATING #-}
-  Conv-Observation : let type = HasHsType.HsType HSTy-Observation in Convertible Observation type
+data Value' : Set
+data Observation' : Set
 
+data Value' where
+  AvailableMoney : HasHsType.HsType HSTy-AccountId → HasHsType.HsType HSTy-Token → Value'
+  Constant : ℤ → Value'
+  NegValue : Value' → Value'
+  AddValue : Value' → Value' → Value'
+  SubValue : Value' → Value' → Value'
+  MulValue : Value' → Value' → Value'
+  DivValue : Value' → Value' → Value'
+  ChoiceValue : HasHsType.HsType HSTy-ChoiceId → Value'
+  TimeIntervalStart : Value'
+  TimeIntervalEnd : Value'
+  UseValue : HasHsType.HsType HSTy-ValueId → Value'
+  Cond : Observation' → Value' → Value' → Value'
+  
+data Observation' where
+  AndObs : Observation' → Observation' → Observation'
+  OrObs : Observation' → Observation' → Observation'
+  NotObs : Observation' → Observation'
+  ChoseSomething : HasHsType.HsType HSTy-ChoiceId → Observation'
+  ValueGE : Value' → Value' → Observation'
+  ValueGT : Value' → Value' → Observation'
+  ValueLT : Value' → Value' → Observation'
+  ValueLE : Value' → Value' → Observation'
+  ValueEQ : Value' → Value' → Observation'
+  TrueObs : Observation'
+  FalseObs : Observation'
+
+{-# COMPILE GHC Value' = data Value' (AvailableMoney | Constant | NegValue | AddValue | SubValue | MulValue | DivValue | ChoiceValue | TimeIntervalStart | TimeIntervalEnd | UseValue | Cond) #-}
+{-# COMPILE GHC Observation' = data Observation' (AndObs | OrObs | NotObs | ChoseSomething | ValueGE | ValueGT | ValueLT | ValueLE | ValueEQ | TrueObs | FalseObs) #-}
+
+instance
+  HSTy-Observation = MkHsType Observation Observation'
+  HSTy-Value = MkHsType Value Value'
+
+  Conv-Observation : Convertible Observation Observation'
   {-# TERMINATING #-}
-  Conv-Value : let type = HasHsType.HsType HSTy-Value in Convertible Value type
+  Conv-Value : Convertible Value Value'
 
   Conv-Observation = autoConvert Observation
   Conv-Value = autoConvert Value
@@ -176,17 +245,47 @@ instance
   HSTy-Action = autoHsType Action
   Conv-Action = autoConvert Action
 
+{-# FOREIGN GHC
+
+data Case' = MkCase Action Contract'
+  deriving (Show, Eq, Generic)
+data Contract' = 
+    Close  
+  | Pay AccountId Payee Token Value' Contract'
+  | If Observation' Contract' Contract'
+  | When [Case'] Timeout Contract'
+  | Let ValueId Value' Contract'
+  | Assert Observation' Contract'
+  deriving (Show, Eq, Generic)
+#-}
+
+data Case' : Set
+data Contract' : Set
+
+data Case' where
+  MkCase : HasHsType.HsType HSTy-Action → Contract' → Case'
+
+data Contract' where
+  Close : Contract'
+  Pay : HasHsType.HsType HSTy-AccountId → HasHsType.HsType HSTy-Payee → HasHsType.HsType HSTy-Token → Value' → Contract' → Contract'
+  If : Observation' → Contract' → Contract' → Contract'
+  When : List Case' → HasHsType.HsType HSTy-Timeout → Contract' → Contract'
+  Let : HasHsType.HsType HSTy-ValueId → Value' → Contract' → Contract'
+  Assert : Observation' → Contract' → Contract'
+
+{-# COMPILE GHC Case' = data Case' (MkCase) #-}
+{-# COMPILE GHC Contract' = data Contract' (Close | Pay | If | When | Let | Assert) #-}
+
+instance
   HSTy-Case : HasHsType Case
   HSTy-Contract : HasHsType Contract
 
-  HSTy-Case = autoHsType Case
-  HSTy-Contract = autoHsType Contract
+  HSTy-Case = MkHsType Case Case'
+  HSTy-Contract = MkHsType Contract Contract'
 
+  Conv-Case : Convertible Case Case'
   {-# TERMINATING #-}
-  Conv-Case : let type = HasHsType.HsType HSTy-Case in Convertible Case type
-
-  {-# TERMINATING #-}
-  Conv-Contract : let type = HasHsType.HsType HSTy-Contract in Convertible Contract type
+  Conv-Contract : Convertible Contract Contract'
 
   Conv-Case = autoConvert Case
   Conv-Contract = autoConvert Contract
@@ -251,4 +350,3 @@ eval-bs : HsType (Contract → State → List TransactionInput → Maybe Result)
 eval-bs = to evalBs
 {-# COMPILE GHC eval-bs as evalBs #-}
 ```
--->
