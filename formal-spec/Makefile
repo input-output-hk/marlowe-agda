@@ -10,16 +10,16 @@ CABAL_TEST=cabal run test
 define agdaToHs
     @echo "Generating $@"
     $(eval CABAL_FILE=marlowe-spec.cabal)
-    $(eval HS_DIST=$(HS_DIR)/)
+    $(eval HS_DIST=$(HS_DIR)/src)
     mkdir -p $(HS_DIST)
-    cp -r hs-src/* $(HS_DIST)/
-    cp hs-src/$(CABAL_FILE) $(HS_DIST)/
+    cp -r hs-src/* $(HS_DIR)/
+    cp hs-src/$(CABAL_FILE) $(HS_DIR)/
     $(AGDA_RUN) -c --ghc-dont-call-ghc --compile-dir $(HS_DIST) $<
     find $(HS_DIST)/MAlonzo -name "*.hs" -print\
       | sed "s#^$(HS_DIST)/#        #;s#\.hs##;s#/#.#g"\
-      >> $(HS_DIST)/$(CABAL_FILE)
+      >> $(HS_DIR)/$(CABAL_FILE)
 endef
-HS_MARLOWE=$(HS_DIR)/$(MALONZO_DIR)/Marlowe/Examples/Cardano.hs
+HS_MARLOWE=$(HS_DIST)/$(MALONZO_DIR)/Marlowe/Examples/Cardano.hs
 $(HS_MARLOWE): Marlowe/Examples/Cardano.lagda.md
 	$(call agdaToHs,marlowe-spec)
 
