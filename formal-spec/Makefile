@@ -19,8 +19,8 @@ define agdaToHs
       | sed "s#^$(HS_DIST)/#        #;s#\.hs##;s#/#.#g"\
       >> $(HS_DIR)/$(CABAL_FILE)
 endef
-HS_MARLOWE=$(HS_DIST)/$(MALONZO_DIR)/Marlowe/Examples/Cardano.hs
-$(HS_MARLOWE): Marlowe/Examples/Cardano.lagda.md
+HS_MARLOWE=$(HS_DIST)/$(MALONZO_DIR)/Everything.hs
+$(HS_MARLOWE): Everything.agda
 	$(call agdaToHs,marlowe-spec)
 
 # Haskell -> HTML

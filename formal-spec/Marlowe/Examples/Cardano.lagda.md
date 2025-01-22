@@ -95,10 +95,10 @@ impl =
 
 open import Marlowe.Language impl
   renaming (Value to ValueAgda; Observation to ObservationAgda;
-    Contract to ContractAgda; Case to CaseAgda)
-open import Marlowe.Semantics.Evaluate impl
-open import Marlowe.Semantics.Reduce impl
-open import Marlowe.Semantics.Operate impl
+    Contract to ContractAgda; Case to CaseAgda) public
+open import Marlowe.Semantics.Evaluate impl public
+open import Marlowe.Semantics.Reduce impl public
+open import Marlowe.Semantics.Operate impl public
 ```
 
 ## Evaluation
