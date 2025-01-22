@@ -94,6 +94,8 @@ impl =
     }
 
 open import Marlowe.Language impl
+  renaming (Value to ValueAgda; Observation to ObservationAgda;
+    Contract to ContractAgda; Case to CaseAgda)
 open import Marlowe.Semantics.Evaluate impl
 open import Marlowe.Semantics.Reduce impl
 open import Marlowe.Semantics.Operate impl
@@ -102,8 +104,8 @@ open import Marlowe.Semantics.Operate impl
 ## Evaluation
 
 ```agda
-evalValue : Environment → State → Value → ℤ
-evalObservation : Environment → State → Observation → Bool
+evalValue : Environment → State → ValueAgda → ℤ
+evalObservation : Environment → State → ObservationAgda → Bool
 
 evalValue e s v = ℰ⟦ v ⟧ e s
 evalObservation e s o = 𝒪⟦ o ⟧ e s
@@ -162,82 +164,82 @@ instance
   -- Mutually recursive type see:
   -- https://github.com/agda/agda-stdlib-meta/issues/19
 
-  HSTy-Observation : HasHsType Observation
-  HSTy-Value : HasHsType Value
+  HSTy-Observation : HasHsType ObservationAgda
+  HSTy-Value : HasHsType ValueAgda
 
 {-# FOREIGN GHC
-data Observation' =
-    AndObs Observation' Observation'
-  | OrObs Observation' Observation'
-  | NotObs Observation'
+data Observation =
+    AndObs Observation Observation
+  | OrObs Observation Observation
+  | NotObs Observation
   | ChoseSomething ChoiceId
-  | ValueGE Value' Value'
-  | ValueGT Value' Value'
-  | ValueLT Value' Value'
-  | ValueLE Value' Value'
-  | ValueEQ Value' Value'
+  | ValueGE Value Value
+  | ValueGT Value Value
+  | ValueLT Value Value
+  | ValueLE Value Value
+  | ValueEQ Value Value
   | TrueObs
   | FalseObs
   deriving (Show, Eq, Generic)
-data Value' =
+data Value =
     AvailableMoney AccountId Token
   | Constant Integer
-  | NegValue Value'
-  | AddValue Value' Value'
-  | SubValue Value' Value'
-  | MulValue Value' Value'
-  | DivValue Value' Value'
+  | NegValue Value
+  | AddValue Value Value
+  | SubValue Value Value
+  | MulValue Value Value
+  | DivValue Value Value
   | ChoiceValue ChoiceId
   | TimeIntervalStart
   | TimeIntervalEnd
   | UseValue ValueId
-  | Cond Observation' Value' Value'
+  | Cond Observation Value Value
   deriving (Show, Eq, Generic)
 #-}
 
-data Value' : Set
-data Observation' : Set
+data Value : Set
+data Observation : Set
 
-data Value' where
-  AvailableMoney : HasHsType.HsType HSTy-AccountId → HasHsType.HsType HSTy-Token → Value'
-  Constant : ℤ → Value'
-  NegValue : Value' → Value'
-  AddValue : Value' → Value' → Value'
-  SubValue : Value' → Value' → Value'
-  MulValue : Value' → Value' → Value'
-  DivValue : Value' → Value' → Value'
-  ChoiceValue : HasHsType.HsType HSTy-ChoiceId → Value'
-  TimeIntervalStart : Value'
-  TimeIntervalEnd : Value'
-  UseValue : HasHsType.HsType HSTy-ValueId → Value'
-  Cond : Observation' → Value' → Value' → Value'
+data Value where
+  AvailableMoney : HasHsType.HsType HSTy-AccountId → HasHsType.HsType HSTy-Token → Value
+  Constant : ℤ → Value
+  NegValue : Value → Value
+  AddValue : Value → Value → Value
+  SubValue : Value → Value → Value
+  MulValue : Value → Value → Value
+  DivValue : Value → Value → Value
+  ChoiceValue : HasHsType.HsType HSTy-ChoiceId → Value
+  TimeIntervalStart : Value
+  TimeIntervalEnd : Value
+  UseValue : HasHsType.HsType HSTy-ValueId → Value
+  Cond : Observation → Value → Value → Value
   
-data Observation' where
-  AndObs : Observation' → Observation' → Observation'
-  OrObs : Observation' → Observation' → Observation'
-  NotObs : Observation' → Observation'
-  ChoseSomething : HasHsType.HsType HSTy-ChoiceId → Observation'
-  ValueGE : Value' → Value' → Observation'
-  ValueGT : Value' → Value' → Observation'
-  ValueLT : Value' → Value' → Observation'
-  ValueLE : Value' → Value' → Observation'
-  ValueEQ : Value' → Value' → Observation'
-  TrueObs : Observation'
-  FalseObs : Observation'
+data Observation where
+  AndObs : Observation → Observation → Observation
+  OrObs : Observation → Observation → Observation
+  NotObs : Observation → Observation
+  ChoseSomething : HasHsType.HsType HSTy-ChoiceId → Observation
+  ValueGE : Value → Value → Observation
+  ValueGT : Value → Value → Observation
+  ValueLT : Value → Value → Observation
+  ValueLE : Value → Value → Observation
+  ValueEQ : Value → Value → Observation
+  TrueObs : Observation
+  FalseObs : Observation
 
-{-# COMPILE GHC Value' = data Value' (AvailableMoney | Constant | NegValue | AddValue | SubValue | MulValue | DivValue | ChoiceValue | TimeIntervalStart | TimeIntervalEnd | UseValue | Cond) #-}
-{-# COMPILE GHC Observation' = data Observation' (AndObs | OrObs | NotObs | ChoseSomething | ValueGE | ValueGT | ValueLT | ValueLE | ValueEQ | TrueObs | FalseObs) #-}
+{-# COMPILE GHC Value = data Value (AvailableMoney | Constant | NegValue | AddValue | SubValue | MulValue | DivValue | ChoiceValue | TimeIntervalStart | TimeIntervalEnd | UseValue | Cond) #-}
+{-# COMPILE GHC Observation = data Observation (AndObs | OrObs | NotObs | ChoseSomething | ValueGE | ValueGT | ValueLT | ValueLE | ValueEQ | TrueObs | FalseObs) #-}
 
 instance
-  HSTy-Observation = MkHsType Observation Observation'
-  HSTy-Value = MkHsType Value Value'
+  HSTy-Observation = MkHsType ObservationAgda Observation
+  HSTy-Value = MkHsType ValueAgda Value
 
-  Conv-Observation : Convertible Observation Observation'
+  Conv-Observation : Convertible ObservationAgda Observation
   {-# TERMINATING #-}
-  Conv-Value : Convertible Value Value'
+  Conv-Value : Convertible ValueAgda Value
 
-  Conv-Observation = autoConvert Observation
-  Conv-Value = autoConvert Value
+  Conv-Observation = autoConvert ObservationAgda
+  Conv-Value = autoConvert ValueAgda
 
   HSTy-Bound = autoHsType Bound
   Conv-Bound = autoConvert Bound
@@ -247,48 +249,48 @@ instance
 
 {-# FOREIGN GHC
 
-data Case' = MkCase Action Contract'
+data Case = MkCase Action Contract
   deriving (Show, Eq, Generic)
-data Contract' = 
+data Contract = 
     Close  
-  | Pay AccountId Payee Token Value' Contract'
-  | If Observation' Contract' Contract'
-  | When [Case'] Timeout Contract'
-  | Let ValueId Value' Contract'
-  | Assert Observation' Contract'
+  | Pay AccountId Payee Token Value Contract
+  | If Observation Contract Contract
+  | When [Case] Timeout Contract
+  | Let ValueId Value Contract
+  | Assert Observation Contract
   deriving (Show, Eq, Generic)
 #-}
 
-data Case' : Set
-data Contract' : Set
+data Case : Set
+data Contract : Set
 
-data Case' where
-  MkCase : HasHsType.HsType HSTy-Action → Contract' → Case'
+data Case where
+  MkCase : HasHsType.HsType HSTy-Action → Contract → Case
 
-data Contract' where
-  Close : Contract'
-  Pay : HasHsType.HsType HSTy-AccountId → HasHsType.HsType HSTy-Payee → HasHsType.HsType HSTy-Token → Value' → Contract' → Contract'
-  If : Observation' → Contract' → Contract' → Contract'
-  When : List Case' → HasHsType.HsType HSTy-Timeout → Contract' → Contract'
-  Let : HasHsType.HsType HSTy-ValueId → Value' → Contract' → Contract'
-  Assert : Observation' → Contract' → Contract'
+data Contract where
+  Close : Contract
+  Pay : HasHsType.HsType HSTy-AccountId → HasHsType.HsType HSTy-Payee → HasHsType.HsType HSTy-Token → Value → Contract → Contract
+  If : Observation → Contract → Contract → Contract
+  When : List Case → HasHsType.HsType HSTy-Timeout → Contract → Contract
+  Let : HasHsType.HsType HSTy-ValueId → Value → Contract → Contract
+  Assert : Observation → Contract → Contract
 
-{-# COMPILE GHC Case' = data Case' (MkCase) #-}
-{-# COMPILE GHC Contract' = data Contract' (Close | Pay | If | When | Let | Assert) #-}
+{-# COMPILE GHC Case = data Case (MkCase) #-}
+{-# COMPILE GHC Contract = data Contract (Close | Pay | If | When | Let | Assert) #-}
 
 instance
-  HSTy-Case : HasHsType Case
-  HSTy-Contract : HasHsType Contract
+  HSTy-Case : HasHsType CaseAgda
+  HSTy-Contract : HasHsType ContractAgda
 
-  HSTy-Case = MkHsType Case Case'
-  HSTy-Contract = MkHsType Contract Contract'
+  HSTy-Case = MkHsType CaseAgda Case
+  HSTy-Contract = MkHsType ContractAgda Contract
 
-  Conv-Case : Convertible Case Case'
+  Conv-Case : Convertible CaseAgda Case
   {-# TERMINATING #-}
-  Conv-Contract : Convertible Contract Contract'
+  Conv-Contract : Convertible ContractAgda Contract
 
-  Conv-Case = autoConvert Case
-  Conv-Contract = autoConvert Contract
+  Conv-Case = autoConvert CaseAgda
+  Conv-Contract = autoConvert ContractAgda
 
   HSTy-TimeInterval = autoHsType TimeInterval
   Conv-TimeInterval = autoConvert TimeInterval
@@ -324,11 +326,11 @@ instance
   Conv-TransactionInput = autoConvert TransactionInput
 ```
 ```agda
-eval-value : HsType (Environment → State → Value → ℤ)
+eval-value : HsType (Environment → State → ValueAgda → ℤ)
 eval-value = to evalValue
 {-# COMPILE GHC eval-value as evalValue #-}
 
-eval-observation : HsType (Environment → State → Observation → Bool)
+eval-observation : HsType (Environment → State → ObservationAgda → Bool)
 eval-observation = to evalObservation
 {-# COMPILE GHC eval-observation as evalObservation #-}
 
@@ -336,7 +338,7 @@ open import Data.Maybe
 open import Data.Sum
 open import Data.Product
 
-evalBs : Contract → State → List TransactionInput → Maybe Result
+evalBs : ContractAgda → State → List TransactionInput → Maybe Result
 evalBs c s is
   with ⇓-eval c s is
 ... | inj₁ (i , _) = just i
@@ -346,7 +348,7 @@ instance
   HSTy-Result = autoHsType Result ⊣ withConstructor "MkResult"
   Conv-Result = autoConvert Result
 
-eval-bs : HsType (Contract → State → List TransactionInput → Maybe Result)
+eval-bs : HsType (ContractAgda → State → List TransactionInput → Maybe Result)
 eval-bs = to evalBs
 {-# COMPILE GHC eval-bs as evalBs #-}
 ```
