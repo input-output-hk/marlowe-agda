@@ -4,5 +4,5 @@ import Lib
 
 main :: IO ()
 main =
-  let (a,(b,c)) = escrowExample
-   in print $ evalBs b (MkState [] [] [] a) c
+  let (posixTime, (contract, inputs)) = escrowExample
+   in print $ evalBs contract (MkState [] [] [] posixTime) inputs
