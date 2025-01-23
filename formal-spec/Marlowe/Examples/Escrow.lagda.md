@@ -25,7 +25,7 @@ pattern [_,_] y z = y ∷ z ∷ []
 ## Escrow
 
 ```agda
-escrow : Party → Party → Party → Token → ℕ → Timeout → Timeout → Timeout → Timeout → Contract
+escrow : Party → Party → Party → Token → ℕ → Timeout → Timeout → Timeout → Timeout → ContractAgda
 escrow seller buyer mediator token price paymentDeadline complaintDeadline responseDeadline mediationDeadline =
   When
     [
@@ -71,14 +71,14 @@ escrow seller buyer mediator token price paymentDeadline complaintDeadline respo
     paymentDeadline
     Close
   where
-    price' : Value
+    price' : ValueAgda
     price' = Constant (+ price)
     makeChoice : String → Party → Int → Action
     makeChoice name party value = Choice (mkChoiceId (mkChoiceName name) party) [(mkBound value value)]
 ```
 
 ```agda
-escrowExample : PosixTime × Contract × (List TransactionInput)
+escrowExample : PosixTime × ContractAgda × (List TransactionInput)
 escrowExample =
   let
     seller = Role "Seller"
@@ -99,4 +99,15 @@ escrowExample =
       , mkTransactionInput interval [ IChoice (mkChoiceId (mkChoiceName "Everything is alright") buyer) (mkChosenNum 0ℤ) ]
       ]
     ⟩ ⟩
+```
+```agda
+open import Tactic.Derive.Convertible
+open import Tactic.Derive.HsType
+
+open import Class.Convertible
+open import Class.HasHsType
+
+escrow-example : HsType (PosixTime × ContractAgda × (List TransactionInput))
+escrow-example = to escrowExample
+{-# COMPILE GHC escrow-example as escrowExample #-}
 ```
