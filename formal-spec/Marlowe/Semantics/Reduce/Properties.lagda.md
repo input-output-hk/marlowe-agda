@@ -12,7 +12,7 @@ module Marlowe.Semantics.Reduce.Properties (ma : MarloweAbstract) (open MarloweA
 open import Contrib.Data.Nat.Properties
 open import Data.Bool.Properties using (not-¬)
 open import Data.Integer using (∣_∣)
-open import Data.List using (List; _∷_; []; _++_; sum; filter; map)
+open import Data.List using (List; _∷_; []; _++_; sum; filter; map; lookup)
 open import Data.Nat as ℕ
 open import Data.Nat.Properties as ℕ
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
@@ -28,8 +28,11 @@ open import Marlowe.Language.Properties ma
 open import Marlowe.Semantics.Evaluate ma
 open import Marlowe.Semantics.Reduce ma
 
+open import Class.Default
 open import Class.Decidable
+open import Prelude.Irrelevance
 open import Prelude.AssocList
+open import Data.List.Relation.Unary.First using (index)
 
 open State
 open Configuration
@@ -49,7 +52,7 @@ Quiescent¬⇀ : ∀ {C₁ C₂}
     ------------
   → ¬ (C₁ ⇀ C₂)
 Quiescent¬⇀ close ()
-Quiescent¬⇀ (waiting {t} {tₛ} {Δₜ} x) (WhenTimeout {_} {t} {tₛ} {Δₜ} y) =
+Quiescent¬⇀ (waiting {tₛ = tₛ} {Δₜ = Δₜ} x) (WhenTimeout y) =
   let ¬p = ≤⇒≯ (≤-trans y (m≤m+n tₛ Δₜ)) in ¬p x
 ```
 
@@ -77,38 +80,37 @@ totalAmount t C = Σ-accounts t (accounts (state C)) + Σ-payments t (payments C
   → (C₁ ⇀ C₂)
   --------------------------------
   → totalAmount t C₁ ≡ totalAmount t C₂
-⇀assetPreservation t* (CloseRefund {a} {t} {i}) = m+n+o≡n+[m+o] {m = projₜ t* ((a , t) , i)}
+⇀assetPreservation t* (CloseRefund {a = a} {t = t} {n = n}) = m+n+o≡n+[m+o] {m = projₜ t* ((a , t) , n)}
 ⇀assetPreservation _ (PayNonPositive _) = refl
 ⇀assetPreservation _ (PayNoAccount _ _) = refl
-⇀assetPreservation t* (PayInternalTransfer {s} {e} {v} {aₛ} {aₜ} {t} {ps = ps} _ aₛ×t∈as) =
+⇀assetPreservation t* (PayInternalTransfer {v = v} {e = e} {s = s} {aₛ = aₛ} {t = t} {aₜ = aₜ} {ps = ps} _ aₛ×t∈as) =
   cong (_+ Σ-payments t* ps) (sym pay-internal-transfer)
   where
-    m = proj₂ (lookup aₛ×t∈as)
+    m = proj₂ (lookup (accounts s) (index aₛ×t∈as))
     n = ∣ ℰ⟦ v ⟧ e s ∣
-
     pay-internal-transfer :
-      Σ-accounts t* (((aₜ , t) , m ⊓ n) ↑-update (aₛ×t∈as ∷= ((aₛ , t) , m ∸ n))) ≡ Σ-accounts t* (accounts s)
-    pay-internal-transfer with (aₜ , t) ∈?-AccountId×Token (aₛ×t∈as ∷= ((aₛ , t) , m ∸ n))
+      Σ-accounts t* (((aₜ , t) , m ⊓ n) ↑-update (aₛ×t∈as ∷= (m ∸ n))) ≡ Σ-accounts t* (accounts s)
+    pay-internal-transfer with (aₜ , t) ∈ᵐ? (aₛ×t∈as ∷= (m ∸ n))
     ... | yes aₜ×t∈as′ =
               trans
                 (trans
                   (Σ-accounts-↑ (m ⊓ n) t* aₜ×t∈as′)
                   (trans
-                    (+-comm (projₜ t* ((aₛ , t) , m ⊓ n)) (Σ-accounts t* (aₛ×t∈as ∷= ((aₛ , t) , m ∸ n))))
+                    (+-comm (projₜ t* ((aₛ , t) , m ⊓ n)) (Σ-accounts t* (aₛ×t∈as ∷= (m ∸ n))))
                     (cong (_+ (projₜ t* ((aₛ , t) , m ⊓ n))) (Σ-accounts-↓ n t* aₛ×t∈as))))
                 (m∸n+n≡m (Σ-accounts-↓≤⊓ n t* aₛ×t∈as))
     ... | no aₜ×t∉as′ =
               trans
                 (trans
-                  (+-comm (projₜ t* ((aₜ , t) ,  m ⊓ n)) (Σ-accounts t* (aₛ×t∈as ∷= ((aₛ , t) , m ∸ n))))
+                  (+-comm (projₜ t* ((aₜ , t) ,  m ⊓ n)) (Σ-accounts t* (aₛ×t∈as ∷= (m ∸ n))))
                   (cong (_+ (projₜ t* ((aₛ , t) , m ⊓ n))) (Σ-accounts-↓ n t* aₛ×t∈as)))
                 (m∸n+n≡m (Σ-accounts-↓≤⊓ n t* aₛ×t∈as))
-⇀assetPreservation t* (PayExternal {s} {e} {v} {a} {t} {ps = ps} {p} _ a×t∈as) = sym $
+⇀assetPreservation t* (PayExternal {v = v} {e = e} {s = s} {a = a} {t = t} {pₐ = pₐ} {ps = ps} _ a×t∈as) = sym $
   trans
-    (cong (_+ (Σ-payments t* (a [ t , m ⊓ n ]↦ mkParty p ∷ ps))) (Σ-accounts-↓ n t* a×t∈as))
+    (cong (_+ (Σ-payments t* (a [ t , m ⊓ n ]↦ mkParty pₐ ∷ ps))) (Σ-accounts-↓ n t* a×t∈as))
     (o≤m⇛m∸o+[o+n]≡m+n (Σ-accounts-↓≤⊓ n t* a×t∈as))
   where
-    m = proj₂ (lookup a×t∈as)
+    m = proj₂ (lookup (accounts s) (index a×t∈as))
     n = ∣ ℰ⟦ v ⟧ e s ∣
 ⇀assetPreservation _ (IfTrue _) = refl
 ⇀assetPreservation _ (IfFalse _) = refl
@@ -195,11 +197,11 @@ Close is a terminal contract
 ⇀-maxTimeout (PayExternal _ _) = ≤-refl
 ⇀-maxTimeout (IfTrue {c₁ = c₁} {c₂ = c₂} _) = m≤m⊔n (maxTimeout c₁) (maxTimeout c₂)
 ⇀-maxTimeout (IfFalse {c₁ = c₁} {c₂ = c₂} _) = m≤n⊔m (maxTimeout c₁) (maxTimeout c₂)
-⇀-maxTimeout (WhenTimeout {t = t} {c = c} {cs = []} x) = m≤n⊔m t (maxTimeout c)
-⇀-maxTimeout (WhenTimeout {s} {t} {tₛ} {Δₜ} {c} {ws} {ps} {(mkCase _ c₁) ∷ cs} x) =
+⇀-maxTimeout (WhenTimeout {tᵢ = tᵢ} {cs = []} {c = c} x) = m≤n⊔m tᵢ (maxTimeout c)
+⇀-maxTimeout (WhenTimeout {Δₜ = Δₜ} {tᵢ = tᵢ} {cs = (mkCase _ c₁) ∷ cs} {c = c} {s = s} {ws = ws} {ps = ps} x) =
   ≤-trans
-    (⇀-maxTimeout (WhenTimeout {s} {t} {tₛ} {Δₜ} {c} {ws} {ps} {cs} x))
-    (m≤n⊔m (maxTimeout c₁) (maxTimeout (When cs (mkTimeout (mkPosixTime t)) c)))
+    (⇀-maxTimeout (WhenTimeout {Δₜ = Δₜ} {tᵢ = tᵢ} {cs = cs} {c = c} {s = s} {ws = ws} {ps = ps} x))
+    (m≤n⊔m (maxTimeout c₁) (maxTimeout (When cs (mkTimeout (mkPosixTime tᵢ)) c)))
 ⇀-maxTimeout (LetShadow _) = ≤-refl
 ⇀-maxTimeout (LetNoShadow _) = ≤-refl
 ⇀-maxTimeout (AssertTrue _) = ≤-refl
@@ -223,10 +225,10 @@ Close is a terminal contract
   → maxTimeout (contract C) < getPosixTime (startTime (timeInterval (environment C)))
   → (contract D) ≡ Close
 ⇀⋆-after-timeout-closes-contract _ close _ = refl
-⇀⋆-after-timeout-closes-contract x (waiting {t} {tₛ} {Δₜ} {cs} {s} {c} x₁) x₂ rewrite ⇀⋆-env-not-modified x =
+⇀⋆-after-timeout-closes-contract x (waiting {tₛ = tₛ} {Δₜ = Δₜ} {tᵢ = tᵢ} {cs = cs} {c = c} {ws = ws} {ps = ps} x₁) x₂ rewrite ⇀⋆-env-not-modified x =
   contradiction
     (≤-trans
-      (timeout≤maxTimeout t cs c)
+      (timeout≤maxTimeout tᵢ cs c)
       (⇀⋆-maxTimeout x))
     (<⇒≱ (≤-trans
            (m≤n⇒m≤n+o (suc Δₜ) x₂)

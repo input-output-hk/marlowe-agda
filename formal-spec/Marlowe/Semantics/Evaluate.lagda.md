@@ -14,10 +14,7 @@ open import Data.Integer as ℤ using (ℤ; -_; _-_; +_; _+_; _*_; _≟_; _<?_; 
 open import Data.Integer.DivMod as ℤ using ()
 open import Data.Nat as ℕ using (ℕ)
 open import Data.List using (List; []; _∷_; sum; filter; map)
-open import Data.List.Relation.Unary.Any using (lookup; _∷=_)
 open import Data.Product using (_,_; _×_; proj₁; proj₂)
-open import Data.Product.Properties using (≡-dec)
-open import Data.String as String using ()
 open import Relation.Nullary using (yes; no)
 open import Relation.Nullary.Decidable using (⌊_⌋; fromWitnessFalse)
 
