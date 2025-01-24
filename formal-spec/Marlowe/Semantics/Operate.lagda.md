@@ -427,3 +427,60 @@ data _⇓_ : Contract × State → Result → Set where
 ... | inj₁ (⟦ ws , ps , s ⟧ , d×s×is⇓r) = inj₁ (⟦ ws ++ convertReduceWarnings (warnings D) , ps ++ payments D , s ⟧ , reduce-until-quiescent refl refl C×i⇒D q d×s×is⇓r)
 ... | inj₂ e = inj₂ e
 ```
+### Example
+```agda
+private
+
+  module _ (p₁ p₂ : Party) (t : Token)
+    where
+    
+    tₒ : PosixTime
+    tₒ = mkPosixTime 100
+        
+    a₁ : AccountId
+    a₁ = mkAccountId p₁
+    
+    a₂ : AccountId
+    a₂ = mkAccountId p₂
+        
+    v : Value
+    v = Constant (+ 1)
+    
+    d : Contract
+    d = When ([ mkCase (Deposit a₁ p₂ t v) Close ]) (mkTimeout tₒ) Close
+    
+    c : Contract
+    c = Assert FalseObs d
+    
+    s : State
+    s = emptyState (mkPosixTime 0)
+    
+    i : TransactionInput
+    i = mkTransactionInput (mkInterval (mkPosixTime 0) 10) [ IDeposit a₁ p₂ t 1 ]
+    
+    e : Environment
+    e = mkEnvironment (mkInterval (mkPosixTime 0) 2)
+    
+    reduction-steps :
+      (c , s)
+      ⇓ ⟦ [ TransactionAssertionFailed ]
+        , [ a₁ [ t , 1 ]↦ mkParty p₁ ]
+        , s
+        ⟧
+    reduction-steps =
+      reduce-until-quiescent refl refl
+        (⟪ c , s , e , [] , [] ⟫ ⇀⟨ AssertFalse refl ⟩ (⟪ d , s , e , [ ReduceAssertionFailed ] , [] ⟫ ∎))
+        (waiting (s≤s (s≤s (s≤s z≤n))))
+        (apply-input {i = IDeposit a₁ p₂ t 1} (s≤s (s≤s (s≤s z≤n))) (trim-interval z≤n)
+          (Deposit (here refl) refl (s≤s (s≤s (s≤s z≤n))) close
+            (⟪ Close , ⟨ [((a₁ , t) , 1)] , [] , [] , mkPosixTime 0 ⟩ , e , []  , [] ⟫
+                   ⇀⟨ CloseRefund ⟩ (⟪ Close , ⟨ [] , [] , [] , mkPosixTime 0 ⟩ , e , [] , [ a₁ [ t , 1 ]↦ mkParty p₁ ] ⟫) ∎))
+          (done refl))
+    
+    _ = ⇓-eval c s (i ∷ []) ≡
+         inj₁ (
+           ⟦ [ TransactionAssertionFailed ]
+           , [ a₁ [ t , 1 ]↦ mkParty p₁ ]
+           , s
+           ⟧ , reduction-steps)
+```

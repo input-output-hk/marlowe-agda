@@ -11,7 +11,3 @@ open import Marlowe.Semantics.Evaluate.Properties
 -- open import Marlowe.Semantics.Reduce.Properties
 -- open import Marlowe.Semantics.Operate.Properties
 -- open import Contrib.Data.Nat.Properties.agda
-
-open import Marlowe.Examples.Reduce
-open import Marlowe.Examples.Operate
-
