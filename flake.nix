@@ -82,9 +82,6 @@
             meta = { };
             libraryFile = "formal-spec/marlowe-spec.agda-lib";
             everythingFile = "Everything.agda";
-            buildPhase = ''
-              OUT_DIR=$out make
-            '';
             buildInputs = deps;
           };
 
